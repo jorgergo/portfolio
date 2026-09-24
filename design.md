@@ -47,13 +47,13 @@ Rules: no `dark:` variants (the tokens switch by themselves), no opacity modifie
 
 Tailwind's default steps plus one custom size, all rem based:
 
-| Utility                  | Use                                                |
-| ------------------------ | -------------------------------------------------- |
-| `text-xs`                | uppercase labels (`SectionHeading`), the footer    |
-| `text-sm`                | meta text, chips, buttons                          |
-| `text-base`              | body copy, line height 1.6 (the default on `body`) |
-| `text-lg font-medium`    | inner page h1 and the CV name                      |
-| `text-title font-medium` | the home page h1                                   |
+| Utility                  | Use                                             |
+| ------------------------ | ----------------------------------------------- |
+| `text-xs`                | uppercase labels (`SectionHeading`), the footer |
+| `text-sm`                | meta text, chips, buttons                       |
+| `text-base`              | body copy (the size and line height on `body`)  |
+| `text-lg font-medium`    | inner page h1 and the CV name                   |
+| `text-title font-medium` | the home page h1                                |
 
 Weights: 400 for everything, 500 for h1, names, positions, `b`, and `strong`. Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size.
 
@@ -72,7 +72,7 @@ Tailwind's numeric scale with fixed meanings:
 | `gap-2`            | between an icon and its label                     |
 | `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`        |
 
-The content column is `max-w-content` (640px), centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
+The content column is `max-w-content`, centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
 
 ## Components and usage rules
 
@@ -97,7 +97,7 @@ The only animation on the base pages is `transition-colors`, at the theme defaul
 
 ## Print
 
-The tokens take their paper values, `color-scheme` becomes `light`, the page gets an 18mm margin, and the root size drops to 11pt so the rem scale follows. The column drops its minimum height and padding. The skip link, the footer home link, and every `Button` are hidden. Links print as plain text without underline, and chips print as plain text without a border. The CV page builds on this layer, and the PDF spec reuses it.
+The tokens take their paper values, `color-scheme` becomes `light`, the page gets an 18mm margin, and the root size drops to 11pt so the rem scale follows. The page drops its minimum height and the column its padding. The skip link, the footer home link, and every `Button` are hidden. Links print as plain text without underline, and chips print as plain text without a border. The CV page builds on this layer, and the PDF spec reuses it.
 
 ## Hardening
 
@@ -129,4 +129,4 @@ Don't:
 
 ## Responsive behaviour
 
-Mobile first. The column is fluid up to 640px with 24px side padding, so at 320px nothing scrolls sideways and long strings wrap. Interactive rows are at least 40px tall (`min-h-10` on `IconLink` and `Button`). The footer link is `min-h-6` because it is a text link inside a text line. The only breakpoint in use is `xs` (480px), reserved for the CV page's column collapse. Use `sm` and up only when a spec asks. Body text stays 16px at every size. Both colour schemes are first class: check every page in light and dark, and in print preview.
+Mobile first. The column is fluid up to `max-w-content` with `px-6` side padding, so at 320px nothing scrolls sideways and long strings wrap. Interactive rows are at least `min-h-10` tall (`IconLink` and `Button`). The footer link is `min-h-6` because it is a text link inside a text line. The only breakpoint in use is `xs` (`--breakpoint-xs`), reserved for the CV page's column collapse. Use `sm` and up only when a spec asks. Body text stays `text-base` at every size. Both colour schemes are first class: check every page in light and dark, and in print preview.

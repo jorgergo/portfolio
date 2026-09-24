@@ -26,7 +26,7 @@ interface Props {
 // arrow so the visitor knows it leaves the site (spec 0003).
 const { href, icon, label, class: className } = Astro.props;
 const Icon = ICONS[icon];
-const external = href.startsWith('http');
+const external = /^https?:\/\//.test(href);
 ---
 
 <a

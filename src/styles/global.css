@@ -67,6 +67,12 @@
     color: var(--color-bg);
   }
 
+  /* The ring colour is set at rest too, so transition-colors never fades the
+     ring in from the text colour on focus. */
+  * {
+    outline-color: var(--color-accent);
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 3px;

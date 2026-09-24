@@ -44,9 +44,9 @@ const { light, dark } = parseColorTokens(css);
     <Font cssVariable="--font-plex-mono" preload={[{ weight: 400 }]} />
     <Font cssVariable="--font-plex-sans" />
   </head>
-  <body class="flex min-h-dvh flex-col">
+  <body class="flex min-h-dvh flex-col print:min-h-0">
     <SkipLink />
-    <div class="mx-auto flex w-full max-w-content flex-1 flex-col gap-14 px-6 pt-10 pb-20 print:min-h-0 print:p-0">
+    <div class="mx-auto flex w-full max-w-content flex-1 flex-col gap-14 px-6 pt-10 pb-20 print:p-0">
       <main
         id="main"
         tabindex="-1"
