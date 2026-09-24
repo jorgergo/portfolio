@@ -1,7 +1,7 @@
 # 0001. Static Astro site on Cloudflare
 
 **Date**: 2026-09-23
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

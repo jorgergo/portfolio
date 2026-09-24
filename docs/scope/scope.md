@@ -12,8 +12,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | done |
-| 2 | Coding standards & tooling | Foundation | planned |
-| 3 | Content model | Foundation | planned |
+| 2 | Coding standards & tooling | Foundation | done |
+| 3 | Content model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | planned |
 | 5 | Home page | Release 1 | planned |
 | 6 | CV page | Release 1 | planned |
@@ -33,16 +33,32 @@ spec [0001](../specs/0001-stack-architecture/index.md) · code in `src/`
 - [x] Scaffold from the decision: `/develop stack & architecture`
 - [x] Verify it: `/check verify stack & architecture`
 
-### 2. Coding standards & tooling
+### 2. Coding standards & tooling · done
 Capture conventions, then install lint, format, and pre commit checks from the real scaffolded project.
 **Done when:** root `AGENTS.md` reflects the real stack, and lint, format, and pre commit run clean.
-- [ ] Capture conventions + tooling choices: `/audit`
+code in `eslint.config.js`, `.prettierrc.json`, `package.json`, `.github/workflows/ci.yml`
+- [x] Capture conventions + tooling choices: `/audit`
+- [x] Build it: `/develop coding standards & tooling`
+  - [x] Lint: ESLint 10 flat config (typescript-eslint, eslint-plugin-astro, jsx-a11y-x) enforcing the AGENTS.md rules
+  - [x] Format: Prettier with the Astro and Tailwind plugins
+  - [x] Pre commit: simple-git-hooks runs lint-staged, then `astro check`
+  - [x] CI: GitHub Actions runs frozen install, lint, format check, build
 
-### 3. Content model · needs a decision
+### 3. Content model · done
 One source of truth for your profile, socials, and CV content (experience, education, skills, technologies), so the home page, CV page, and PDF all read the same data.
 **Done when:** editing your CV means changing one content source in one place, and every section of the Harvard template has a defined shape.
 **Note:** the CSP blocks Shiki's inline styles, so decide code block highlighting here (`syntaxHighlight: false` or `'prism'`); see spec [0001](../specs/0001-stack-architecture/index.md) Consequences.
-- [ ] Design it (spec): `/architect content model`
+spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.json`, `src/lib/cv*.ts`, `src/content.config.ts`
+- [x] Design it (spec): `/architect content model`
+- [x] Build it: `/develop content model`
+  - [x] Schema and loader: strict `cv` collection from `src/content/cv.json`, highlighting off (AC-1 to AC-8, AC-12, AC-14)
+  - [x] Real CV content: your pasted CV rewritten into English Harvard shape, no phone or address (AC-2, AC-13)
+  - [x] Access and format helpers: `getCv()`, dates, sorting, location (AC-1, AC-9 to AC-11)
+  - [x] Wiring and failure checks: placeholders read your name, avatar if supplied, every rule proven to fail the build (AC-3 to AC-8, AC-12, AC-14, AC-15)
+- [x] Verify it: `/check verify content model`
+- [x] Test it: `/test content model`
+- [x] Review it (fresh model): `/check review content model`
+- [ ] Document it: `/document content model`
 
 ### 4. Design system & UI foundation · needs a decision
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.

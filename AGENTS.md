@@ -20,8 +20,10 @@ pnpm install
 pnpm dev       # astro dev (no CSP here)
 pnpm build     # astro check && astro build: the gate
 pnpm preview   # wrangler dev on dist/: check _headers and CSP here
+pnpm lint      # eslint, zero warnings allowed (lint:fix to autofix)
+pnpm format    # prettier --write (format:check in CI)
 ```
-Lint, format, and test scripts arrive with `/develop tooling` (see Tooling).
+Test scripts arrive with `/test` (see Tooling).
 
 ## Specs
 
@@ -31,6 +33,7 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 
 - Functional: pure functions over plain, `readonly` data. Content goes in, markup comes out. No classes, no shared mutable state; side effects (fetch, DOM) stay in bundled `<script>` tags at the edges.
 - Expected failures return explicit results (union types, `undefined`), not thrown exceptions; content errors fail the build through collection schemas.
+- Content: profile, socials, and CV live only in `src/content/cv.json` (strict schema in `src/lib/cv-schema.ts`). Pages call `getCv()` from `@/lib/cv` once in frontmatter, then format with the pure helpers in `src/lib/cv-format.ts`; `getCv()` is the one sanctioned throw. Markdown highlighting stays off (`syntaxHighlight: false`) because the CSP blocks Shiki. See [spec 0002](docs/specs/0002-content-model/index.md).
 - Keep spec 0001's layout: `pages/`, `layouts/`, `components/`, `content/`, `lib/` (TS helpers, client scripts), `styles/`, `assets/`. Never create `src/fetch.ts`.
 - Strict types: no `any`, no non null `!` shortcuts. Add `typescript` only with its range (`^6.0.3`), never `@latest`.
 - CSP safe markup: Tailwind classes only, no inline `style=""`, no `define:vars`, no `is:inline` scripts. Close every tag and nest HTML validly.
@@ -40,9 +43,9 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 ## Tooling
 
 Chosen by /audit; `/develop tooling` installs exactly this.
-- **Lint**: ESLint 9 flat config with `typescript-eslint`, `eslint-plugin-astro`, `eslint-plugin-jsx-a11y`.
+- **Lint**: ESLint 10 flat config (`eslint.config.js`) with `typescript-eslint` strict, `eslint-plugin-astro`, `eslint-plugin-jsx-a11y-x` (the ESLint 10 fork of `eslint-plugin-jsx-a11y`); it errors on the Rules above it can check (classes, `any`, `!`, `style=""`, `define:vars`, `is:inline`, `set:html`).
 - **Format**: Prettier with `prettier-plugin-astro` and `prettier-plugin-tailwindcss`.
-- **Pre commit**: a git hook runner runs lint-staged (ESLint + Prettier on staged files), then `astro check`.
+- **Pre commit**: `simple-git-hooks` (config in `package.json`, installed by `prepare`) runs lint-staged (ESLint + Prettier on staged files), then `astro check`. The hook uses the `pnpm`/Node on git's PATH, so Node 26 must be active there.
 - **Tests** (runner set up by `/test`): Vitest for `src/lib` helpers and content schemas; Playwright for built pages (links, keyboard, print, axe checks).
 - **CI**: GitHub Actions on push and PR: frozen lockfile install, lint, format check, `pnpm build`, tests. Node from `.nvmrc`. Deploying belongs to the Go live spec.
 
