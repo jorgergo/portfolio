@@ -33,6 +33,7 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 
 - Functional: pure functions over plain, `readonly` data. Content goes in, markup comes out. No classes, no shared mutable state; side effects (fetch, DOM) stay in bundled `<script>` tags at the edges.
 - Expected failures return explicit results (union types, `undefined`), not thrown exceptions; content errors fail the build through collection schemas.
+- Content: profile, socials, and CV live only in `src/content/cv.json` (strict schema in `src/lib/cv-schema.ts`). Pages call `getCv()` from `@/lib/cv` once in frontmatter, then format with the pure helpers in `src/lib/cv-format.ts`; `getCv()` is the one sanctioned throw. Markdown highlighting stays off (`syntaxHighlight: false`) because the CSP blocks Shiki. See [spec 0002](docs/specs/0002-content-model/index.md).
 - Keep spec 0001's layout: `pages/`, `layouts/`, `components/`, `content/`, `lib/` (TS helpers, client scripts), `styles/`, `assets/`. Never create `src/fetch.ts`.
 - Strict types: no `any`, no non null `!` shortcuts. Add `typescript` only with its range (`^6.0.3`), never `@latest`.
 - CSP safe markup: Tailwind classes only, no inline `style=""`, no `define:vars`, no `is:inline` scripts. Close every tag and nest HTML validly.
