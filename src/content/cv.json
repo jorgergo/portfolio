@@ -1,0 +1,235 @@
+{
+  "$schema": "../../.astro/collections/cv.schema.json",
+  "main": {
+    "basics": {
+      "name": "Jorge González Ozorno",
+      "label": "Full Stack Developer",
+      "bio": "Full Stack Developer building internal platforms, AI assistants, and release automation at Ford.",
+      "summary": "Full Stack Developer building scalable web platforms, AI assistants, and automated release pipelines. Led the modernization of Ford's PDPO Portal and Knowledge Base, delivering a production RAG assistant used across both platforms and removing manual versioning and release work. Computer Science graduate of Tecnológico de Monterrey with a 4.0 GPA and winner of a national hackathon.",
+      "email": "jorgergo@icloud.com",
+      "location": {
+        "city": "Toluca",
+        "countryCode": "MX"
+      },
+      "profiles": [
+        {
+          "network": "GitHub",
+          "username": "jorgergo",
+          "url": "https://github.com/jorgergo"
+        },
+        {
+          "network": "LinkedIn",
+          "username": "jorgergo",
+          "url": "https://www.linkedin.com/in/jorgergo/"
+        }
+      ]
+    },
+    "work": [
+      {
+        "name": "Ford Motor Company",
+        "position": "Full Stack Developer, PDPO",
+        "url": "https://www.ford.com",
+        "location": "Remote",
+        "startDate": "2025-08",
+        "summary": "Owned the PDPO Portal and Knowledge Base, internal platforms serving Ford's 3DEXPERIENCE product development users.",
+        "highlights": [
+          "Designed and launched a production AI assistant and RAG agent platform with Google ADK and Vertex AI, now used in both the Portal and Knowledge Base and planned for reuse by other teams.",
+          "Migrated the Knowledge Base from MkDocs to Zensical and added a FastAPI and Uvicorn runtime, turning a static site into a platform with authentication, sessions, and APIs.",
+          "Automated calendar versioning and releases for 2 applications with GitHub Actions, shipping 5 monthly and 3 patch releases with zero manual versioning or release notes.",
+          "Rebuilt the Portal from legacy HTML into a Next.js and Spring Boot application with live LDAP team directories and an Elastic Synthetics health dashboard for 3 environments.",
+          "Enforced repository standards and strict build validation, eliminating about 1 hour per week of broken link cleanup, and mentored contributors through 18+ support issues."
+        ]
+      },
+      {
+        "name": "Ford Motor Company",
+        "position": "Software Engineer, IT Academy",
+        "url": "https://www.ford.com",
+        "location": "Mexico City, Mexico",
+        "startDate": "2025-01",
+        "endDate": "2025-07",
+        "highlights": [
+          "Migrated legacy financial applications from Linux shell and SQL scripts to Google Cloud Platform, rebuilding them with Spring Boot and Angular.",
+          "Maintained code quality and security with Tekton, SonarQube, and FOSSA through testing, change approval, and production deployment."
+        ],
+        "summary": "Completed Ford's IT Academy program in Java full stack development on Google Cloud."
+      },
+      {
+        "name": "El Puerto de Liverpool",
+        "position": "Process Automation Intern",
+        "location": "Mexico City, Mexico",
+        "startDate": "2023-05",
+        "endDate": "2024-03",
+        "highlights": [
+          "Automated financial processes with UiPath and Visual Basic robots, reducing processing time by up to 60%.",
+          "Automated SAP ECC and S/4HANA data extraction and Excel data management."
+        ]
+      },
+      {
+        "name": "Daimler Truck Mexico",
+        "position": "Logistics Intern",
+        "location": "Santiago Tianguistenco, Mexico",
+        "startDate": "2023-03",
+        "endDate": "2023-05",
+        "highlights": [
+          "Built dynamic SQL and Microsoft Report Builder reports tailored to materials analysts and expeditors."
+        ]
+      }
+    ],
+    "volunteer": [
+      {
+        "organization": "Ford Operation Good Cheer",
+        "position": "Frontend Lead",
+        "startDate": "2025-10",
+        "endDate": "2025-12",
+        "highlights": [
+          "Led the frontend rebuild of the gift drive app with React and Tailwind, adding QR code scanning that tracked 1,341 gifts for 450 children.",
+          "Automated extraction of children's wishlists from PDFs with Python, replacing manual data entry for volunteers."
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "Tecnológico de Monterrey",
+        "studyType": "B.S.",
+        "area": "Computer Science and Technology",
+        "url": "https://tec.mx",
+        "location": "Toluca, Mexico",
+        "startDate": "2020-08",
+        "endDate": "2024-06",
+        "score": "GPA 4.0/4.0 (97/100)",
+        "courses": [
+          "Object Oriented Programming in C++",
+          "Data Structures and Algorithms",
+          "Advanced Algorithms",
+          "Web Development",
+          "Android Programming",
+          "Artificial Intelligence",
+          "Cybersecurity Essentials"
+        ]
+      }
+    ],
+    "awards": [
+      {
+        "title": "First Place, SISA Track",
+        "awarder": "Talent Hackathon 2024",
+        "date": "2024-04",
+        "summary": "Won the MXN 100,000 first prize for a real time network traffic anomaly detector built with React, MQTT, a CNN, PostgreSQL, and TShark."
+      },
+      {
+        "title": "Seeds for the Future Winner",
+        "awarder": "Huawei",
+        "date": "2023-09",
+        "summary": "Ranked top 3 in Latin America and the Caribbean with an AI app that helps people manage work related stress."
+      },
+      {
+        "title": "Honorable Mention",
+        "awarder": "ICPC, International Collegiate Programming Contest",
+        "date": "2022-04"
+      }
+    ],
+    "certificates": [
+      {
+        "name": "Catia 3DEXPERIENCE (Catia V6) for Beginners and Catia V5 Users",
+        "issuer": "Udemy",
+        "date": "2026-05"
+      },
+      {
+        "name": "EF SET English Certificate, C2 Proficient (73/100)",
+        "issuer": "EF SET",
+        "date": "2026-01",
+        "url": "https://cert.efset.org/es/yY3TfP"
+      },
+      {
+        "name": "Preparing for Google Cloud Certification: Cloud Engineer Professional Certificate",
+        "issuer": "Google Cloud, Coursera",
+        "date": "2025-12"
+      },
+      {
+        "name": "CCNA: Enterprise Networking, Security, and Automation",
+        "issuer": "Cisco Networking Academy",
+        "date": "2024-06"
+      },
+      {
+        "name": "IT Specialist: Python",
+        "issuer": "Certiport, Pearson",
+        "date": "2023-07"
+      },
+      {
+        "name": "Google Cloud Computing Foundations: Cloud Computing Fundamentals",
+        "issuer": "Google Cloud Skills Boost",
+        "date": "2023-03"
+      }
+    ],
+    "skills": [
+      {
+        "name": "Additional skills",
+        "keywords": [
+          "Full stack web platforms, from interface to cloud deployment",
+          "AI assistants and retrieval augmented generation (RAG)",
+          "Release automation and CI/CD",
+          "Technical documentation and teammate mentoring",
+          "Process automation (RPA)"
+        ]
+      }
+    ],
+    "technologies": [
+      {
+        "name": "Technologies",
+        "keywords": [
+          "TypeScript",
+          "JavaScript",
+          "Python",
+          "Java",
+          "SQL",
+          "React",
+          "Next.js",
+          "Angular",
+          "Tailwind CSS",
+          "Spring Boot",
+          "FastAPI",
+          "Node.js",
+          "PostgreSQL",
+          "Google Cloud",
+          "Vertex AI",
+          "Google ADK",
+          "GitHub Actions",
+          "Docker",
+          "Tekton",
+          "SonarQube",
+          "Elastic"
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "language": "Spanish",
+        "fluency": "Native"
+      },
+      {
+        "language": "English",
+        "fluency": "Fluent",
+        "level": "C2"
+      },
+      {
+        "language": "French",
+        "fluency": "Conversational",
+        "level": "B1"
+      }
+    ],
+    "interests": [
+      {
+        "name": "Sports",
+        "keywords": [
+          "Basketball (team captain, 2013 to 2018)",
+          "Tennis",
+          "Weightlifting",
+          "CrossFit"
+        ]
+      },
+      {
+        "name": "Music",
+        "keywords": ["Guitar"]
+      }
+    ]
+  }
+}
