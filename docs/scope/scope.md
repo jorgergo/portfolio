@@ -1,0 +1,120 @@
+# Scope: Personal portfolio
+
+An extremely minimal personal site: a home page with your name, a short bio, and links, plus a Harvard style CV page, all in English. Recruiters and peers are the audience. Look and feel is the top priority. Visual references: [fbold.dev](https://fbold.dev/), [t3.gg](https://t3.gg/), [cv.jarocki.me](https://cv.jarocki.me/), and your Harvard CV Template PDF.
+
+**Build approach:** Skateboard (ship the smallest complete site a visitor would actually use, home plus CV live, then grow it release by release).
+**Workflow:** GA (after develop: `/check verify`, then `/test`, then a fresh model `/check review`, then `/document`). The project default level of rigor. `/architect` is the recommended first stop for a feature with a real decision, but skippable when you already know the build. Any feature can carry its own tag (e.g. `· Prototype`) to do more or less.
+
+_These are recommendations to keep your build orderly, not requirements. Skip anything that does not fit: if you already know how to build a feature, use `/develop` and skip `/architect`. You decide when a feature is `done`._
+
+## At a glance
+
+| # | Feature | Phase | Status |
+|---|---------|-------|--------|
+| 1 | Stack & architecture | Foundation | done |
+| 2 | Coding standards & tooling | Foundation | planned |
+| 3 | Content model | Foundation | planned |
+| 4 | Design system & UI foundation | Foundation | planned |
+| 5 | Home page | Release 1 | planned |
+| 6 | CV page | Release 1 | planned |
+| 7 | Metadata & share cards | Release 1 | planned |
+| 8 | Go live | Release 1 | planned |
+| 9 | CV PDF download | Release 2 | planned |
+| 10 | Command menu | Release 2 | planned |
+| 11 | Portfolio page | Release 3 | planned |
+
+## Foundations
+
+### 1. Stack & architecture · done
+Decide the stack, including where the site is hosted, and scaffold a runnable project so every later page builds on real structure.
+**Done when:** the stack and hosting choice are recorded in a spec, and the empty scaffold runs locally and builds clean.
+spec [0001](../specs/0001-stack-architecture/index.md) · code in `src/`
+- [x] Decide the stack (spec): `/architect stack & architecture`
+- [x] Scaffold from the decision: `/develop stack & architecture`
+- [x] Verify it: `/check verify stack & architecture`
+
+### 2. Coding standards & tooling
+Capture conventions, then install lint, format, and pre commit checks from the real scaffolded project.
+**Done when:** root `AGENTS.md` reflects the real stack, and lint, format, and pre commit run clean.
+- [ ] Capture conventions + tooling choices: `/audit`
+
+### 3. Content model · needs a decision
+One source of truth for your profile, socials, and CV content (experience, education, skills, technologies), so the home page, CV page, and PDF all read the same data.
+**Done when:** editing your CV means changing one content source in one place, and every section of the Harvard template has a defined shape.
+**Note:** the CSP blocks Shiki's inline styles, so decide code block highlighting here (`syntaxHighlight: false` or `'prism'`); see spec [0001](../specs/0001-stack-architecture/index.md) Consequences.
+- [ ] Design it (spec): `/architect content model`
+
+### 4. Design system & UI foundation · needs a decision
+The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
+**Done when:** `design.md` covers type, color, spacing, and components for both light and dark; text meets WCAG AA contrast in both; links and focus states work by keyboard.
+- [ ] Design it (spec): `/architect design system & UI foundation`
+
+## Release 1: Home and CV live
+
+### 5. Home page · needs a decision
+Your name, one or two lines about you, and links to the CV and your socials. Nothing else, in the spirit of t3.gg.
+**Done when:** a visitor sees name, bio, and working links to the CV and socials; it reads well on phone and desktop in light and dark; it has its own title and description.
+- [ ] Design it (spec): `/architect home page`
+
+### 6. CV page · needs a decision
+Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
+**Done when:** every Harvard section renders from the content model; browser print or "Save as PDF" gives a clean document with no site chrome; it reads well on phone and desktop; it has its own title and description.
+- [ ] Design it (spec): `/architect cv page`
+
+### 7. Metadata & share cards · needs a decision
+Proper titles and descriptions for every page, plus a clean preview image when someone shares your link on LinkedIn, X, or WhatsApp.
+**Done when:** each page has a unique title and description, and sharing either page shows a branded preview card.
+- [ ] Design it (spec): `/architect metadata & share cards`
+
+### 8. Go live · needs a decision
+Put the site on the internet at your address, with every change deploying automatically.
+**Done when:** the site is reachable at your chosen domain over HTTPS, and pushing a change publishes it without manual steps.
+- [ ] Design it (spec): `/architect go live`
+
+## Release 2: CV extras
+
+### 9. CV PDF download · needs a decision
+A visible download button on the CV page that gives a ready made PDF, always matching the web version.
+**Done when:** clicking the button downloads a one page Harvard style PDF whose content matches the CV page exactly; the button is hidden when printing.
+- [ ] Design it (spec): `/architect cv pdf download`
+
+### 10. Command menu · needs a decision
+A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.jarocki.me.
+**Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
+- [ ] Design it (spec): `/architect command menu`
+
+## Release 3: Portfolio
+
+### 11. Portfolio page · needs a decision
+A simple list of your projects, each with a line of context, linked from the home page. Honest about older work (year and status shown).
+**Done when:** projects render from the content model with name, year, short description, and links; the home page links to it; it matches the rest of the site in light and dark.
+- [ ] Design it (spec): `/architect portfolio page`
+
+## Deferred
+Out of scope for the current build pass, kept so the plan stays honest.
+- **Spanish version**: site and CV in Spanish as a second language · needs a decision
+- **Contact form**: message you from the site instead of just an email link · needs a decision
+- **Visitor analytics**: declined for now to stay light and banner free; if added later, pick a cookieless option so no consent banner is needed · needs a decision
+
+## Legend
+
+**The decision box.** Every feature carries exactly one, the sub task whose label ends with `(spec)`. Its wording varies (`Design it (spec)` normally, `Decide the stack (spec)` on Stack & architecture), so skills locate it by that `(spec)` suffix, never by an exact label. Every other box is an execution box and `/architect` never ticks one.
+
+**Feature lifecycle**: the scope updates as a feature moves; each row is what it shows and who sets it:
+
+| State | Set by | The feature shows |
+|---|---|---|
+| `planned` · needs a decision | `/scope` | one box: `Design it (spec): /architect <feature>` |
+| `in-progress` (designed) | **`/architect` at spec capture** | `Design it` ticked; spec linked; `Build it: /develop <feature>` + **2 to 5 milestones**; the tier's closing boxes (`Verify it` Alpha+, `Test it` Beta+, `Review it` + `Document it` GA); any surfaced follow up enrolled |
+| `in-progress` (building) | `/develop` | milestone sub boxes tick one by one; code pointer filled |
+| `in-progress` (verified) | `/check verify` | `Build it` + milestones ticked; `Verify it` ticked |
+| `done` | **you, when you decide it is** (any skill sets it when you say so); `/sync` reconciles | boxes you ran ticked, skipped ones marked skipped; the tier's last stage (`Prototype` → after `/develop`; `Alpha` → after `/check verify`; `Beta`/`GA` → after `/test`) is the suggested point to call it done; `/sync` captures conventions |
+
+- **Next step** = the first unticked box (always a command or a tracked milestone).
+- **needs a decision** = run `/architect` first; otherwise straight to `/develop` (or `/audit` for standards & tooling). The tag drops once the spec is captured.
+- **Atomic build tasks live in the spec's `## Build plan`, not here**: the scope carries only the milestone rollup.
+- **Status** `planned` → `in-progress` → `done`, plus `existing` (pre workflow) and `dropped` (de scoped, kept for history).
+- **Approach tag** beside a heading (e.g. `· Facade`) overrides the project default for that feature; no tag = inherits it.
+- **Workflow tier tag** beside a heading (e.g. `· Prototype`) sets that one feature's rigor above or below the project default; no tag inherits the default. It decides the feature's check boxes and each skill's next suggestion.
+- **Workflow** (header line) is the project default, what runs after `/develop`: **Prototype** = nothing (trust develop's own build time self check); **Alpha** = `/check verify`; **Beta** = `/check verify` then `/test`; **GA** = adds a fresh model `/check review` then `/document`. A feature built on an unratified decision (an `Assumed` spec) stays flagged, but that never blocks `done`.
+- **Pointer line** (`spec <n> · code in <path>`): the spec link added by `/architect`, the code path by `/develop`.
