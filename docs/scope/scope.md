@@ -55,7 +55,7 @@ spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.jso
   - [x] Real CV content: your pasted CV rewritten into English Harvard shape, no phone or address (AC-2, AC-13)
   - [x] Access and format helpers: `getCv()`, dates, sorting, location (AC-1, AC-9 to AC-11)
   - [x] Wiring and failure checks: placeholders read your name, avatar if supplied, every rule proven to fail the build (AC-3 to AC-8, AC-12, AC-14, AC-15)
-- [ ] Verify it: `/check verify content model`
+- [x] Verify it: `/check verify content model`
 - [ ] Test it: `/test content model`
 - [ ] Review it (fresh model): `/check review content model`
 - [ ] Document it: `/document content model`
