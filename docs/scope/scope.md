@@ -70,9 +70,9 @@ spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.
   - [x] Page shell and components: `contrast.ts`, `BaseLayout`, skip link, footer, `TextLink`, `SectionHeading`, `TagChip`, `IconLink` with five icons, `Button`, `Prose`, pages wired (AC-4 to AC-9, AC-15)
   - [x] Contrast test and the dev only `/styleguide` page (AC-2, AC-13)
   - [x] `design.md` and the gate: build, lint, format, test, manual print and preference checks (AC-14, AC-15)
-- [ ] Verify it: `/check verify design system & UI foundation`
+- [x] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
-- [ ] Review it (fresh model): `/check review design system & UI foundation`
+- [x] Review it (fresh model): `/check review design system & UI foundation`
 - [ ] Document it: `/document design system & UI foundation`
 
 ## Release 1: Home and CV live
