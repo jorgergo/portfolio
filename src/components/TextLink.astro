@@ -1,0 +1,21 @@
+---
+interface Props {
+  href: string;
+  class?: string;
+}
+
+// Same tab always: no `target` on any link (spec 0003).
+// The markup below stays tight on purpose (Prettier is told to leave it): an
+// inline link with whitespace around its slot underlines a stray space once
+// the HTML is compressed.
+const { href, class: className } = Astro.props;
+---
+
+{/* prettier-ignore */}
+<a
+  href={href}
+  class:list={[
+    'text-fg underline decoration-1 decoration-muted underline-offset-link transition-colors hover:text-accent-warm hover:decoration-accent-warm focus-visible:text-accent-warm focus-visible:decoration-accent-warm contrast-more:decoration-2 print:no-underline',
+    className,
+  ]}><slot /></a
+>

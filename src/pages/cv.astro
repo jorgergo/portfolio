@@ -2,10 +2,13 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 
+// Composition belongs to the CV page spec; this is the shell with real content.
 const { basics } = await getCv();
 ---
 
-<BaseLayout title="CV">
-  <h1>{basics.name}</h1>
-  <p>CV page placeholder.</p>
+<BaseLayout title="CV" description={basics.bio}>
+  <section class="flex flex-col gap-6">
+    <h1 class="text-lg font-medium">{basics.name}</h1>
+    <p class="text-sm text-muted">{basics.label}</p>
+  </section>
 </BaseLayout>

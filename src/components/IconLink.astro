@@ -1,0 +1,42 @@
+---
+import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+import Download from '@/components/icons/Download.astro';
+import GitHub from '@/components/icons/GitHub.astro';
+import LinkedIn from '@/components/icons/LinkedIn.astro';
+import Mail from '@/components/icons/Mail.astro';
+
+type IconName = 'github' | 'linkedin' | 'mail' | 'arrow-up-right' | 'download';
+
+const ICONS: Readonly<Record<IconName, typeof GitHub>> = {
+  github: GitHub,
+  linkedin: LinkedIn,
+  mail: Mail,
+  'arrow-up-right': ArrowUpRight,
+  download: Download,
+};
+
+interface Props {
+  href: string;
+  icon: IconName;
+  label: string;
+  class?: string;
+}
+
+// Same tab always: no `target` on any link. An external link ends with the
+// arrow so the visitor knows it leaves the site (spec 0003).
+const { href, icon, label, class: className } = Astro.props;
+const Icon = ICONS[icon];
+const external = /^https?:\/\//.test(href);
+---
+
+<a
+  href={href}
+  class:list={[
+    'inline-flex min-h-10 items-center gap-2 font-mono text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm',
+    className,
+  ]}
+>
+  <Icon class="size-5 shrink-0" />
+  <span>{label}</span>
+  {external && <ArrowUpRight class="size-4 shrink-0" />}
+</a>

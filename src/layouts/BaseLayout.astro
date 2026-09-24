@@ -1,11 +1,21 @@
 ---
 import '@/styles/global.css';
+import css from '@/styles/global.css?raw';
+import { Font } from 'astro:assets';
+import SiteFooter from '@/components/SiteFooter.astro';
+import SkipLink from '@/components/SkipLink.astro';
+import { parseColorTokens } from '@/lib/contrast';
 
 interface Props {
   title: string;
+  description: string;
 }
 
-const { title } = Astro.props;
+const { title, description } = Astro.props;
+
+// The palette has one source: the theme-color metas are read from global.css,
+// never written by hand (spec 0003).
+const { light, dark } = parseColorTokens(css);
 ---
 
 <!doctype html>
@@ -13,10 +23,38 @@ const { title } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="color-scheme" content="light dark" />
+    {light.bg !== undefined && (
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: light)"
+        content={light.bg}
+      />
+    )}
+    {dark.bg !== undefined && (
+      <meta
+        name="theme-color"
+        media="(prefers-color-scheme: dark)"
+        content={dark.bg}
+      />
+    )}
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <Font cssVariable="--font-plex-mono" preload={[{ weight: 400 }]} />
+    <Font cssVariable="--font-plex-sans" />
   </head>
-  <body>
-    <slot />
+  <body class="flex min-h-dvh flex-col print:min-h-0">
+    <SkipLink />
+    <div class="mx-auto flex w-full max-w-content flex-1 flex-col gap-14 px-6 pt-10 pb-20 print:p-0">
+      <main
+        id="main"
+        tabindex="-1"
+        class="flex flex-col gap-14 focus-visible:outline-none"
+      >
+        <slot />
+      </main>
+      <SiteFooter />
+    </div>
   </body>
 </html>

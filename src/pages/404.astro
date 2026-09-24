@@ -1,7 +1,14 @@
 ---
+import TextLink from '@/components/TextLink.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="Not found">
-  <p>Page not found.</p>
+<BaseLayout title="Not found" description="This page does not exist.">
+  <section class="flex flex-col gap-6">
+    <h1 class="text-lg font-medium">Not found</h1>
+    <p>This page does not exist.</p>
+    <p>
+      <TextLink href="/">Back to the home page</TextLink>
+    </p>
+  </section>
 </BaseLayout>

@@ -1,0 +1,24 @@
+---
+interface Props {
+  href?: string;
+  type?: 'button' | 'submit';
+  class?: string;
+}
+
+// One variant. A link when `href` is given, a real button otherwise.
+const { href, type = 'button', class: className } = Astro.props;
+const classes = [
+  'inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xs border border-muted px-3 font-mono text-sm text-fg transition-colors hover:border-accent-warm hover:text-accent-warm focus-visible:border-accent-warm focus-visible:text-accent-warm print:hidden',
+  className,
+];
+---
+
+{href !== undefined ? (
+  <a href={href} class:list={classes}>
+    <slot />
+  </a>
+) : (
+  <button type={type} class:list={classes}>
+    <slot />
+  </button>
+)}

@@ -2,10 +2,13 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 
+// Composition belongs to the home page spec; this is the shell with real content.
 const { basics } = await getCv();
 ---
 
-<BaseLayout title="Home">
-  <h1>{basics.name}</h1>
-  <p>Home page placeholder.</p>
+<BaseLayout title="Home" description={basics.bio}>
+  <section class="flex flex-col gap-6">
+    <h1 class="text-title font-medium">{basics.name}</h1>
+    <p>{basics.bio}</p>
+  </section>
 </BaseLayout>

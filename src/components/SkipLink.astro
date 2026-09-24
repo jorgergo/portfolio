@@ -1,0 +1,12 @@
+---
+// The first focusable element on every page; the ring comes from the global rule.
+// The markup stays tight on purpose (Prettier is told to leave it): whitespace
+// inside an inline link widens its visible box once the HTML is compressed.
+---
+
+{/* prettier-ignore */}
+<a
+  href="#main"
+  class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-10 focus:bg-bg focus:px-3 focus:py-2 focus:text-sm print:hidden"
+  >Skip to content</a
+>

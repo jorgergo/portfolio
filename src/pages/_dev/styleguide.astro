@@ -1,0 +1,271 @@
+---
+import Button from '@/components/Button.astro';
+import IconLink from '@/components/IconLink.astro';
+import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+import Download from '@/components/icons/Download.astro';
+import GitHub from '@/components/icons/GitHub.astro';
+import LinkedIn from '@/components/icons/LinkedIn.astro';
+import Mail from '@/components/icons/Mail.astro';
+import Prose from '@/components/Prose.astro';
+import SectionHeading from '@/components/SectionHeading.astro';
+import TagChip from '@/components/TagChip.astro';
+import TextLink from '@/components/TextLink.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import {
+  apcaContrast,
+  COLOR_ROLES,
+  CONTRAST_PAIRS,
+  contrastRatio,
+  parseColorTokens,
+  type ColorRole,
+  type ColorScheme,
+} from '@/lib/contrast';
+import { getCv } from '@/lib/cv';
+import css from '@/styles/global.css?raw';
+
+// Development only. The dev-styleguide integration in astro.config.mjs injects
+// this page at /styleguide under `astro dev`; Astro never routes src/pages/_dev/
+// on its own, so nothing here reaches dist/.
+const { basics } = await getCv();
+const tokens = parseColorTokens(css);
+
+// Tailwind reads class names as plain text, so every class is spelled out.
+type Swatch = { readonly role: ColorRole; readonly swatch: string };
+const SWATCHES: readonly Swatch[] = [
+  { role: 'bg', swatch: 'bg-bg' },
+  { role: 'fg', swatch: 'bg-fg' },
+  { role: 'muted', swatch: 'bg-muted' },
+  { role: 'line', swatch: 'bg-line' },
+  { role: 'accent', swatch: 'bg-accent' },
+  { role: 'accent-warm', swatch: 'bg-accent-warm' },
+];
+
+type Panel = {
+  readonly scheme: 'light' | 'dark';
+  readonly label: string;
+  readonly panel: string;
+};
+const PANELS: readonly Panel[] = [
+  { scheme: 'light', label: 'Light', panel: 'scheme-light' },
+  { scheme: 'dark', label: 'Dark', panel: 'scheme-dark' },
+];
+
+type Step = {
+  readonly name: string;
+  readonly use: string;
+  readonly bar: string;
+};
+const SPACING: readonly Step[] = [
+  { name: 'gap-2', use: 'icon to label', bar: 'w-2' },
+  { name: 'gap-6', use: 'blocks inside a section', bar: 'w-6' },
+  { name: 'pt-10', use: 'page top', bar: 'w-10' },
+  { name: 'gap-14', use: 'between sections, main to footer', bar: 'w-14' },
+  { name: 'pb-20', use: 'page bottom', bar: 'w-20' },
+];
+
+const ICONS = [
+  { name: 'GitHub', Icon: GitHub },
+  { name: 'LinkedIn', Icon: LinkedIn },
+  { name: 'Mail', Icon: Mail },
+  { name: 'ArrowUpRight', Icon: ArrowUpRight },
+  { name: 'Download', Icon: Download },
+] as const;
+
+type Measure = { readonly ratio: number; readonly lc: number };
+
+const measure = (
+  scheme: ColorScheme,
+  fg: ColorRole,
+  bg: ColorRole,
+): Measure | undefined => {
+  const fgHex = scheme[fg];
+  const bgHex = scheme[bg];
+  return fgHex === undefined || bgHex === undefined
+    ? undefined
+    : { ratio: contrastRatio(fgHex, bgHex), lc: apcaContrast(fgHex, bgHex) };
+};
+
+const describe = (m: Measure | undefined): string =>
+  m === undefined
+    ? 'missing token'
+    : `${m.ratio.toFixed(2)}:1 · Lc ${Math.abs(m.lc).toFixed(0)}`;
+
+const passes = (
+  m: Measure | undefined,
+  minRatio: number,
+  minLc: number | undefined,
+): boolean =>
+  m !== undefined &&
+  m.ratio >= minRatio &&
+  (minLc === undefined || Math.abs(m.lc) >= minLc);
+
+const printValues = COLOR_ROLES.map(
+  (role) => `${role} ${tokens.print[role] ?? 'missing'}`,
+).join(' · ');
+---
+
+<BaseLayout
+  title="Style guide"
+  description="Design system tokens and components"
+>
+  <section class="flex flex-col gap-6">
+    <h1 class="text-lg font-medium">Style guide</h1>
+    <p class="text-sm text-muted">
+      Development only. Every token, type surface, spacing step, component, and
+      icon from spec 0003, in light and dark side by side whatever your system
+      setting. Hover and Tab through the components to see their states.
+    </p>
+  </section>
+  <div class="grid gap-6 sm:grid-cols-2">
+    {PANELS.map(({ scheme, label, panel }) => {
+      const colours = tokens[scheme];
+      return (
+        <section
+          class:list={[
+            panel,
+            'flex flex-col gap-10 rounded-xs border border-line bg-bg p-6 text-fg',
+          ]}
+        >
+          <SectionHeading>{label}</SectionHeading>
+
+          <div class="flex flex-col gap-4">
+            <SectionHeading as="h3">Tokens</SectionHeading>
+            <ul class="flex flex-col gap-3 text-sm">
+              {SWATCHES.map(({ role, swatch }) => (
+                <li class="flex items-center gap-3">
+                  <span
+                    class:list={[
+                      swatch,
+                      'size-8 shrink-0 rounded-xs border border-line',
+                    ]}
+                  />
+                  <span class="flex flex-col">
+                    <span>
+                      {role}{' '}
+                      <span class="text-muted">
+                        {colours[role] ?? 'missing'}
+                      </span>
+                    </span>
+                    <span class="text-xs text-muted">
+                      {role === 'bg'
+                        ? 'page ground'
+                        : `on bg ${describe(measure(colours, role, 'bg'))}`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <ul class="flex flex-col gap-1 text-xs">
+              {CONTRAST_PAIRS.map((pair) => {
+                const m = measure(colours, pair.fg, pair.bg);
+                return (
+                  <li class="flex flex-wrap justify-between gap-x-4">
+                    <span>{pair.name}</span>
+                    <span class="text-muted">
+                      {describe(m)} ·{' '}
+                      {passes(m, pair.minRatio, pair.minLc) ? 'pass' : 'fail'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p class="text-xs text-muted">Print: {printValues}</p>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <SectionHeading as="h3">Type</SectionHeading>
+            <p class="text-title font-medium">Home h1, text-title at 500</p>
+            <p class="text-lg font-medium">Inner h1, text-lg at 500</p>
+            <p>
+              Body in mono at text-base, line height 1.6. <b>Weight 500</b> is
+              the only emphasis, and a long unbroken string such as
+              https://example.com/a/path/that/keeps/going/and/going wraps.
+            </p>
+            <Prose>
+              <p>
+                Prose switches to sans for CV paragraphs, with a{' '}
+                <TextLink href="/cv">text link</TextLink> inside.
+              </p>
+            </Prose>
+            <p class="text-sm text-muted">
+              Meta in text-sm and muted, for dates and the contact line.
+            </p>
+            <p class="font-mono text-xs tracking-label text-accent uppercase">
+              Label in text-xs, uppercase, tracked
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <SectionHeading as="h3">Spacing</SectionHeading>
+            <ul class="flex flex-col gap-2 text-xs">
+              {SPACING.map(({ name, use, bar }) => (
+                <li class="flex items-center gap-3">
+                  <span class:list={[bar, 'h-2 shrink-0 bg-accent']} />
+                  <span>
+                    {name} <span class="text-muted">{use}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <SectionHeading as="h3">Components</SectionHeading>
+            <p>
+              <TextLink href="/">TextLink to the home page</TextLink>
+            </p>
+            <ul class="flex flex-col">
+              <li>
+                <IconLink
+                  href="https://github.com/"
+                  icon="github"
+                  label="GitHub"
+                />
+              </li>
+              <li>
+                <IconLink
+                  href="https://www.linkedin.com/"
+                  icon="linkedin"
+                  label="LinkedIn"
+                />
+              </li>
+              <li>
+                <IconLink
+                  href={`mailto:${basics.email}`}
+                  icon="mail"
+                  label={basics.email}
+                />
+              </li>
+              <li>
+                <IconLink href="/cv" icon="download" label="Download the CV" />
+              </li>
+            </ul>
+            <div class="flex flex-wrap gap-2">
+              <Button href="/cv">Button as a link</Button>
+              <Button>Button as a button</Button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <TagChip>TypeScript</TagChip>
+              <TagChip>Astro</TagChip>
+              <TagChip>Tailwind CSS</TagChip>
+            </div>
+            <SectionHeading as="h3" id={`${scheme}-heading`}>
+              SectionHeading as h3
+            </SectionHeading>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <SectionHeading as="h3">Icons</SectionHeading>
+            <ul class="flex flex-wrap gap-4 text-xs">
+              {ICONS.map(({ name, Icon }) => (
+                <li class="flex items-center gap-2">
+                  <Icon class="size-5" /> {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      );
+    })}
+  </div>
+</BaseLayout>
