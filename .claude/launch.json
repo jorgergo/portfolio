@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 4321
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["preview"],
+      "port": 8787
+    },
+    {
+      "name": "attach",
+      "url": "http://localhost:4321"
+    }
+  ]
+}

@@ -4,3 +4,10 @@ dist
 .wrangler
 .env*
 referece-images
+
+# Tailwind docs snapshot: source available, not open source, keep it local
+.agents/skills/tailwind-4-docs/references/docs/
+.agents/skills/tailwind-4-docs/references/docs-index.tsx
+
+# Playwright MCP page snapshots
+.playwright-mcp
