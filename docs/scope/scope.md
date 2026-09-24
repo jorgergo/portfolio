@@ -12,7 +12,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | done |
-| 2 | Coding standards & tooling | Foundation | planned |
+| 2 | Coding standards & tooling | Foundation | in-progress |
 | 3 | Content model | Foundation | planned |
 | 4 | Design system & UI foundation | Foundation | planned |
 | 5 | Home page | Release 1 | planned |
@@ -33,10 +33,16 @@ spec [0001](../specs/0001-stack-architecture/index.md) · code in `src/`
 - [x] Scaffold from the decision: `/develop stack & architecture`
 - [x] Verify it: `/check verify stack & architecture`
 
-### 2. Coding standards & tooling
+### 2. Coding standards & tooling · in-progress
 Capture conventions, then install lint, format, and pre commit checks from the real scaffolded project.
 **Done when:** root `AGENTS.md` reflects the real stack, and lint, format, and pre commit run clean.
-- [ ] Capture conventions + tooling choices: `/audit`
+code in `eslint.config.js`, `.prettierrc.json`, `package.json`, `.github/workflows/ci.yml`
+- [x] Capture conventions + tooling choices: `/audit`
+- [x] Build it: `/develop coding standards & tooling`
+  - [x] Lint: ESLint 10 flat config (typescript-eslint, eslint-plugin-astro, jsx-a11y-x) enforcing the AGENTS.md rules
+  - [x] Format: Prettier with the Astro and Tailwind plugins
+  - [x] Pre commit: simple-git-hooks runs lint-staged, then `astro check`
+  - [x] CI: GitHub Actions runs frozen install, lint, format check, build
 
 ### 3. Content model · needs a decision
 One source of truth for your profile, socials, and CV content (experience, education, skills, technologies), so the home page, CV page, and PDF all read the same data.
