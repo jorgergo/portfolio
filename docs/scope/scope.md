@@ -14,7 +14,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Content model | Foundation | done |
-| 4 | Design system & UI foundation | Foundation | planned |
+| 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Home page | Release 1 | planned |
 | 6 | CV page | Release 1 | planned |
 | 7 | Metadata & share cards | Release 1 | planned |
@@ -60,10 +60,20 @@ spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.jso
 - [x] Review it (fresh model): `/check review content model`
 - [x] Document it: `/document content model`
 
-### 4. Design system & UI foundation · needs a decision
+### 4. Design system & UI foundation · in-progress
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
 **Done when:** `design.md` covers type, color, spacing, and components for both light and dark; text meets WCAG AA contrast in both; links and focus states work by keyboard.
-- [ ] Design it (spec): `/architect design system & UI foundation`
+spec [0003](../specs/0003-design-system/index.md)
+- [x] Design it (spec): `/architect design system & UI foundation`
+- [ ] Build it: `/develop design system & UI foundation`
+  - [ ] Tokens, fonts, and base CSS: `global.css` tokens with `light-dark()`, Plex Mono and Plex Sans from the Fontsource packages, motion, print, and hardening layers (AC-1, AC-3, AC-10 to AC-12)
+  - [ ] Page shell and components: `contrast.ts`, `BaseLayout`, skip link, footer, `TextLink`, `SectionHeading`, `TagChip`, `IconLink` with five icons, `Button`, `Prose`, pages wired (AC-4 to AC-9, AC-15)
+  - [ ] Contrast test and the dev only `/styleguide` page (AC-2, AC-13)
+  - [ ] `design.md` and the gate: build, lint, format, test, manual print and preference checks (AC-14, AC-15)
+- [ ] Verify it: `/check verify design system & UI foundation`
+- [ ] Test it: `/test design system & UI foundation`
+- [ ] Review it (fresh model): `/check review design system & UI foundation`
+- [ ] Document it: `/document design system & UI foundation`
 
 ## Release 1: Home and CV live
 
