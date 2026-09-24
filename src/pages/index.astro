@@ -1,7 +1,11 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCv } from '@/lib/cv';
+
+const { basics } = await getCv();
 ---
 
 <BaseLayout title="Home">
+  <h1>{basics.name}</h1>
   <p>Home page placeholder.</p>
 </BaseLayout>
