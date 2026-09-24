@@ -63,13 +63,13 @@ spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.jso
 ### 4. Design system & UI foundation · in-progress
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
 **Done when:** `design.md` covers type, color, spacing, and components for both light and dark; text meets WCAG AA contrast in both; links and focus states work by keyboard.
-spec [0003](../specs/0003-design-system/index.md)
+spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.css`, `src/layouts/BaseLayout.astro`, `src/components/`, `src/lib/contrast.ts`, `src/pages/_dev/styleguide.astro`, `design.md`
 - [x] Design it (spec): `/architect design system & UI foundation`
-- [ ] Build it: `/develop design system & UI foundation`
-  - [ ] Tokens, fonts, and base CSS: `global.css` tokens with `light-dark()`, Plex Mono and Plex Sans from the Fontsource packages, motion, print, and hardening layers (AC-1, AC-3, AC-10 to AC-12)
-  - [ ] Page shell and components: `contrast.ts`, `BaseLayout`, skip link, footer, `TextLink`, `SectionHeading`, `TagChip`, `IconLink` with five icons, `Button`, `Prose`, pages wired (AC-4 to AC-9, AC-15)
-  - [ ] Contrast test and the dev only `/styleguide` page (AC-2, AC-13)
-  - [ ] `design.md` and the gate: build, lint, format, test, manual print and preference checks (AC-14, AC-15)
+- [x] Build it: `/develop design system & UI foundation`
+  - [x] Tokens, fonts, and base CSS: `global.css` tokens with `light-dark()`, Plex Mono and Plex Sans from the Fontsource packages, motion, print, and hardening layers (AC-1, AC-3, AC-10 to AC-12)
+  - [x] Page shell and components: `contrast.ts`, `BaseLayout`, skip link, footer, `TextLink`, `SectionHeading`, `TagChip`, `IconLink` with five icons, `Button`, `Prose`, pages wired (AC-4 to AC-9, AC-15)
+  - [x] Contrast test and the dev only `/styleguide` page (AC-2, AC-13)
+  - [x] `design.md` and the gate: build, lint, format, test, manual print and preference checks (AC-14, AC-15)
 - [ ] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
 - [ ] Review it (fresh model): `/check review design system & UI foundation`
