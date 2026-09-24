@@ -1,0 +1,13 @@
+pnpm-lock.yaml
+dist/
+.astro/
+.wrangler/
+referece-images/
+
+# Agent owned files: skills edit these surgically, so keep Prettier from reflowing them.
+.claude/
+.agents/
+docs/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
