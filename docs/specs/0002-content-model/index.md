@@ -1,7 +1,7 @@
 # 0002. One JSON file for profile and CV content
 
 **Date**: 2026-09-23
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

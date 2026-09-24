@@ -48,13 +48,13 @@ code in `eslint.config.js`, `.prettierrc.json`, `package.json`, `.github/workflo
 One source of truth for your profile, socials, and CV content (experience, education, skills, technologies), so the home page, CV page, and PDF all read the same data.
 **Done when:** editing your CV means changing one content source in one place, and every section of the Harvard template has a defined shape.
 **Note:** the CSP blocks Shiki's inline styles, so decide code block highlighting here (`syntaxHighlight: false` or `'prism'`); see spec [0001](../specs/0001-stack-architecture/index.md) Consequences.
-spec [0002](../specs/0002-content-model/index.md)
+spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.json`, `src/lib/cv*.ts`, `src/content.config.ts`
 - [x] Design it (spec): `/architect content model`
-- [ ] Build it: `/develop content model`
-  - [ ] Schema and loader: strict `cv` collection from `src/content/cv.json`, highlighting off (AC-1 to AC-8, AC-12, AC-14)
-  - [ ] Real CV content: your pasted CV rewritten into English Harvard shape, no phone or address (AC-2, AC-13)
-  - [ ] Access and format helpers: `getCv()`, dates, sorting, location (AC-1, AC-9 to AC-11)
-  - [ ] Wiring and failure checks: placeholders read your name, avatar if supplied, every rule proven to fail the build (AC-3 to AC-8, AC-12, AC-14, AC-15)
+- [x] Build it: `/develop content model`
+  - [x] Schema and loader: strict `cv` collection from `src/content/cv.json`, highlighting off (AC-1 to AC-8, AC-12, AC-14)
+  - [x] Real CV content: your pasted CV rewritten into English Harvard shape, no phone or address (AC-2, AC-13)
+  - [x] Access and format helpers: `getCv()`, dates, sorting, location (AC-1, AC-9 to AC-11)
+  - [x] Wiring and failure checks: placeholders read your name, avatar if supplied, every rule proven to fail the build (AC-3 to AC-8, AC-12, AC-14, AC-15)
 - [ ] Verify it: `/check verify content model`
 - [ ] Test it: `/test content model`
 - [ ] Review it (fresh model): `/check review content model`
