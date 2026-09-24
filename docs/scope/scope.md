@@ -73,7 +73,7 @@ spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.
 - [x] Verify it: `/check verify design system & UI foundation`
 - [x] Test it: `/test design system & UI foundation`
 - [x] Review it (fresh model): `/check review design system & UI foundation`
-- [ ] Document it: `/document design system & UI foundation`
+- [x] Document it: `/document design system & UI foundation`
 
 ## Release 1: Home and CV live
 
