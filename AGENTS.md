@@ -22,8 +22,9 @@ pnpm build     # astro check && astro build: the gate
 pnpm preview   # wrangler dev on dist/: check _headers and CSP here
 pnpm lint      # eslint, zero warnings allowed (lint:fix to autofix)
 pnpm format    # prettier --write (format:check in CI)
+pnpm test      # vitest run (test:watch to watch)
 ```
-Test scripts arrive with `/test` (see Tooling).
+Pass Vitest flags with `pnpm exec vitest run <flags>`: pnpm 12 claims flags such as `--reporter` given to `pnpm test`.
 
 ## Specs
 
@@ -47,6 +48,7 @@ Chosen by /audit; `/develop tooling` installs exactly this.
 - **Format**: Prettier with `prettier-plugin-astro` and `prettier-plugin-tailwindcss`.
 - **Pre commit**: `simple-git-hooks` (config in `package.json`, installed by `prepare`) runs lint-staged (ESLint + Prettier on staged files), then `astro check`. The hook uses the `pnpm`/Node on git's PATH, so Node 26 must be active there.
 - **Tests** (runner set up by `/test`): Vitest for `src/lib` helpers and content schemas; Playwright for built pages (links, keyboard, print, axe checks).
+- **Unit tests**: Vitest 5, `vitest.config.ts` resolves `@/*` from tsconfig and runs `src/**/*.test.ts`. Tests sit beside the source, tagged with the spec `AC-N` they cover; schema tests pass `() => z.string()` as the `image` stub. Playwright is not installed yet.
 - **CI**: GitHub Actions on push and PR: frozen lockfile install, lint, format check, `pnpm build`, tests. Node from `.nvmrc`. Deploying belongs to the Go live spec.
 
 ## Git

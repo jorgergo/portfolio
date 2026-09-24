@@ -58,7 +58,7 @@ spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.jso
 - [x] Verify it: `/check verify content model`
 - [x] Test it: `/test content model`
 - [x] Review it (fresh model): `/check review content model`
-- [ ] Document it: `/document content model`
+- [x] Document it: `/document content model`
 
 ### 4. Design system & UI foundation · needs a decision
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
