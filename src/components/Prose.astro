@@ -1,0 +1,13 @@
+---
+interface Props {
+  class?: string;
+}
+
+// The one place the sans face appears. Rhythm (paragraph and list spacing) is
+// added by the CV page with numeric utilities; links inside are TextLink.
+const { class: className } = Astro.props;
+---
+
+<div class:list={['font-sans text-pretty', className]}>
+  <slot />
+</div>

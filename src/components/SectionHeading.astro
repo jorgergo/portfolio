@@ -1,0 +1,20 @@
+---
+interface Props {
+  as?: 'h2' | 'h3';
+  id?: string;
+  class?: string;
+}
+
+// A real heading element; the level follows the document, never the look.
+const { as: Tag = 'h2', id, class: className } = Astro.props;
+---
+
+<Tag
+  id={id}
+  class:list={[
+    'font-mono text-xs uppercase tracking-label text-accent',
+    className,
+  ]}
+>
+  <slot />
+</Tag>

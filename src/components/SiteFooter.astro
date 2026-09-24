@@ -1,0 +1,29 @@
+---
+import { getCv } from '@/lib/cv';
+
+// Spec 0003 lets the footer read the CV itself so the layout stays dumb and the
+// 404 page gets the same footer; Astro serves the second call from memory.
+const { basics } = await getCv();
+const { city, countryCode } = basics.location;
+
+// The UTC year of the build; the site is rebuilt on every push.
+const year = new Date().getUTCFullYear();
+
+// routePattern, not the pathname: with `build.format: 'file'` the home page's
+// pathname is `/index.html` during the build.
+const showHome = Astro.routePattern !== '/';
+---
+
+<footer class="mt-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line pt-4 text-xs text-muted">
+  {showHome && (
+    <a
+      href="/"
+      class="inline-flex min-h-6 items-center transition-colors hover:text-accent-warm focus-visible:text-accent-warm print:hidden"
+    >
+      <span aria-hidden="true">←</span> home
+    </a>
+  )}
+  <span class="ml-auto">
+    {city}, {countryCode} · {year}
+  </span>
+</footer>
