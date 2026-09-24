@@ -20,8 +20,10 @@ pnpm install
 pnpm dev       # astro dev (no CSP here)
 pnpm build     # astro check && astro build: the gate
 pnpm preview   # wrangler dev on dist/: check _headers and CSP here
+pnpm lint      # eslint, zero warnings allowed (lint:fix to autofix)
+pnpm format    # prettier --write (format:check in CI)
 ```
-Lint, format, and test scripts arrive with `/develop tooling` (see Tooling).
+Test scripts arrive with `/test` (see Tooling).
 
 ## Specs
 
@@ -40,9 +42,9 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 ## Tooling
 
 Chosen by /audit; `/develop tooling` installs exactly this.
-- **Lint**: ESLint 9 flat config with `typescript-eslint`, `eslint-plugin-astro`, `eslint-plugin-jsx-a11y`.
+- **Lint**: ESLint 10 flat config (`eslint.config.js`) with `typescript-eslint` strict, `eslint-plugin-astro`, `eslint-plugin-jsx-a11y-x` (the ESLint 10 fork of `eslint-plugin-jsx-a11y`); it errors on the Rules above it can check (classes, `any`, `!`, `style=""`, `define:vars`, `is:inline`, `set:html`).
 - **Format**: Prettier with `prettier-plugin-astro` and `prettier-plugin-tailwindcss`.
-- **Pre commit**: a git hook runner runs lint-staged (ESLint + Prettier on staged files), then `astro check`.
+- **Pre commit**: `simple-git-hooks` (config in `package.json`, installed by `prepare`) runs lint-staged (ESLint + Prettier on staged files), then `astro check`. The hook uses the `pnpm`/Node on git's PATH, so Node 26 must be active there.
 - **Tests** (runner set up by `/test`): Vitest for `src/lib` helpers and content schemas; Playwright for built pages (links, keyboard, print, axe checks).
 - **CI**: GitHub Actions on push and PR: frozen lockfile install, lint, format check, `pnpm build`, tests. Node from `.nvmrc`. Deploying belongs to the Go live spec.
 
