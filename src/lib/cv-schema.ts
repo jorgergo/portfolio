@@ -34,9 +34,10 @@ const regionNames = new Intl.DisplayNames(['en'], {
 });
 
 // English region name for an ISO 3166 code, or undefined when unknown.
-// Callers pass codes that already match REGION_PATTERN (of() throws otherwise).
+// Checks the pattern first because of() throws on malformed codes, and
+// rejects ZZ because of() names it "Unknown Region".
 export const regionName = (code: string): string | undefined =>
-  regionNames.of(code);
+  REGION_PATTERN.test(code) && code !== 'ZZ' ? regionNames.of(code) : undefined;
 
 // Trimmed first, so caps count the visible text.
 const text = (max?: number) =>
@@ -46,7 +47,11 @@ const text = (max?: number) =>
 
 const month = z
   .string()
-  .regex(MONTH_PATTERN, 'expected a month as YYYY-MM (01 to 12)');
+  // abort stops the entry's date order rule from comparing a malformed month.
+  .regex(MONTH_PATTERN, {
+    message: 'expected a month as YYYY-MM (01 to 12)',
+    abort: true,
+  });
 
 const httpsUrl = z.url({ protocol: /^https$/ });
 
@@ -56,7 +61,7 @@ const countryCode = z
     message: 'expected an uppercase ISO 3166 two letter code',
     abort: true,
   })
-  .refine((code) => code !== 'ZZ' && regionName(code) !== undefined, {
+  .refine((code) => regionName(code) !== undefined, {
     message: 'unknown ISO 3166 region code',
   });
 
