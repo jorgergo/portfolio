@@ -11,3 +11,7 @@ referece-images
 
 # Playwright MCP page snapshots
 .playwright-mcp
+
+# Playwright page test output
+/test-results/
+/playwright-report/

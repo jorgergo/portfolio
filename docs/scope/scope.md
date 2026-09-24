@@ -71,7 +71,7 @@ spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.
   - [x] Contrast test and the dev only `/styleguide` page (AC-2, AC-13)
   - [x] `design.md` and the gate: build, lint, format, test, manual print and preference checks (AC-14, AC-15)
 - [x] Verify it: `/check verify design system & UI foundation`
-- [ ] Test it: `/test design system & UI foundation`
+- [x] Test it: `/test design system & UI foundation`
 - [x] Review it (fresh model): `/check review design system & UI foundation`
 - [ ] Document it: `/document design system & UI foundation`
 

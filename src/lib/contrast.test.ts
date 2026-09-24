@@ -22,6 +22,11 @@ describe('contrastRatio', () => {
     expect(contrastRatio('#888888', '#ffffff')).toBeCloseTo(3.545, 3);
     expect(contrastRatio('#ffffff', '#888888')).toBeCloseTo(3.545, 3);
   });
+
+  // covers: AC-2
+  it('gives 1:1, the floor, when the two colours are the same', () => {
+    expect(contrastRatio('#71695c', '#71695c')).toBe(1);
+  });
 });
 
 describe('apcaContrast', () => {
@@ -114,6 +119,36 @@ describe('parseColorTokens', () => {
     });
   });
 
+  // covers: AC-2 (only six digit hex counts, so a shorthand value cannot
+  // slip past the contrast test as a NaN ratio)
+  it('reads a shorthand hex value as missing', () => {
+    const sample = `
+      @theme { --color-bg: light-dark(#fff, #1b1916); }
+      @media print { :root { --color-bg: #fff; } }
+    `;
+    expect(parseColorTokens(sample)).toEqual({
+      light: {},
+      dark: {},
+      print: {},
+    });
+  });
+
+  // covers: AC-1 (the six roles are the whole palette)
+  it('ignores colour variables that are not one of the six roles', () => {
+    const sample = `
+      @theme {
+        --color-bg: light-dark(#f2ede3, #1b1916);
+        --color-brand: light-dark(#ff0000, #00ff00);
+      }
+      @media print { :root { --color-brand: #0000ff; } }
+    `;
+    expect(parseColorTokens(sample)).toEqual({
+      light: { bg: '#f2ede3' },
+      dark: { bg: '#1b1916' },
+      print: {},
+    });
+  });
+
   // covers: AC-2
   it('returns empty schemes when the blocks are absent', () => {
     expect(parseColorTokens('body { color: red; }')).toEqual({
@@ -136,6 +171,27 @@ describe('parseColorTokens', () => {
 });
 
 describe('CONTRAST_PAIRS', () => {
+  // covers: AC-2 (the floors are the contract: lowering one must fail here,
+  // not quietly pass the token test below)
+  it('holds the spec 0003 floors for every pair', () => {
+    expect(
+      CONTRAST_PAIRS.map(({ fg, bg, minRatio, minLc }) => ({
+        fg,
+        bg,
+        minRatio,
+        minLc,
+      })),
+    ).toEqual([
+      { fg: 'fg', bg: 'bg', minRatio: 4.5, minLc: undefined },
+      { fg: 'muted', bg: 'bg', minRatio: 4.5, minLc: 55 },
+      { fg: 'accent', bg: 'bg', minRatio: 4.5, minLc: 55 },
+      { fg: 'accent-warm', bg: 'bg', minRatio: 4.5, minLc: 55 },
+      { fg: 'bg', bg: 'accent', minRatio: 4.5, minLc: undefined },
+      { fg: 'accent', bg: 'bg', minRatio: 3, minLc: undefined },
+      { fg: 'muted', bg: 'bg', minRatio: 3, minLc: undefined },
+    ]);
+  });
+
   const cases = SCHEMES.flatMap((scheme) =>
     CONTRAST_PAIRS.map(
       (pair) => [`${pair.name} (${scheme})`, scheme, pair] as const,
