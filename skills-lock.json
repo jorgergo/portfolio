@@ -73,6 +73,12 @@
       "skillPath": "skills/test/SKILL.md",
       "computedHash": "87dd379cca618d8cb2ca3d5073ffa8be6755e5822e7834a3c0ebe06bd3853f1f"
     },
+    "vitest": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vitest/SKILL.md",
+      "computedHash": "943d436114c677802426741980146c07560bf375297666b03062444f4b98a785"
+    },
     "wrangler": {
       "source": "cloudflare/skills",
       "sourceType": "github",
