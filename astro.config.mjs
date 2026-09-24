@@ -7,5 +7,6 @@ export default defineConfig({
   trailingSlash: 'never',
   build: { format: 'file' },
   security: { csp: true },
+  markdown: { syntaxHighlight: false },
   vite: { plugins: [tailwindcss()] },
 });
