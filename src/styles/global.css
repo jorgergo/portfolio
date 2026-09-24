@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+/* Scan src/ only: the docs and vendored skills name banned classes. */
+@import 'tailwindcss' source('../');
 
 /*
   Spec 0003. The six colour roles are the only colours on the site. Each holds a

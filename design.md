@@ -107,6 +107,7 @@ The tokens take their paper values, `color-scheme` becomes `light`, the page get
 - Selection: accent ground with `bg` text.
 - No inline styles, no `define:vars`, no `is:inline`, no `set:html` (the hashed CSP blocks them, and the linter fails them).
 - Fonts are self hosted from the Fontsource packages: no third party request at build or at runtime.
+- Tailwind scans `src/` only (`source('../')` in `global.css`), so class names written in the docs and the vendored skills never reach the stylesheet. The style guide lives in `src/`, so its few extra classes (`scheme-dark`, `scheme-light`, `sm:grid-cols-2`) do ship. That is a known trade off: a separate stylesheet for one development page is not worth it.
 
 ## Do's and don'ts
 
