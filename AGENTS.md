@@ -35,12 +35,15 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 
 - Functional: pure functions over plain, `readonly` data. Content goes in, markup comes out. No classes, no shared mutable state; side effects (fetch, DOM) stay in bundled `<script>` tags at the edges.
 - Expected failures return explicit results (union types, `undefined`), not thrown exceptions; content errors fail the build through collection schemas.
-- Content: profile, socials, and CV live only in `src/content/cv.json` (strict schema in `src/lib/cv-schema.ts`). Pages call `getCv()` from `@/lib/cv` once in frontmatter, then format with the pure helpers in `src/lib/cv-format.ts`; `getCv()` is the one sanctioned throw. Markdown highlighting stays off (`syntaxHighlight: false`) because the CSP blocks Shiki. See [spec 0002](docs/specs/0002-content-model/index.md).
-- Keep spec 0001's layout: `pages/`, `layouts/`, `components/`, `content/`, `lib/` (TS helpers, client scripts), `styles/`, `assets/`. Never create `src/fetch.ts`.
+- Content: profile, socials, and CV live only in `src/content/cv.json` (strict schema in `src/lib/cv-schema.ts`). Pages call `getCv()` from `@/lib/cv` once in frontmatter (the one other caller is `SiteFooter`, which reads the location itself; see spec 0003), then format with the pure helpers in `src/lib/cv-format.ts`; `getCv()` is the one sanctioned throw. Markdown highlighting stays off (`syntaxHighlight: false`) because the CSP blocks Shiki. See [spec 0002](docs/specs/0002-content-model/index.md).
+- Keep spec 0001's layout: `pages/` (dev only pages in `pages/_dev/`), `layouts/`, `components/` (icons in `components/icons/`), `content/`, `lib/` (TS helpers, client scripts), `styles/`, `assets/`. Never create `src/fetch.ts`.
 - Strict types: no `any`, no non null `!` shortcuts. Add `typescript` only with its range (`^6.0.3`), never `@latest`.
 - CSP safe markup: Tailwind classes only, no inline `style=""`, no `define:vars`, no `is:inline` scripts. Close every tag and nest HTML validly.
 - Accessibility baseline WCAG AA: semantic HTML, full keyboard use, visible focus, AA contrast in light and dark (system driven, no toggle).
-- Design system: build all UI to [design.md](design.md) (art direction and the build mandate); token values live in `src/styles/global.css`. The dev only `/styleguide` page (`src/pages/_dev/`, injected by `astro.config.mjs` under `pnpm dev`, never in `dist/`) renders every component.
+- Design system: build all UI to [design.md](design.md) (art direction and the build mandate); token values live in `src/styles/global.css`, and the dev only `/styleguide` page renders every component. See [spec 0003](docs/specs/0003-design-system/index.md).
+- Colours come only from the six tokens: never a `dark:` variant, a literal colour, or a Tailwind palette class such as `text-stone-500`. No arbitrary Tailwind values in components.
+- Links open in the same tab: no `target` on any link, internal or external.
+- `src/pages/_dev/` is dev only: Astro never routes it, `astro.config.mjs` injects its `/styleguide` page under `pnpm dev`, and nothing in it reaches `dist/`.
 - Naming: PascalCase `.astro` components, camelCase functions and variables, kebab-case other files. Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`).
 
 ## Tooling
@@ -72,7 +75,7 @@ Chosen by /audit; `/develop tooling` installs exactly this.
 - [review-animations](.agents/skills/review-animations/): `emilkowalski/skills`, reviews animation and motion code; loads only when you invoke it by name
 
 MCP servers: Astro Docs (connected), Playwright MCP (connected)
-Declined: antfu pnpm skill, Cloudflare MCP, Tailwind MCP, openai playwright skill, github-actions-hardening skill, GitHub MCP
+Declined: antfu pnpm skill, Cloudflare MCP, Tailwind MCP, openai playwright skill, github-actions-hardening skill, GitHub MCP, a11y-color-contrast-mcp, motion-dev-mcp, fontsource-mcp, google-fonts-mcp, Figma MCPs, mcp-ink-design, typography audit MCP, css-mcp, FontOfWeb MCP, tailwind-v4-shadcn skill, framer-motion-animator skill, impeccable skill, codebase-design skill, extract-design-system skill, web-typography skill, effective-print-design skill, fixing-accessibility skill
 
 ## Context files
 
