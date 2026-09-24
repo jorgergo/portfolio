@@ -77,7 +77,9 @@ const relativeLuminance = (hex: string): number => {
   );
 };
 
-// WCAG 2.2 contrast ratio, 1 to 21, in either order.
+// WCAG 2.2 contrast ratio, 1 to 21, in either order. Both functions below take
+// six digit hex only, the form parseColorTokens returns; `#fff`, a named colour,
+// or `rgb()` gives NaN.
 export const contrastRatio = (fg: string, bg: string): number => {
   const a = relativeLuminance(fg);
   const b = relativeLuminance(bg);
@@ -132,16 +134,17 @@ export const apcaContrast = (text: string, bg: string): number => {
   return sapc > -APCA.lowClip ? 0 : (sapc + APCA.offsetWoB) * 100;
 };
 
-// Token parsing. Comments go first, then the `@theme { ... }` block and the
-// `@media print { ... }` block are cut out by brace depth, so nested blocks and
-// Prettier's line wrapping do not matter. Only six digit hex values count.
+// Token parsing. Comments go first, then every `@theme { ... }` block and every
+// `@media print { ... }` block is cut out by brace depth, so nested blocks and
+// Prettier's line wrapping do not matter. Tailwind merges theme blocks and the
+// cascade lets a later print rule win, so the last declaration of a role wins.
+// Only six digit hex values count: when the last declaration holds anything
+// else, the role reads as missing rather than keeping an older value.
 const stripComments = (css: string): string =>
   css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-const blockBody = (css: string, header: RegExp): string => {
-  const match = header.exec(css);
-  if (match === null) return '';
-  const start = match.index + match[0].length;
+// The body of the block whose `{` ends just before `start`.
+const bodyFrom = (css: string, start: number): string => {
   let depth = 1;
   for (let i = start; i < css.length; i += 1) {
     if (css[i] === '{') depth += 1;
@@ -153,41 +156,53 @@ const blockBody = (css: string, header: RegExp): string => {
   return '';
 };
 
-const THEME_HEADER = /@theme\s*\{/;
-const PRINT_HEADER = /@media\s+print\s*\{/;
-const LIGHT_DARK_TOKEN =
-  /--color-([a-z][a-z0-9-]*)\s*:\s*light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)/gi;
-const HEX_TOKEN = /--color-([a-z][a-z0-9-]*)\s*:\s*(#[0-9a-f]{6})\s*;/gi;
+// Every block the header opens, in source order.
+const blockBodies = (css: string, header: RegExp): readonly string[] =>
+  [...css.matchAll(header)].map((match) =>
+    bodyFrom(css, match.index + match[0].length),
+  );
+
+const THEME_HEADER = /@theme\s*\{/g;
+const PRINT_HEADER = /@media\s+print\s*\{/g;
+const COLOR_DECLARATION = /--color-([a-z][a-z0-9-]*)\s*:\s*([^;{}]*)/gi;
+const LIGHT_DARK_VALUE =
+  /^light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)$/i;
+const HEX_VALUE = /^(#[0-9a-f]{6})$/i;
 
 const isColorRole = (name: string): name is ColorRole =>
   (COLOR_ROLES as readonly string[]).includes(name);
 
-type Entry = readonly [ColorRole, string];
+// A role and its hex in one scheme; undefined when the value is not hex.
+type Entry = readonly [ColorRole, string | undefined];
 
-const toScheme = (entries: readonly Entry[]): ColorScheme =>
-  entries.reduce<ColorScheme>(
-    (scheme, [role, hex]) => ({ ...scheme, [role]: hex.toLowerCase() }),
-    {},
-  );
-
-const entriesAt = (
-  body: string,
-  pattern: RegExp,
+const entriesIn = (
+  bodies: readonly string[],
+  value: RegExp,
   valueIndex: number,
 ): readonly Entry[] =>
-  [...body.matchAll(pattern)].flatMap((match) => {
-    const role = match[1] ?? '';
-    const hex = match[valueIndex] ?? '';
-    return isColorRole(role) && hex !== '' ? [[role, hex] as const] : [];
-  });
+  bodies.flatMap((body) =>
+    [...body.matchAll(COLOR_DECLARATION)].flatMap((match) => {
+      const role = match[1] ?? '';
+      const hex = value.exec((match[2] ?? '').trim())?.[valueIndex];
+      return isColorRole(role) ? [[role, hex] as const] : [];
+    }),
+  );
+
+const toScheme = (entries: readonly Entry[]): ColorScheme =>
+  Object.fromEntries(
+    COLOR_ROLES.flatMap((role) => {
+      const hex = entries.findLast(([name]) => name === role)?.[1];
+      return hex === undefined ? [] : [[role, hex.toLowerCase()] as const];
+    }),
+  );
 
 export const parseColorTokens = (css: string): ColorTokens => {
   const clean = stripComments(css);
-  const theme = blockBody(clean, THEME_HEADER);
-  const print = blockBody(clean, PRINT_HEADER);
+  const theme = blockBodies(clean, THEME_HEADER);
+  const print = blockBodies(clean, PRINT_HEADER);
   return {
-    light: toScheme(entriesAt(theme, LIGHT_DARK_TOKEN, 2)),
-    dark: toScheme(entriesAt(theme, LIGHT_DARK_TOKEN, 3)),
-    print: toScheme(entriesAt(print, HEX_TOKEN, 2)),
+    light: toScheme(entriesIn(theme, LIGHT_DARK_VALUE, 1)),
+    dark: toScheme(entriesIn(theme, LIGHT_DARK_VALUE, 2)),
+    print: toScheme(entriesIn(print, HEX_VALUE, 1)),
   };
 };

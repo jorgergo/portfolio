@@ -4,8 +4,9 @@
 /*
   Spec 0003. The six colour roles are the only colours on the site. Each holds a
   light and a dark value; `color-scheme: light dark` on :root is what makes
-  light-dark() resolve. src/lib/contrast.ts parses this file, so keep the
-  `@theme { ... }` and `@media print { ... }` blocks and the token names as they are.
+  light-dark() resolve. src/lib/contrast.ts parses this file: it reads every
+  `@theme { ... }` and `@media print { ... }` block, the last declaration of a
+  token wins, and only six digit hex values count, so keep the token names as they are.
 */
 @theme {
   --color-bg: light-dark(#f2ede3, #1b1916);

@@ -70,6 +70,50 @@ describe('parseColorTokens', () => {
     });
   });
 
+  // covers: AC-2 (Tailwind merges @theme blocks and the cascade lets the
+  // later print rule win, so the parser must too)
+  it('reads every block and lets the last declaration win', () => {
+    const sample = `
+      @theme { --color-bg: light-dark(#f2ede3, #1b1916); --color-muted: light-dark(#71695c, #b2aa9a); }
+      @layer base {
+        @media print { :root { --color-bg: #ffffff; --color-muted: #4a4540; } }
+      }
+      @theme { --color-muted: light-dark(#8d8576, #6b655b); }
+      @media print { :root { --color-muted: #9a958c; } }
+    `;
+    expect(parseColorTokens(sample)).toEqual({
+      light: { bg: '#f2ede3', muted: '#8d8576' },
+      dark: { bg: '#1b1916', muted: '#6b655b' },
+      print: { bg: '#ffffff', muted: '#9a958c' },
+    });
+  });
+
+  // covers: AC-2
+  it('reads the print tokens below a print block without colours', () => {
+    const sample = `
+      @media print { .cv { break-inside: avoid; } }
+      @theme { --color-bg: light-dark(#f2ede3, #1b1916); }
+      @media print { :root { --color-bg: #ffffff; } }
+    `;
+    expect(parseColorTokens(sample).print).toEqual({ bg: '#ffffff' });
+  });
+
+  // covers: AC-2 (an override the parser cannot read must not leave the old
+  // value behind: the role reads as missing, and the test says so)
+  it('drops a role whose last declaration is not a hex value', () => {
+    const sample = `
+      @theme { --color-muted: light-dark(#71695c, #b2aa9a); }
+      @theme { --color-muted: var(--color-fg); }
+      @media print { :root { --color-muted: #4a4540; } }
+      @media print { :root { --color-muted: var(--color-fg); } }
+    `;
+    expect(parseColorTokens(sample)).toEqual({
+      light: {},
+      dark: {},
+      print: {},
+    });
+  });
+
   // covers: AC-2
   it('returns empty schemes when the blocks are absent', () => {
     expect(parseColorTokens('body { color: red; }')).toEqual({
