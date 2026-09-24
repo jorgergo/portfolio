@@ -13,7 +13,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
-| 3 | Content model | Foundation | planned |
+| 3 | Content model | Foundation | in-progress |
 | 4 | Design system & UI foundation | Foundation | planned |
 | 5 | Home page | Release 1 | planned |
 | 6 | CV page | Release 1 | planned |
@@ -44,11 +44,21 @@ code in `eslint.config.js`, `.prettierrc.json`, `package.json`, `.github/workflo
   - [x] Pre commit: simple-git-hooks runs lint-staged, then `astro check`
   - [x] CI: GitHub Actions runs frozen install, lint, format check, build
 
-### 3. Content model · needs a decision
+### 3. Content model · in-progress
 One source of truth for your profile, socials, and CV content (experience, education, skills, technologies), so the home page, CV page, and PDF all read the same data.
 **Done when:** editing your CV means changing one content source in one place, and every section of the Harvard template has a defined shape.
 **Note:** the CSP blocks Shiki's inline styles, so decide code block highlighting here (`syntaxHighlight: false` or `'prism'`); see spec [0001](../specs/0001-stack-architecture/index.md) Consequences.
-- [ ] Design it (spec): `/architect content model`
+spec [0002](../specs/0002-content-model/index.md)
+- [x] Design it (spec): `/architect content model`
+- [ ] Build it: `/develop content model`
+  - [ ] Schema and loader: strict `cv` collection from `src/content/cv.json`, highlighting off (AC-1 to AC-8, AC-12, AC-14)
+  - [ ] Real CV content: your pasted CV rewritten into English Harvard shape, no phone or address (AC-2, AC-13)
+  - [ ] Access and format helpers: `getCv()`, dates, sorting, location (AC-1, AC-9 to AC-11)
+  - [ ] Wiring and failure checks: placeholders read your name, avatar if supplied, every rule proven to fail the build (AC-3 to AC-8, AC-12, AC-14, AC-15)
+- [ ] Verify it: `/check verify content model`
+- [ ] Test it: `/test content model`
+- [ ] Review it (fresh model): `/check review content model`
+- [ ] Document it: `/document content model`
 
 ### 4. Design system & UI foundation · needs a decision
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
