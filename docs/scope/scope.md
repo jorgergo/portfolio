@@ -14,7 +14,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Content model | Foundation | done |
-| 4 | Design system & UI foundation | Foundation | in-progress |
+| 4 | Design system & UI foundation | Foundation | done |
 | 5 | Home page | Release 1 | planned |
 | 6 | CV page | Release 1 | planned |
 | 7 | Metadata & share cards | Release 1 | planned |
@@ -60,7 +60,7 @@ spec [0002](../specs/0002-content-model/index.md) · code in `src/content/cv.jso
 - [x] Review it (fresh model): `/check review content model`
 - [x] Document it: `/document content model`
 
-### 4. Design system & UI foundation · in-progress
+### 4. Design system & UI foundation · done
 The minimal visual language: type, spacing, a tight color palette, and base components. Light and dark follow the visitor's system setting, with no toggle.
 **Done when:** `design.md` covers type, color, spacing, and components for both light and dark; text meets WCAG AA contrast in both; links and focus states work by keyboard.
 spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.css`, `src/layouts/BaseLayout.astro`, `src/components/`, `src/lib/contrast.ts`, `src/pages/_dev/styleguide.astro`, `design.md`
