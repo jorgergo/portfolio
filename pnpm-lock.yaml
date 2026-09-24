@@ -203,6 +203,9 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.8.1
         version: 0.8.1(prettier-plugin-astro@1.0.1(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(prettier@3.9.8))(prettier@3.9.8)
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.4
       simple-git-hooks:
         specifier: ^2.14.0
         version: 2.14.0
