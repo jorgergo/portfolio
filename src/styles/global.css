@@ -1,4 +1,120 @@
 @import 'tailwindcss';
 
+/*
+  Spec 0003. The six colour roles are the only colours on the site. Each holds a
+  light and a dark value; `color-scheme: light dark` on :root is what makes
+  light-dark() resolve. src/lib/contrast.ts parses this file, so keep the
+  `@theme { ... }` and `@media print { ... }` blocks and the token names as they are.
+*/
 @theme {
+  --color-bg: light-dark(#f2ede3, #1b1916);
+  --color-fg: light-dark(#2b2722, #e6dfd2);
+  --color-muted: light-dark(#71695c, #b2aa9a);
+  --color-line: light-dark(#dcd4c4, #2d2a25);
+  --color-accent: light-dark(#646f3f, #baaa7c);
+  --color-accent-warm: light-dark(#a5532a, #e29a70);
+
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.3;
+  --text-base--line-height: 1.6;
+  --tracking-label: 0.1em;
+  --text-underline-offset-link: 0.2em;
+  --container-content: 40rem;
+  --breakpoint-xs: 30rem;
+
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Astro's Fonts API defines --font-plex-mono and --font-plex-sans on :root. */
+@theme inline {
+  --font-mono: var(--font-plex-mono);
+  --font-sans: var(--font-plex-sans);
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --motion-quick: 150ms;
+    --motion-base: 250ms;
+    --motion-slow: 400ms;
+    --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  html {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-plex-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  /* Weight 500 is the only emphasis weight shipped; without this, browsers fake a bold. */
+  b,
+  strong {
+    font-weight: 500;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    :root {
+      --color-muted: var(--color-fg);
+    }
+  }
+
+  @media (forced-colors: active) {
+    a {
+      text-decoration: underline;
+    }
+    :focus-visible {
+      outline: 2px solid;
+    }
+  }
+
+  @media print {
+    :root {
+      color-scheme: light;
+      --color-bg: #ffffff;
+      --color-fg: #1a1815;
+      --color-muted: #4a4540;
+      --color-line: #d4d0c8;
+      --color-accent: #4f5a2c;
+      --color-accent-warm: #1a1815;
+    }
+    @page {
+      margin: 18mm;
+    }
+    html {
+      font-size: 11pt;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
 }
