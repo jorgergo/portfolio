@@ -2,6 +2,8 @@
 
 Personal site and CV, built with Astro and Tailwind CSS and hosted on Cloudflare.
 
+Live at https://jorgergo.dev
+
 ## Run it
 
 You need Node 26 (see `.nvmrc`) and pnpm.
@@ -12,6 +14,14 @@ pnpm dev       # local dev server
 pnpm build     # type and content check, then static build into dist/
 pnpm preview   # serve dist/ with wrangler, including _headers
 ```
+
+## Deploy
+
+A push to `main` deploys on its own once CI passes: the `deploy` job in `.github/workflows/ci.yml` uploads the `dist/` that the page tests passed. It then checks the live site with `.github/scripts/smoke.sh`, and if the pages are wrong it rolls back to the previous version by itself and the job goes red.
+
+To roll back by hand, run `pnpm exec wrangler rollback`, or use Rollback on the Worker's Deployments tab in the Cloudflare dashboard.
+
+The one time Cloudflare and GitHub setup (zone settings, the www redirect, the API token, the `production` environment, mail records) is recorded in [spec 0007](docs/specs/0007-go-live/index.md).
 
 ## License
 

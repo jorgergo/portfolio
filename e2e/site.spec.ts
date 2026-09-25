@@ -27,6 +27,8 @@ import {
   cv,
   distFile,
   distFiles,
+  headerBlocks,
+  missingHeaders,
   pngSize,
   rgb,
   scrollsSideways,
@@ -768,6 +770,53 @@ test.describe('icons', () => {
   });
 });
 
+// Spec 0007 AC-3: every `/*` header on the pages and the stylesheet, and the
+// year long cache on /_astro/ only, so a deploy shows at once. The expected
+// lines come from dist/_headers, the file Cloudflare serves them from.
+test.describe('response headers', () => {
+  const blocks = () => headerBlocks(distFile('_headers'));
+  const stylesheet = (): string =>
+    /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
+
+  // covers: spec 0007 AC-3
+  for (const path of ['/', '/cv']) {
+    test(`${path} carries every /* header and no immutable cache`, async ({
+      request,
+    }) => {
+      const expected = blocks()['/*'] ?? [];
+      const response = await request.get(path);
+      const actual = response.headersArray();
+
+      expect(expected.length).toBeGreaterThan(0);
+      expect(missingHeaders(actual, expected)).toEqual([]);
+      expect(
+        actual.filter(
+          ({ name, value }) =>
+            name.toLowerCase() === 'cache-control' &&
+            value.includes('immutable'),
+        ),
+      ).toEqual([]);
+    });
+  }
+
+  // covers: spec 0007 AC-3
+  test('the stylesheet carries every /* header and the /_astro/ cache', async ({
+    request,
+  }) => {
+    const { '/*': all = [], '/_astro/*': cache = [] } = blocks();
+    const response = await request.get(stylesheet());
+
+    expect(stylesheet()).not.toBe('');
+    expect(response.status()).toBe(200);
+    expect(cache).toEqual([
+      { name: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ]);
+    expect(missingHeaders(response.headersArray(), [...all, ...cache])).toEqual(
+      [],
+    );
+  });
+});
+
 test.describe('build output', () => {
   // covers: AC-3
   test('ships exactly four self hosted woff2 files', () => {
@@ -895,7 +944,7 @@ test.describe('home page', () => {
   });
 
   // covers: AC-6
-  test('at 320px the email address moves whole under its key, and back beside it at 330px', async ({
+  test('at 320px the email address moves whole under its key, and back beside it once the row fits', async ({
     page,
   }) => {
     const row = elsewhereNav(page).getByRole('link', {
@@ -903,6 +952,7 @@ test.describe('home page', () => {
       exact: true,
     });
     const boxes = async () => ({
+      row: await row.boundingBox(),
       key: await spans(row).nth(0).boundingBox(),
       value: await spans(row).nth(1).boundingBox(),
     });
@@ -920,7 +970,20 @@ test.describe('home page', () => {
     ).toBeLessThanOrEqual(320);
     expect(await scrollsSideways(page)).toBe(false);
 
-    await page.setViewportSize({ width: 330, height: 640 });
+    // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
+    // Chromium, so the width where the row fits again (327px or 334px today)
+    // is measured, not hard coded.
+    const gap = await row.evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).columnGap),
+    );
+    const fits = Math.ceil(
+      320 -
+        (narrow.row?.width ?? 0) +
+        (narrow.key?.width ?? 0) +
+        gap +
+        (narrow.value?.width ?? 0),
+    );
+    await page.setViewportSize({ width: fits, height: 640 });
     const wide = await boxes();
     expect(wide.value?.y).toBe(wide.key?.y);
     expect(wide.value?.x ?? 0).toBeGreaterThan(

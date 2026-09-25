@@ -18,7 +18,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Home page | Release 1 | done |
 | 6 | CV page | Release 1 | done |
 | 7 | Metadata & share cards | Release 1 | done |
-| 8 | Go live | Release 1 | planned |
+| 8 | Go live | Release 1 | in-progress |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Portfolio page | Release 3 | planned |
@@ -126,10 +126,20 @@ spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/sit
 - [x] Review it (fresh model): `/check review metadata & share cards`
 - [x] Document it: `/document metadata & share cards`
 
-### 8. Go live · needs a decision
+### 8. Go live · in-progress
 Put the site on the internet at your address, with every change deploying automatically.
 **Done when:** the site is reachable at your chosen domain over HTTPS, and pushing a change publishes it without manual steps.
-- [ ] Design it (spec): `/architect go live`
+spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml`, `.github/scripts/smoke.sh`, `wrangler.jsonc`
+- [x] Design it (spec): `/architect go live`
+- [ ] Build it: `/develop go live`
+  - [x] Repo: `wrangler.jsonc` custom domain with workers.dev off, the `/_astro/*` cache block and its page test, the CI gate with Playwright and the `dist` artifact, `smoke.sh`, the `deploy` job with rollback, and the README (AC-1, AC-3 to AC-9, AC-16)
+  - [x] Your setup: zone settings, the www record and Redirect Rule, the token and the `production` environment, then the bootstrap deploy from your Mac (AC-2, AC-10, AC-11)
+  - [ ] Launch: merge, and watch `deploy` pass its smoke checks (AC-1, AC-2, AC-4, AC-5, AC-9)
+  - [ ] Grow: mail records, the `main` ruleset, Search Console and Bing, and the share checks (AC-12 to AC-15)
+- [ ] Verify it: `/check verify go live`
+- [ ] Test it: `/test go live`
+- [ ] Review it (fresh model): `/check review go live`
+- [ ] Document it: `/document go live`
 
 ### 12. About page · needs a decision · from spec 0004
 A short `/about` page in the same shell: your longer `basics.summary` as a paragraph or two, and a photo if you add one to `src/assets/`. It adds the `about` row to the home menu (`SITE_NAV`, spec 0004) as its first entry. Small enough to go straight to `/develop` if you already know the build.
@@ -166,6 +176,8 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - **Contact form**: message you from the site instead of just an email link · needs a decision
 - **Visitor analytics**: declined for now to stay light and banner free; if added later, pick a cookieless option so no consent banner is needed · needs a decision
 - **Sitemap and structured data**: a sitemap once the portfolio page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
+- **PR previews**: a Workers Preview URL per pull request, if visual reviews ever need a shared link · needs a decision · from spec 0007
+- **Email at the domain**: an address such as hello@jorgergo.dev through Cloudflare Email Routing, if you want one on the CV · needs a decision · from spec 0007
 
 ## Legend
 

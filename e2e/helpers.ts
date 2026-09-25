@@ -60,6 +60,50 @@ export const distFiles = (): readonly string[] =>
 export const distFile = (name: string): string =>
   readFileSync(new URL(`../dist/${name}`, import.meta.url), 'utf8');
 
+export type Header = { readonly name: string; readonly value: string };
+
+// The blocks of a `_headers` file by path (spec 0007): a line starting with `/`
+// opens a block, and each indented `Name: value` line under it is one header;
+// blank and `#` lines are skipped. smoke.sh reads the file the same way.
+export const headerBlocks = (
+  text: string,
+): Readonly<Record<string, readonly Header[]>> =>
+  Object.fromEntries(
+    text
+      .split(/^(?=\/)/m)
+      .filter((chunk) => chunk.startsWith('/'))
+      .map((chunk) => {
+        const [path = '', ...lines] = chunk.split('\n');
+        const headers = lines
+          .filter((line) => /^\s+[^\s#]/.test(line))
+          .map((line) => {
+            const colon = line.indexOf(':');
+            return {
+              name: line.slice(0, colon).trim(),
+              value: line.slice(colon + 1).trim(),
+            };
+          });
+        return [path.trim(), headers];
+      }),
+  );
+
+// The headers from `expected` that no response line carries: the name in any
+// case, the value exactly, as smoke.sh matches them on the live site.
+export const missingHeaders = (
+  actual: readonly Header[],
+  expected: readonly Header[],
+): readonly string[] =>
+  expected
+    .filter(
+      ({ name, value }) =>
+        !actual.some(
+          (line) =>
+            line.name.toLowerCase() === name.toLowerCase() &&
+            line.value === value,
+        ),
+    )
+    .map(({ name, value }) => `${name}: ${value}`);
+
 // A token as the browser reports it in computed styles: `rgb(r, g, b)`.
 export const rgb = (scheme: Scheme, role: ColorRole): string => {
   const hex = tokens[scheme][role] ?? '';
