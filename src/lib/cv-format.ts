@@ -1,4 +1,4 @@
-import { regionName } from '@/lib/cv-schema';
+import { regionName, type Network } from '@/lib/cv-schema';
 
 // Fixed English strings: no locale, time zone, or clock is ever read.
 const MONTHS = [
@@ -64,3 +64,15 @@ export const formatLocation = (location: {
   readonly countryCode: string;
 }): string =>
   `${location.city}, ${regionName(location.countryCode) ?? location.countryCode}`;
+
+// One rule per network in NETWORKS. The `satisfies` clause makes a network
+// added to the enum without a rule fail `astro check` (spec 0004).
+const HANDLE_RULES = {
+  GitHub: (username) => `@${username}`,
+  LinkedIn: (username) => `in/${username}`,
+} satisfies Record<Network, (username: string) => string>;
+
+export const formatProfileHandle = (profile: {
+  readonly network: Network;
+  readonly username: string;
+}): string => HANDLE_RULES[profile.network](profile.username);

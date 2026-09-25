@@ -15,13 +15,15 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Content model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
-| 5 | Home page | Release 1 | planned |
+| 5 | Home page | Release 1 | in-progress |
 | 6 | CV page | Release 1 | planned |
 | 7 | Metadata & share cards | Release 1 | planned |
 | 8 | Go live | Release 1 | planned |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Portfolio page | Release 3 | planned |
+| 12 | About page | Release 1 | planned |
+| 13 | Contact page | Release 1 | planned |
 
 ## Foundations
 
@@ -77,10 +79,20 @@ spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.
 
 ## Release 1: Home and CV live
 
-### 5. Home page · needs a decision
+### 5. Home page · in-progress
 Your name, one or two lines about you, and links to the CV and your socials. Nothing else, in the spirit of t3.gg.
 **Done when:** a visitor sees name, bio, and working links to the CV and socials; it reads well on phone and desktop in light and dark; it has its own title and description.
-- [ ] Design it (spec): `/architect home page`
+spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`, `src/components/NavRow.astro`, `src/lib/site-nav.ts`, `src/lib/cv-format.ts`
+- [x] Design it (spec): `/architect home page`
+- [x] Build it: `/develop home page`
+  - [x] Page and pieces: `SITE_NAV` and `formatRowNumber` in `src/lib/site-nav.ts`, `formatProfileHandle`, the `NavRow` component, and `index.astro` recomposed as name, bio, numbered menu, keyed social rows (AC-1 to AC-7)
+  - [x] Helper tests: Vitest cases for the row number and the profile handles (AC-8)
+  - [x] Style guide and `design.md`: `NavRow` examples, the new spacing meanings and prefix widths (AC-9)
+  - [x] Page tests and the gate: the `/` case and the menu href check in `e2e/site.spec.ts`, the `NavRow` checks in `e2e/styleguide.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-7, AC-10)
+- [x] Verify it: `/check verify home page`
+- [x] Test it: `/test home page`
+- [x] Review it (fresh model): `/check review home page`
+- [x] Document it: `/document home page`
 
 ### 6. CV page · needs a decision
 Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
@@ -96,6 +108,16 @@ Proper titles and descriptions for every page, plus a clean preview image when s
 Put the site on the internet at your address, with every change deploying automatically.
 **Done when:** the site is reachable at your chosen domain over HTTPS, and pushing a change publishes it without manual steps.
 - [ ] Design it (spec): `/architect go live`
+
+### 12. About page · needs a decision · from spec 0004
+A short `/about` page in the same shell: your longer `basics.summary` as a paragraph or two, and a photo if you add one to `src/assets/`. It adds the `about` row to the home menu (`SITE_NAV`, spec 0004) as its first entry. Small enough to go straight to `/develop` if you already know the build.
+**Done when:** `/about` renders your summary from the content model through `BaseLayout` with its own title and description; the home menu shows `01 about` linking to it; it reads well on phone and desktop in light and dark.
+- [ ] Design it (spec): `/architect about page`
+
+### 13. Contact page · needs a decision · from spec 0004
+A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
+**Done when:** `/contact` renders every profile and the email from the content model through `BaseLayout` with its own title and description; the home menu shows `contact` as its last row linking to it; it reads well on phone and desktop in light and dark.
+- [ ] Design it (spec): `/architect contact page`
 
 ## Release 2: CV extras
 

@@ -1,0 +1,41 @@
+---
+import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+
+interface Props {
+  href: string;
+  prefix: string;
+  label: string;
+  kind: 'number' | 'key';
+  class?: string;
+}
+
+// One row of a menu: the list item and its link together, so the parent only
+// writes the <ol> or <ul> and the <nav> around it. A number is decoration the
+// list already conveys, so it is hidden from assistive tech; a key is part of
+// the link's name (`github @jorgergo`), so it is not. Same tab always, and an
+// external link ends with the arrow (spec 0003, spec 0004).
+const { href, prefix, label, kind, class: className } = Astro.props;
+const external = /^https?:\/\//.test(href);
+const numbered = kind === 'number';
+---
+
+<li>
+  <a
+    href={href}
+    class:list={[
+      'flex min-h-10 flex-wrap items-center gap-4 font-mono text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm',
+      className,
+    ]}
+  >
+    <span
+      class:list={['shrink-0 text-muted', numbered ? 'w-6' : 'w-20']}
+      aria-hidden={numbered ? 'true' : undefined}
+    >
+      {prefix}
+    </span>
+    <span class="inline-flex shrink-0 items-center gap-2">
+      {label}
+      {external && <ArrowUpRight class="size-4 shrink-0" />}
+    </span>
+  </a>
+</li>

@@ -10,7 +10,8 @@ import {
 } from './helpers';
 
 // Spec 0003 components on /styleguide under `astro dev`: the only page that
-// renders every component, since the home and CV pages hold none yet.
+// renders every component (the home page holds NavRow alone, spec 0004). Link
+// names that a NavRow would also match (`github @jorgergo`) are `exact`.
 
 // The dev toolbar is Astro's, not the site's: keep it out of Tab order and axe.
 const DEV_TOOLBAR = 'astro-dev-toolbar';
@@ -203,7 +204,7 @@ test.describe('links without an underline', () => {
     {
       name: 'IconLink',
       link: (page: Page) =>
-        panel(page, 'Light').getByRole('link', { name: 'GitHub' }),
+        panel(page, 'Light').getByRole('link', { name: 'GitHub', exact: true }),
     },
     {
       name: 'Button link',
@@ -257,7 +258,10 @@ test.describe('IconLink', () => {
     await open(page);
 
     for (const name of EXTERNAL) {
-      const link = panel(page, 'Light').getByRole('link', { name });
+      const link = panel(page, 'Light').getByRole('link', {
+        name,
+        exact: true,
+      });
       await expect(link).toHaveAttribute('href', /^https:\/\//);
       await expect(link.locator('span + svg')).toHaveCount(1);
       await expect(link.locator('svg')).toHaveCount(2);
@@ -283,6 +287,129 @@ test.describe('IconLink', () => {
     await open(page);
 
     await expect(page.locator('a[target]')).toHaveCount(0);
+  });
+});
+
+// Spec 0004: the NavRow anatomy on its two pinned examples.
+test.describe('NavRow', () => {
+  const numberRow = (page: Page): Locator =>
+    panel(page, 'Light').getByRole('link', { name: 'cv', exact: true });
+  const keyRow = (page: Page): Locator =>
+    panel(page, 'Light').getByRole('link', {
+      name: 'github @jorgergo',
+      exact: true,
+    });
+  // A row's two spans: the prefix, then the label (with the arrow inside).
+  const spans = (row: Locator): Locator => row.locator(':scope > span');
+
+  // covers: AC-4, AC-9
+  test('draws a numbered row in an ol and a keyed row in a ul, each a flex link at least 40px tall', async ({
+    page,
+  }) => {
+    await open(page);
+    const section = panel(page, 'Light');
+
+    await expect(section.locator('ol > li > a[href="/cv"]')).toHaveCount(1);
+    await expect(
+      section.locator('ul > li > a[href="https://github.com/jorgergo"]'),
+    ).toHaveCount(1);
+    for (const row of [numberRow(page), keyRow(page)]) {
+      await expect(row).toHaveCSS('display', 'flex');
+      await expect(row).toHaveCSS('min-height', '40px');
+      await expect(row).toHaveCSS('column-gap', '16px');
+      await expect(row).toHaveCSS('text-decoration-line', 'none');
+      expect((await row.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(40);
+    }
+  });
+
+  // covers: AC-4
+  test('hides a number from assistive tech in a w-6 column and keeps a key in the name in a w-20 column', async ({
+    page,
+  }) => {
+    await open(page);
+    const number = spans(numberRow(page)).first();
+    const key = spans(keyRow(page)).first();
+
+    await expect(number).toHaveText('01');
+    await expect(number).toHaveAttribute('aria-hidden', 'true');
+    await expect(number).toHaveCSS('width', '24px');
+    await expect(key).toHaveText('github');
+    await expect(key).not.toHaveAttribute('aria-hidden');
+    await expect(key).toHaveCSS('width', '80px');
+    for (const prefix of [number, key]) {
+      await expect(prefix).toHaveCSS('color', rgb('light', 'muted'));
+      await expect(prefix).toHaveCSS('flex-shrink', '0');
+    }
+  });
+
+  // covers: AC-4
+  test('ends an https row with the arrow inside the label span, and a same site row with none', async ({
+    page,
+  }) => {
+    await open(page);
+
+    await expect(spans(keyRow(page)).nth(1).locator('svg')).toHaveCount(1);
+    await expect(keyRow(page).locator('svg')).toHaveCount(1);
+    await expect(numberRow(page).locator('svg')).toHaveCount(0);
+  });
+
+  // covers: AC-4
+  test('on hover the label and the arrow turn accent-warm while the prefix stays muted', async ({
+    page,
+  }) => {
+    await open(page);
+    const row = keyRow(page);
+    await expect(spans(row).nth(1)).toHaveCSS('color', rgb('light', 'fg'));
+
+    await row.hover();
+
+    await expect(spans(row).nth(1)).toHaveCSS(
+      'color',
+      rgb('light', 'accent-warm'),
+    );
+    await expect(row.locator('svg')).toHaveCSS(
+      'color',
+      rgb('light', 'accent-warm'),
+    );
+    await expect(spans(row).nth(0)).toHaveCSS('color', rgb('light', 'muted'));
+  });
+
+  // covers: AC-4
+  test('on keyboard focus the label turns accent-warm while the prefix stays muted', async ({
+    page,
+  }) => {
+    await open(page);
+    const row = keyRow(page);
+
+    await keyboardFocus(page, row);
+
+    await expect(spans(row).nth(1)).toHaveCSS(
+      'color',
+      rgb('light', 'accent-warm'),
+    );
+    await expect(spans(row).nth(0)).toHaveCSS('color', rgb('light', 'muted'));
+    await expect(row).toHaveCSS('outline-style', 'solid');
+  });
+
+  // covers: AC-9
+  test('the spacing list shows gap-1 and gap-4 beside the spec 0003 steps', async ({
+    page,
+  }) => {
+    await open(page);
+    const steps = panel(page, 'Light')
+      .locator('div')
+      .filter({ has: page.getByRole('heading', { name: 'Spacing' }) })
+      .getByRole('listitem');
+
+    await expect(steps).toContainText([
+      'gap-1',
+      'gap-2',
+      'gap-4',
+      'gap-6',
+      'pt-10',
+      'gap-14',
+      'pb-20',
+    ]);
   });
 });
 
@@ -501,7 +628,7 @@ test.describe('motion', () => {
       panel(page, 'Light').getByRole('link', {
         name: 'TextLink to the home page',
       }),
-      panel(page, 'Light').getByRole('link', { name: 'GitHub' }),
+      panel(page, 'Light').getByRole('link', { name: 'GitHub', exact: true }),
       panel(page, 'Light').getByRole('button', { name: 'Button as a button' }),
     ]) {
       expect(await transitionSeconds(target)).toBeLessThan(0.001);
@@ -546,7 +673,7 @@ test.describe('forced colours', () => {
 
     for (const link of [
       section.getByRole('link', { name: 'TextLink to the home page' }),
-      section.getByRole('link', { name: 'GitHub' }),
+      section.getByRole('link', { name: 'GitHub', exact: true }),
       section.getByRole('link', { name: 'Button as a link' }),
     ]) {
       await expect(link).toHaveCSS('text-decoration-line', 'underline');
@@ -555,7 +682,10 @@ test.describe('forced colours', () => {
 
   // covers: AC-12
   test('the focus ring still shows', async ({ page }) => {
-    const link = panel(page, 'Light').getByRole('link', { name: 'GitHub' });
+    const link = panel(page, 'Light').getByRole('link', {
+      name: 'GitHub',
+      exact: true,
+    });
 
     await keyboardFocus(page, link);
 
@@ -569,7 +699,7 @@ test.describe('forced colours', () => {
   }) => {
     const section = panel(page, 'Light');
     const icon = section
-      .getByRole('link', { name: 'GitHub' })
+      .getByRole('link', { name: 'GitHub', exact: true })
       .locator('svg')
       .first();
     const chip = section.getByText('TypeScript', { exact: true });
@@ -624,7 +754,7 @@ test.describe('print', () => {
 
     for (const link of [
       section.getByRole('link', { name: 'TextLink to the home page' }),
-      section.getByRole('link', { name: 'GitHub' }),
+      section.getByRole('link', { name: 'GitHub', exact: true }),
     ]) {
       await expect(link).toHaveCSS('text-decoration-line', 'none');
     }

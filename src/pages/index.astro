@@ -1,14 +1,49 @@
 ---
+import NavRow from '@/components/NavRow.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
+import { formatProfileHandle } from '@/lib/cv-format';
+import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 
-// Composition belongs to the home page spec; this is the shell with real content.
+// Spec 0004: the name, the bio, the pages that exist as numbered rows, and the
+// profiles and email as keyed rows. No avatar, no motion, no script.
 const { basics } = await getCv();
+const profiles = basics.profiles ?? [];
 ---
 
-<BaseLayout title="Home" description={basics.bio}>
-  <section class="flex flex-col gap-6">
+<BaseLayout title={basics.name} description={basics.bio}>
+  <header class="flex flex-col gap-2">
     <h1 class="text-title font-medium">{basics.name}</h1>
-    <p>{basics.bio}</p>
-  </section>
+    <p class="text-pretty">{basics.bio}</p>
+  </header>
+  <nav aria-label="Pages">
+    <ol class="flex flex-col gap-1">
+      {SITE_NAV.map(({ label, href }, index) => (
+        <NavRow
+          kind="number"
+          href={href}
+          prefix={formatRowNumber(index)}
+          label={label}
+        />
+      ))}
+    </ol>
+  </nav>
+  <nav aria-label="Elsewhere">
+    <ul class="flex flex-col gap-1">
+      {profiles.map((profile) => (
+        <NavRow
+          kind="key"
+          href={profile.url}
+          prefix={profile.network.toLowerCase()}
+          label={formatProfileHandle(profile)}
+        />
+      ))}
+      <NavRow
+        kind="key"
+        href={`mailto:${basics.email}`}
+        prefix="email"
+        label={basics.email}
+      />
+    </ul>
+  </nav>
 </BaseLayout>

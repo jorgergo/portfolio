@@ -20,6 +20,10 @@ export const distFiles = (): readonly string[] =>
     encoding: 'utf8',
   });
 
+// One built page as text, by its path under dist/.
+export const distFile = (name: string): string =>
+  readFileSync(new URL(`../dist/${name}`, import.meta.url), 'utf8');
+
 // A token as the browser reports it in computed styles: `rgb(r, g, b)`.
 export const rgb = (scheme: Scheme, role: ColorRole): string => {
   const hex = tokens[scheme][role] ?? '';

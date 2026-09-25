@@ -1,7 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   axeViolations,
   basics,
+  distFile,
   distFiles,
   rgb,
   scrollsSideways,
@@ -9,7 +10,8 @@ import {
 } from './helpers';
 
 // Spec 0003 on the built site (dist/ through wrangler): the shell every page
-// shares, fonts and CSP, keyboard, print, and the 320px floor.
+// shares, fonts and CSP, keyboard, print, and the 320px floor. The home page
+// block at the end covers spec 0004.
 
 type PageCase = {
   readonly path: string;
@@ -22,10 +24,17 @@ type PageCase = {
 const PAGES: readonly PageCase[] = [
   {
     path: '/',
-    title: 'Home',
+    title: basics.name,
     description: basics.bio,
     h1: basics.name,
-    stops: ['a "Skip to content"'],
+    // Spec 0004 AC-7: the menu rows, then the social rows, and nothing after.
+    stops: [
+      'a "Skip to content"',
+      'a "01 cv"',
+      'a "github @jorgergo"',
+      'a "linkedin in/jorgergo"',
+      'a "email jorgergo@icloud.com"',
+    ],
   },
   {
     path: '/cv',
@@ -465,5 +474,186 @@ test.describe('build output', () => {
 
     expect(response?.status()).toBe(404);
     expect(distFiles().filter((file) => /styleguide/i.test(file))).toEqual([]);
+  });
+});
+
+// Spec 0004: the home page as a numbered menu and keyed social rows.
+test.describe('home page', () => {
+  const pagesNav = (page: Page): Locator =>
+    page.getByRole('navigation', { name: 'Pages' });
+  const elsewhereNav = (page: Page): Locator =>
+    page.getByRole('navigation', { name: 'Elsewhere' });
+  // A row's two spans: the prefix, then the label (with the arrow inside).
+  const spans = (row: Locator): Locator => row.locator(':scope > span');
+
+  // covers: AC-1, AC-6
+  test('main holds the header, the Pages nav, and the Elsewhere nav, 56px apart', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const main = page.locator('main#main');
+    const blocks = main.locator(':scope > *');
+    const header = main.locator(':scope > header');
+
+    await expect(blocks).toHaveCount(3);
+    await expect(blocks.nth(0)).toHaveJSProperty('tagName', 'HEADER');
+    await expect(blocks.nth(1)).toHaveAttribute('aria-label', 'Pages');
+    await expect(blocks.nth(2)).toHaveAttribute('aria-label', 'Elsewhere');
+    await expect(main).toHaveCSS('row-gap', '56px');
+    await expect(header.locator(':scope > *')).toHaveCount(2);
+    await expect(header.getByRole('heading', { level: 1 })).toHaveText(
+      basics.name,
+    );
+    await expect(header.locator('p')).toHaveText(basics.bio);
+    await expect(header.locator('p')).toHaveCSS('color', rgb('light', 'fg'));
+    await expect(header).toHaveCSS('row-gap', '8px');
+    await expect(page.locator('main img, main video')).toHaveCount(0);
+  });
+
+  // covers: AC-2
+  test('the Pages nav is an ordered list of the site pages, numbered from 01', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const nav = pagesNav(page);
+    const cv = nav.getByRole('link', { name: 'cv', exact: true });
+
+    await expect(nav.locator('ol')).toHaveCount(1);
+    await expect(nav.getByRole('listitem')).toHaveText(['01 cv']);
+    await expect(cv).toHaveAttribute('href', '/cv');
+    await expect(spans(cv).first()).toHaveText('01');
+    await expect(spans(cv).first()).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('body [role]')).toHaveCount(0);
+  });
+
+  // covers: AC-3, AC-4
+  test('the Elsewhere nav lists each profile, then the email, as keyed rows', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const nav = elsewhereNav(page);
+    const links = nav.getByRole('link');
+    const hrefs = [
+      ...basics.profiles.map(({ url }) => url),
+      `mailto:${basics.email}`,
+    ];
+
+    await expect(nav.locator('ul')).toHaveCount(1);
+    await expect(links).toHaveText([
+      'github @jorgergo',
+      'linkedin in/jorgergo',
+      `email ${basics.email}`,
+    ]);
+    for (const [index, href] of hrefs.entries()) {
+      await expect(links.nth(index)).toHaveAttribute('href', href);
+    }
+    // A key stays in the accessible name; only an https row ends with the arrow.
+    await expect(nav.locator('[aria-hidden]')).toHaveCount(2);
+    await expect(nav.locator('span[aria-hidden]')).toHaveCount(0);
+    await expect(links.nth(0).locator('svg')).toHaveCount(1);
+    await expect(links.nth(1).locator('svg')).toHaveCount(1);
+    await expect(links.nth(2).locator('svg')).toHaveCount(0);
+  });
+
+  // covers: AC-5
+  test('ships no script and loads only the page, the stylesheet, and two Plex Mono files', async ({
+    page,
+  }) => {
+    expect(distFile('index.html')).not.toMatch(/<script/i);
+    const paths: string[] = [];
+    page.on('request', (request) =>
+      paths.push(new URL(request.url()).pathname),
+    );
+
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
+    expect(paths.filter((path) => path.endsWith('.woff2'))).toHaveLength(2);
+    // Headless Chromium skips the favicon, so it is allowed, not required.
+    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
+      '/',
+    ]);
+  });
+
+  // covers: AC-6
+  test('at 320px the email address moves whole under its key, and back beside it at 330px', async ({
+    page,
+  }) => {
+    const row = elsewhereNav(page).getByRole('link', {
+      name: `email ${basics.email}`,
+      exact: true,
+    });
+    const boxes = async () => ({
+      key: await spans(row).nth(0).boundingBox(),
+      value: await spans(row).nth(1).boundingBox(),
+    });
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/');
+    const narrow = await boxes();
+    expect(narrow.value?.x).toBe(narrow.key?.x);
+    expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
+      (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
+    );
+    expect(narrow.value?.height ?? Infinity).toBeLessThan(40);
+    expect(
+      (narrow.value?.x ?? 0) + (narrow.value?.width ?? Infinity),
+    ).toBeLessThanOrEqual(320);
+    expect(await scrollsSideways(page)).toBe(false);
+
+    await page.setViewportSize({ width: 330, height: 640 });
+    const wide = await boxes();
+    expect(wide.value?.y).toBe(wide.key?.y);
+    expect(wide.value?.x ?? 0).toBeGreaterThan(
+      (wide.key?.x ?? 0) + (wide.key?.width ?? 0),
+    );
+  });
+
+  // covers: AC-4, AC-7
+  test('every row shows the accent ring on keyboard focus and turns its label accent-warm', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const names = [
+      'cv',
+      'github @jorgergo',
+      'linkedin in/jorgergo',
+      `email ${basics.email}`,
+    ];
+
+    await page.keyboard.press('Tab');
+    for (const name of names) {
+      await page.keyboard.press('Tab');
+      const row = page.getByRole('link', { name, exact: true });
+      await expect(row).toBeFocused();
+      await expect(row).toHaveCSS('outline-style', 'solid');
+      await expect(row).toHaveCSS('outline-width', '2px');
+      await expect(row).toHaveCSS('outline-offset', '3px');
+      await expect(row).toHaveCSS('outline-color', rgb('light', 'accent'));
+      await expect(spans(row).nth(0)).toHaveCSS('color', rgb('light', 'muted'));
+      await expect(spans(row).nth(1)).toHaveCSS(
+        'color',
+        rgb('light', 'accent-warm'),
+      );
+    }
+  });
+
+  // covers: AC-10
+  test('every Pages nav href answers 200 with redirects disabled', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const links = await pagesNav(page).getByRole('link').all();
+    const hrefs = await Promise.all(
+      links.map((link) => link.getAttribute('href')),
+    );
+
+    expect(hrefs).not.toEqual([]);
+    for (const href of hrefs) {
+      const response = await page.request.get(href ?? '', { maxRedirects: 0 });
+      expect(response.status(), href ?? 'missing href').toBe(200);
+    }
   });
 });
