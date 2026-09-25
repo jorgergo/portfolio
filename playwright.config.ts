@@ -39,8 +39,11 @@ export default defineConfig({
     },
     {
       // Astro allows one dev server per project, so reuse the one you have
-      // open; CI has none, so it starts one.
+      // open; CI has none, so it starts one. Under an AI agent, `astro dev`
+      // detaches into the background and exits, which Playwright reads as a
+      // crash, so keep it in the foreground (Astro's documented opt out).
       command: `${BIN}/astro dev`,
+      env: { ASTRO_DEV_BACKGROUND: '0' },
       url: `${DEV}/styleguide`,
       reuseExistingServer: true,
       timeout: 120_000,
