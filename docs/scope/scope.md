@@ -97,13 +97,13 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
 ### 6. CV page · in-progress
 Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
 **Done when:** every Harvard section renders from the content model; browser print or "Save as PDF" gives a clean document with no site chrome; it reads well on phone and desktop; it has its own title and description.
-spec [0005](../specs/0005-cv-page/index.md)
+spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `src/components/CvEntry.astro`, `src/components/KeyedList.astro`
 - [x] Design it (spec): `/architect cv page`
-- [ ] Build it: `/develop cv page`
-  - [ ] Helpers: `formatProfilePath`, `joinMeta`, `formatLanguage`, `groupConsecutive`, and `spanOf` in `src/lib/cv-format.ts` with their Vitest cases (AC-9)
-  - [ ] Page and pieces: `CvEntry`, `KeyedList`, the `printFooter` and `SiteFooter` `class` props, and `cv.astro` recomposed as header, contact line, and seven sections from `getCv()`, with the forced page test edits (AC-1 to AC-8, AC-10, AC-14)
-  - [ ] Style guide and `design.md`: both components full width in both schemes with their anatomy checks, eleven components, the new rules and spacing meanings (AC-13)
-  - [ ] Page tests and the gate: the `cv page` block in `e2e/site.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-10 to AC-12, AC-14)
+- [x] Build it: `/develop cv page`
+  - [x] Helpers: `formatProfilePath`, `joinMeta`, `formatLanguage`, `groupConsecutive`, and `spanOf` in `src/lib/cv-format.ts` with their Vitest cases (AC-9)
+  - [x] Page and pieces: `CvEntry`, `KeyedList`, the `printFooter` and `SiteFooter` `class` props, and `cv.astro` recomposed as header, contact line, and seven sections from `getCv()`, with the forced page test edits (AC-1 to AC-8, AC-10, AC-14)
+  - [x] Style guide and `design.md`: both components full width in both schemes with their anatomy checks, eleven components, the new rules and spacing meanings (AC-13)
+  - [x] Page tests and the gate: the `cv page` block in `e2e/site.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-10 to AC-12, AC-14)
 - [ ] Verify it: `/check verify cv page`
 - [ ] Test it: `/test cv page`
 - [ ] Review it (fresh model): `/check review cv page`
