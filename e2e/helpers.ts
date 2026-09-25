@@ -2,8 +2,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
+import { z } from 'astro/zod';
 import cvFile from '@/content/cv.json' with { type: 'json' };
 import { parseColorTokens, type ColorRole, type Scheme } from '@/lib/contrast';
+import { makeCvSchema } from '@/lib/cv-schema';
 
 // Shared by the page and style guide specs. The expected colours come from the
 // same global.css the site ships, so a token change never needs a test edit.
@@ -11,7 +13,10 @@ export const tokens = parseColorTokens(
   readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8'),
 );
 
-export const { basics } = cvFile.main;
+// The fixture parsed through the site's own schema, with the `image` stub the
+// Vitest schema tests use, so its type is what the pages read (`profiles` is
+// optional here as it is there) and invalid content fails the run up front.
+export const { basics } = makeCvSchema(() => z.string()).parse(cvFile.main);
 
 // Every file the build wrote, relative to dist/ (the site project builds first).
 export const distFiles = (): readonly string[] =>
