@@ -599,6 +599,26 @@ describe('makeCvSchema: card text (spec 0006)', () => {
     ]);
   });
 
+  // covers: spec 0006 AC-15
+  it('fails a name whose hyphen is U+2010, which the card draws as an empty box', () => {
+    // The package's latin range lists U+2000-206F, but the woff files have no
+    // glyph for U+2010 (a 2026-09-25 probe of their cmap and a rendered card).
+    expect(issues(withBasics({ name: 'Jean\u2010Luc Picard' }))).toEqual([
+      `basics.name: ${outside('\u2010')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15, AC-16
+  it('reports the cap, a missing letter, and a long part together in one build', () => {
+    const name = `Ł${chars(CV_LIMITS.namePart)} Lee Cruz`;
+
+    expect(issues(withBasics({ name }))).toEqual([
+      expect.stringMatching(/^basics\.name: Too big/),
+      `basics.name: ${outside('Ł')}`,
+      'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
+    ]);
+  });
+
   // covers: spec 0006 AC-16
   it('accepts a name part of exactly 24 characters', () => {
     expect(issues(withBasics({ name: `Ada ${chars(24)}` }))).toEqual([]);
@@ -630,5 +650,22 @@ describe('makeCvSchema: card text (spec 0006)', () => {
   // covers: spec 0006 AC-16
   it('counts no empty part at a doubled or trailing hyphen', () => {
     expect(issues(withBasics({ name: 'Ada--Lee-' }))).toEqual([]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('fails a long run joined by a no break space, where the card cannot break the line', () => {
+    // Satori never breaks at U+00A0, so these 28 characters draw as one line
+    // and run past the right padding.
+    expect(issues(withBasics({ name: `Ana\u00A0${chars(24)}` }))).toEqual([
+      expect.stringMatching(/^basics\.name: /),
+    ]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('counts a separately typed accent as its own character, with no normalizing', () => {
+    // e plus U+0308 is two code points; composed, it would be one ë.
+    expect(issues(withBasics({ name: `Ada ${chars(23)}e\u0308` }))).toEqual([
+      'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
+    ]);
   });
 });

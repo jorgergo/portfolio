@@ -1,3 +1,7 @@
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import satori from 'satori';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { parseColorTokens } from '@/lib/contrast';
@@ -5,11 +9,14 @@ import { CV_LIMITS } from '@/lib/cv-schema';
 import { renderPng, renderSvg } from '@/lib/render-image';
 import {
   APPLE_ICON,
+  CARD_GLYPHS,
   cardPalette,
   cardTree,
   FAVICON,
+  FONT_SUBSET,
   iconPalette,
   iconTree,
+  missingGlyphs,
   monogram,
   withDarkFills,
 } from '@/lib/share-card';
@@ -379,5 +386,60 @@ describe('renderPng: the share cards', () => {
     const { ruleTop } = await cardLayout(png);
 
     expect(await footerGap(png, ruleTop)).toBeLessThan(32);
+  });
+});
+
+describe('the card font: every character the schema accepts', () => {
+  // Satori asks loadAdditionalAsset for each run of characters no loaded font
+  // has a glyph for, then draws them as empty boxes. This collects them.
+  const unsupported = async (
+    weight: 400 | 500,
+    text: string,
+  ): Promise<readonly string[]> => {
+    const data = await readFile(
+      createRequire(join(process.cwd(), 'package.json')).resolve(
+        `@fontsource/ibm-plex-mono/files/ibm-plex-mono-${FONT_SUBSET}-${weight}-normal.woff`,
+      ),
+    );
+    const asked: string[] = [];
+    await satori(
+      {
+        type: 'div',
+        props: {
+          style: { display: 'flex', flexWrap: 'wrap', fontFamily: 'Font' },
+          children: text,
+        },
+      },
+      {
+        width: 1200,
+        height: 630,
+        fonts: [{ name: 'Font', data, weight, style: 'normal' }],
+        loadAdditionalAsset: (_, segment) => {
+          asked.push(segment);
+          return Promise.resolve([]);
+        },
+      },
+    );
+    return [...new Set(asked.flatMap((segment) => Array.from(segment)))];
+  };
+
+  const accepted = CARD_GLYPHS.flatMap(([from, to]) =>
+    Array.from({ length: to - from + 1 }, (_, i) =>
+      String.fromCodePoint(from + i),
+    ),
+  ).filter((char) => missingGlyphs(char).length === 0);
+
+  // covers: AC-15
+  it.each([400, 500] as const)(
+    'draws them all at weight %i, so a font update cannot open a gap',
+    async (weight) => {
+      expect(accepted.length).toBeGreaterThan(200);
+      expect(await unsupported(weight, accepted.join(''))).toEqual([]);
+    },
+  );
+
+  // covers: AC-15
+  it('would catch a gap: U+2010, which the schema refuses, is one', async () => {
+    expect(await unsupported(400, 'a\u2010b')).toEqual(['\u2010']);
   });
 });

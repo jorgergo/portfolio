@@ -70,10 +70,11 @@ const cardText = (max: number) =>
     }
   });
 
-// The name's parts break where Satori breaks a line: at whitespace and right
-// after a hyphen. Each must fit one card line.
+// The name's parts break where Satori breaks a line: at whitespace other than
+// the no break spaces (U+00A0, U+2007, U+202F, U+FEFF), and right after a
+// hyphen. Each must fit one card line.
 const nameParts = (name: string): readonly string[] =>
-  name.split(/\s+|(?<=-)/).filter(Boolean);
+  name.split(/[^\S\u00A0\u2007\u202F\uFEFF]+|(?<=-)/).filter(Boolean);
 
 const cardName = cardText(CV_LIMITS.name).superRefine((value, ctx) => {
   nameParts(value)

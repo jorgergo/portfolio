@@ -28,12 +28,41 @@ export const parseUnicodeRange = (list: string): readonly GlyphRange[] =>
     return [[Number.parseInt(from, 16), Number.parseInt(to, 16)] as const];
   });
 
-// The characters the card font draws, as the font package itself lists them.
+// The characters the font package lists for the subset's files.
 export const CARD_GLYPHS = parseUnicodeRange(unicode[FONT_SUBSET]);
+
+// Code points CARD_GLYPHS lists that the latin woff files (both weights) have
+// no glyph for, read from their cmap on 2026-09-25: Satori draws an empty box
+// for them. A render test fails when the font changes under this list.
+export const FONT_GAPS: readonly GlyphRange[] = [
+  [0x0001, 0x000c],
+  [0x000e, 0x001f],
+  [0x007f, 0x009f],
+  [0x0329, 0x0329],
+  [0x2000, 0x2012],
+  [0x2015, 0x2017],
+  [0x201b, 0x201b],
+  [0x201f, 0x2021],
+  [0x2023, 0x2025],
+  [0x2027, 0x2031],
+  [0x2034, 0x2038],
+  [0x203b, 0x2043],
+  [0x2045, 0x206f],
+  [0xfeff, 0xfeff],
+  [0xfffd, 0xfffd],
+];
+
+const within =
+  (ranges: readonly GlyphRange[]) =>
+  (point: number): boolean =>
+    ranges.some(([from, to]) => point >= from && point <= to);
+
+const listed = within(CARD_GLYPHS);
+const gap = within(FONT_GAPS);
 
 const drawable = (char: string): boolean => {
   const point = char.codePointAt(0) ?? -1;
-  return CARD_GLYPHS.some(([from, to]) => point >= from && point <= to);
+  return listed(point) && !gap(point);
 };
 
 // Each character of the text the card font cannot draw, once, in order.

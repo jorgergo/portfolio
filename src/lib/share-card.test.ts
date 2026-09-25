@@ -111,6 +111,19 @@ describe('missingGlyphs', () => {
   });
 
   // covers: AC-15
+  it.each([
+    ['\u2010', 'hyphen'],
+    ['\u2020', 'dagger'],
+    ['\u2030', 'per mille sign'],
+  ])(
+    'finds %j (%s) missing: the latin range lists it, the woff files lack it',
+    (char) => {
+      // A 2026-09-25 cmap probe of both weights found 163 such code points.
+      expect(missingGlyphs(`a${char}b`)).toEqual([char]);
+    },
+  );
+
+  // covers: AC-15
   it('returns a character outside the Basic Multilingual Plane whole', () => {
     expect(missingGlyphs('a\u{1F600}b')).toEqual(['\u{1F600}']);
   });
