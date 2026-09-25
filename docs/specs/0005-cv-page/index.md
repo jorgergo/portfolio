@@ -1,7 +1,7 @@
 # 0005. CV page composed as a Harvard style document
 
 **Date**: 2026-09-24
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
