@@ -107,6 +107,57 @@ Findings that set the spec:
 - **Satori writes colours exactly as given** (`fill="#f2ede3"`, `fill="#2b2722"` in the output), which is what lets the favicon switch to the dark tokens with a CSS rule keyed on those fills.
 - **Weight**: every card is 38 to 50 KB, far below the roughly 300 KB above which WhatsApp tends to drop a preview.
 
+## Card limits (added 2026-09-25, after the review)
+
+### Context
+
+The fresh model review of the build (`docs/reviews/2026-09-25-feat-metadata-share-cards.md`) found that the two caps protect the card's height but not its width or its glyphs, and `/debug` reproduced each gap through the real `renderPng`, `cardTree`, and fonts. Every one of these values passes the schema today:
+- `Łukasz Żółkiewski`: Ł and Ż draw as empty boxes (Plex Mono's missing glyph shape), not as nothing, as the first version of this spec claimed.
+- `Wolfeschlegelsteinhausenberger` (one 30 character part): cut off at the canvas edge, with ink at x = 1198.
+- A 49 character city: the footer's two sides draw on top of each other and past the right edge.
+- `Seán O’Brien` draws correctly: the curly apostrophe (`U+2019`) is outside Latin 1 but inside the `latin` file, so "Latin 1 only", the review's first suggestion, would reject real names the card draws fine.
+
+The site itself ships only the `latin` files for Plex Mono and Plex Sans (`astro.config.mjs`), and `@fontsource/ibm-plex-mono` exports `unicode.json`, the exact range of each subset file.
+
+### Options considered
+
+For letters the font lacks:
+- **Reject them in the schema** (chosen): cheap, loud, and keeps the card and the page on the same subset. Con: a name with such a letter cannot build until the subset grows.
+- **Load `latin-ext` on the cards only**: covers most European names. Con: the card then draws letters the page shows in a fallback font, and Cyrillic or Greek still draw boxes.
+- **Load `latin-ext` on the site and the cards**: widest coverage and consistent. Con: more font files for every visitor, for a name that needs none of them today (a spec 0003 change).
+- **Keep the boxes**: no work. Con: a broken card reaches LinkedIn silently and stays cached for about a week.
+
+For a name part too long for one line:
+- **Reject it in the schema** (chosen). Con: a real part over 24 letters cannot build.
+- **Break the word on the card** (`overflowWrap`): never clipped. Con: splits a name mid word.
+- **Shrink the name to fit**: keeps the word whole. Con: changes the balanced size you chose and needs a size rule.
+
+For the footer:
+- **City cap plus a build check** (chosen): each input fails where it is written. Con: two guards for one row.
+- **City cap only**. Con: a longer domain or path at Go live overlaps silently.
+- **Build check only**. Con: a content error surfaces in an endpoint, against the `AGENTS.md` rule that content errors fail through the schema.
+- **Let the city wrap**. Con: a second footer line can meet a three line name, which leaves only about 22px above the rule.
+
+### Rationale
+
+The spec's own principle was already "a longer value fails `pnpm build` through the schema" instead of a quiet break; the first version applied it to height only. These rules apply it to the three other ways content can break the card, each measured rather than estimated, and each at the place its input is written. Reading the allowed range from `unicode.json` with the same key that picks the font files removes the one way the rule could drift from what Satori actually loads.
+
+### Probe evidence
+
+Rendered on 2026-09-25 inside the repo's Vitest setup with Satori 0.33.5, sharp, the `latin` Plex Mono `.woff` files, and the light tokens, then removed:
+
+| Render | Result |
+|---|---|
+| Name part of 24 characters | one line, rightmost ink at x = 1113 (the padding starts at 1120) |
+| Name part of 25 characters | rightmost ink at x = 1157, past the padding |
+| `Wolfeschlegel-Steinhausenberg` | breaks after the hyphen onto two name lines, no ink past the padding |
+| Footer of 57, 59, 60 characters | blank run between the sides of 87, 53, 36px |
+| Footer of 61 and 62 characters | the sides touch (the widest gap left is the space inside `, MX`) |
+| `FONT_SUBSET = 'latin' satisfies keyof typeof unicode` under `astro check` | 0 errors; with `'latn'` it fails with ts(2551) and ts(1360), so the typed JSON import from the package works |
+| `'ÿ'.toUpperCase()`, `'ß'.toUpperCase()` in Node | `Ÿ` (`U+0178`, outside the `latin` subset) and `SS` (two letters) |
+
 ## Interview record
 
 Your picks, in order: title `name · role` for home; the CV description derived from `cv.json`; the card built from the site's own design; one card per page; the layout with name, role, and a footer row; light paper; a `J` favicon in Plex Mono; an SVG favicon plus a 180px Apple PNG; Satori at build time; `jorgergo.dev` for `site`; no sitemap or robots.txt for now; no JSON-LD for now; schema caps that fail the build; sharp as the rasterizer; the balanced size after the bench. After a cross check on Sonnet 5 you applied its seven fixes: the icon function signatures, the style guide sizes and alt text, the `toLocal` and `pngSize` test helpers, endpoints as sanctioned `getCv()` callers, the literal `SHARE_PAGES` rows, a proof that Satori loads inside Astro's build before anything depends on it, and endpoints that throw (failing `pnpm build`) on states the schema and tests rule out, instead of a quiet 500. You declined the Agent Skills (`vercel-labs/json-render@image`, `kostja94/marketing-skills@open-graph`, `agricidaniel/claude-seo@seo-image-gen`) and the MCP servers (`Jellypod-Inc/satori-mcp-server`, `opengraph-mcp`) that the registry search found, and chose no References section.
+
+After the review (2026-09-25) you chose, in order: update this spec in place; reject letters outside the card font in the schema; reject a name part over 24 characters in the schema; and guard the footer twice, with a 24 character city cap and a build check against the 60 character budget. A cross check on Sonnet then found seven gaps, and you applied all the recommended fixes: `superRefine` steps with no `abort`, the typed `unicode.json` import (proven under `astro check`), the exact name split, a footer test that enforces the 32px gap with a named scan method, counts in code points with no normalization, a `monogram` that never uppercases into an undrawable letter, and a footer message that also names the page path.
