@@ -87,7 +87,7 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
 - [ ] Build it: `/develop home page`
   - [x] Page and pieces: `SITE_NAV` and `formatRowNumber` in `src/lib/site-nav.ts`, `formatProfileHandle`, the `NavRow` component, and `index.astro` recomposed as name, bio, numbered menu, keyed social rows (AC-1 to AC-7)
   - [x] Helper tests: Vitest cases for the row number and the profile handles (AC-8)
-  - [ ] Style guide and `design.md`: `NavRow` examples, the new spacing meanings and prefix widths (AC-9)
+  - [x] Style guide and `design.md`: `NavRow` examples, the new spacing meanings and prefix widths (AC-9)
   - [ ] Page tests and the gate: the `/` case and the menu href check in `e2e/site.spec.ts`, the `NavRow` checks in `e2e/styleguide.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-7, AC-10)
 - [ ] Verify it: `/check verify home page`
 - [ ] Test it: `/test home page`

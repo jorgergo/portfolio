@@ -6,6 +6,7 @@ import Download from '@/components/icons/Download.astro';
 import GitHub from '@/components/icons/GitHub.astro';
 import LinkedIn from '@/components/icons/LinkedIn.astro';
 import Mail from '@/components/icons/Mail.astro';
+import NavRow from '@/components/NavRow.astro';
 import Prose from '@/components/Prose.astro';
 import SectionHeading from '@/components/SectionHeading.astro';
 import TagChip from '@/components/TagChip.astro';
@@ -56,7 +57,9 @@ type Step = {
   readonly bar: string;
 };
 const SPACING: readonly Step[] = [
-  { name: 'gap-2', use: 'icon to label', bar: 'w-2' },
+  { name: 'gap-1', use: 'between rows in a list', bar: 'w-1' },
+  { name: 'gap-2', use: 'icon to label, heading to subtitle', bar: 'w-2' },
+  { name: 'gap-4', use: 'a row prefix to its label', bar: 'w-4' },
   { name: 'gap-6', use: 'blocks inside a section', bar: 'w-6' },
   { name: 'pt-10', use: 'page top', bar: 'w-10' },
   { name: 'gap-14', use: 'between sections, main to footer', bar: 'w-14' },
@@ -239,6 +242,17 @@ const printValues = COLOR_ROLES.map(
               <li>
                 <IconLink href="/cv" icon="download" label="Download the CV" />
               </li>
+            </ul>
+            <ol class="flex flex-col gap-1">
+              <NavRow kind="number" href="/cv" prefix="01" label="cv" />
+            </ol>
+            <ul class="flex flex-col gap-1">
+              <NavRow
+                kind="key"
+                href="https://github.com/jorgergo"
+                prefix="github"
+                label="@jorgergo"
+              />
             </ul>
             <div class="flex flex-wrap gap-2">
               <Button href="/cv">Button as a link</Button>

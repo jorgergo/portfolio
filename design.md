@@ -16,7 +16,7 @@ Warm paper, not white. A single column of text set in a monospace face, the way 
 
 ### Build mandate
 
-You are a senior product designer shipping a small, finished site. Every page ships complete: real content from `src/content/cv.json`, a considered layout inside the column, the page shell (skip link, main, footer) from `BaseLayout`, and every state a control can be in (rest, hover, focus visible, active, print). Compose from the tokens and the eight components below. Do not add a colour, a font, an icon, a radius, or a shadow without a spec. Minimal is the point. Empty is not. A page with one heading and one paragraph is a placeholder, not a page.
+You are a senior product designer shipping a small, finished site. Every page ships complete: real content from `src/content/cv.json`, a considered layout inside the column, the page shell (skip link, main, footer) from `BaseLayout`, and every state a control can be in (rest, hover, focus visible, active, print). Compose from the tokens and the nine components below. Do not add a colour, a font, an icon, a radius, or a shadow without a spec. Minimal is the point. Empty is not. A page with one heading and one paragraph is a placeholder, not a page.
 
 ## Source
 
@@ -55,7 +55,7 @@ Tailwind's default steps plus one custom size, all rem based:
 | `text-lg font-medium`    | inner page h1 and the CV name                   |
 | `text-title font-medium` | the home page h1                                |
 
-Weights: 400 for everything, 500 for h1, names, positions, `b`, and `strong`. Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size.
+Weights: 400 for everything, 500 for h1, names, positions, `b`, and `strong`. Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size. A short standalone paragraph such as the home page bio takes `text-pretty`, so its last line never holds a lone word; running prose in `Prose` does not.
 
 ## Colour and contrast bar
 
@@ -65,14 +65,16 @@ WCAG 2.2 AA is the requirement of record, checked in light, dark, and print: eve
 
 Tailwind's numeric scale with fixed meanings:
 
-| Spacing            | Meaning                                           |
-| ------------------ | ------------------------------------------------- |
-| `gap-14`           | between sections, and between main and the footer |
-| `gap-6`            | between blocks inside a section                   |
-| `gap-2`            | between an icon and its label                     |
-| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`        |
+| Spacing            | Meaning                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `gap-14`           | between sections, and between main and the footer                                               |
+| `gap-6`            | between blocks inside a section                                                                 |
+| `gap-4`            | between a row's prefix and its label (`NavRow`)                                                 |
+| `gap-2`            | between an icon and its label, and between a heading and its subtitle (the home h1 and the bio) |
+| `gap-1`            | between rows in a list (`NavRow` rows)                                                          |
+| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`                                                      |
 
-The content column is `max-w-content`, centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
+A `NavRow` prefix is a fixed column on the same scale: `w-6` (24px) for a two digit number, `w-20` (80px) for a key of up to eight characters in Plex Mono (`linkedin` is the longest); a longer key needs a wider column and a spec line. The content column is `max-w-content`, centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
 
 ## Components and usage rules
 
@@ -85,6 +87,7 @@ All in `src/components/`, all semantic HTML, no UI library. Each takes a `class`
 - `SectionHeading`: a real `h2` (or `h3` with `as`) styled as an uppercase label. Pick the level from the document outline, never for the look.
 - `TagChip`: a hairline chip for skills and technologies. Prints as plain text.
 - `IconLink`: an icon with a visible label (`github`, `linkedin`, `mail`, `arrow-up-right`, `download`). An `https` link gets the arrow after its label on its own. Never an icon alone.
+- `NavRow`: one row of a menu, the `<li>` and its link together, so the parent writes only the `<ol>` or `<ul>` and the `<nav>` around it. A muted prefix, then the label: `kind="number"` is a two digit position (`01`) in a `w-6` column, hidden from assistive tech because the list already conveys it; `kind="key"` is a word (`github`, `email`) in a `w-20` column that stays in the link's name (`github @jorgergo`). An `https` link ends with the arrow. The row wraps rather than breaking a value mid word. Rows sit `gap-1` apart, and the lists carry no `role`. The home page menu is built from `SITE_NAV` in `src/lib/site-nav.ts`.
 - `Button`: one variant. A link when `href` is given, otherwise a real `<button>`. Use it for an action, not for navigation inside text. Hidden in print.
 - `Prose`: the sans surface for CV paragraphs and lists. It sets the face and wrapping only. The CV page adds rhythm with numeric utilities.
 - Icons (`src/components/icons/`): five outline icons on a 24 unit grid, stroke 2, `currentColor`, hidden from assistive tech. Sized with `size-5` (or `size-4` for the trailing arrow). A sixth icon is a decision.
@@ -113,7 +116,7 @@ The tokens take their paper values, `color-scheme` becomes `light`, the page get
 
 Do:
 
-- compose pages from the eight components and the tokens
+- compose pages from the nine components and the tokens
 - read colours through the utilities (`text-muted`, `border-line`)
 - keep one `h1` per page and a real heading order
 - keep every link in the same tab, with visible text
@@ -129,4 +132,4 @@ Don't:
 
 ## Responsive behaviour
 
-Mobile first. The column is fluid up to `max-w-content` with `px-6` side padding, so at 320px nothing scrolls sideways and long strings wrap. Interactive rows are at least `min-h-10` tall (`IconLink` and `Button`). The footer link is `min-h-6` because it is a text link inside a text line. The only breakpoint in use is `xs` (`--breakpoint-xs`), reserved for the CV page's column collapse. Use `sm` and up only when a spec asks. Body text stays `text-base` at every size. Both colour schemes are first class: check every page in light and dark, and in print preview.
+Mobile first. The column is fluid up to `max-w-content` with `px-6` side padding, so at 320px nothing scrolls sideways and long strings wrap. Interactive rows are at least `min-h-10` tall (`IconLink`, `NavRow`, and `Button`). The footer link is `min-h-6` because it is a text link inside a text line. The only breakpoint in use is `xs` (`--breakpoint-xs`), reserved for the CV page's column collapse. Use `sm` and up only when a spec asks. Body text stays `text-base` at every size. Both colour schemes are first class: check every page in light and dark, and in print preview.
