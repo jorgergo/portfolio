@@ -15,7 +15,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Content model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
-| 5 | Home page | Release 1 | in-progress |
+| 5 | Home page | Release 1 | done |
 | 6 | CV page | Release 1 | planned |
 | 7 | Metadata & share cards | Release 1 | planned |
 | 8 | Go live | Release 1 | planned |
@@ -79,7 +79,7 @@ spec [0003](../specs/0003-design-system/index.md) · code in `src/styles/global.
 
 ## Release 1: Home and CV live
 
-### 5. Home page · in-progress
+### 5. Home page · done
 Your name, one or two lines about you, and links to the CV and your socials. Nothing else, in the spirit of t3.gg.
 **Done when:** a visitor sees name, bio, and working links to the CV and socials; it reads well on phone and desktop in light and dark; it has its own title and description.
 spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`, `src/components/NavRow.astro`, `src/lib/site-nav.ts`, `src/lib/cv-format.ts`

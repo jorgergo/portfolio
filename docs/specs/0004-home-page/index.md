@@ -1,7 +1,7 @@
 # 0004. Home page composed as a numbered menu
 
 **Date**: 2026-09-24
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
