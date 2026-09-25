@@ -11,17 +11,19 @@ import {
   type CvEducation,
 } from '@/lib/cv';
 import {
+  firstUrl,
   formatDateRange,
-  formatLanguage,
   formatLocation,
   formatMonth,
   formatProfilePath,
+  formatSkillRows,
   groupConsecutive,
   joinMeta,
   sortByDateDesc,
   sortNewestFirst,
   spanOf,
   type Group,
+  type KeyedRow,
 } from '@/lib/cv-format';
 
 // Spec 0005: the whole CV as a Harvard style document from cv.json, read once.
@@ -60,10 +62,8 @@ const groupRoles = (roles: readonly Role[]): readonly Group<Role>[] =>
 const single = (group: Group<Role>): Role | undefined =>
   group.items.length === 1 ? group.items[0] : undefined;
 
-// A group links to the newest role that has a url and spans all its roles.
-const groupHref = (group: Group<Role>): string | undefined =>
-  group.items.find((role) => role.url !== undefined)?.url;
-
+// A group's company line spans all its roles and links to the newest role
+// that has a url (`firstUrl`, since the roles are sorted newest first).
 const groupMeta = (group: Group<Role>): string => {
   const span = spanOf(group.items);
   return formatDateRange(span.startDate, span.endDate);
@@ -77,31 +77,9 @@ const leadership = groupRoles(
   })),
 );
 
-type KeyedItem = { readonly key: string; readonly values: readonly string[] };
-const keyed = (group: {
-  readonly name: string;
-  readonly keywords: readonly string[];
-}): KeyedItem => ({ key: group.name, values: group.keywords });
-
-// Interest groups with no keywords gather into one last Interests row, so
-// `{ "name": "Chess" }` still shows.
-const interests = cv.interests ?? [];
-const keywordInterests = interests.flatMap(({ name, keywords = [] }) =>
-  keywords.length > 0 ? [{ key: name, values: keywords }] : [],
-);
-const namedInterests = interests.filter(
-  ({ keywords = [] }) => keywords.length === 0,
-);
-
-const skillItems: readonly KeyedItem[] = [
-  ...(cv.skills ?? []).map(keyed),
-  ...(cv.technologies ?? []).map(keyed),
-  { key: 'Languages', values: (cv.languages ?? []).map(formatLanguage) },
-  ...keywordInterests,
-  ...(namedInterests.length > 0
-    ? [{ key: 'Interests', values: namedInterests.map(({ name }) => name) }]
-    : []),
-];
+// Skills, technologies, languages, and interests as `KeyedList` rows, with
+// empty rows already dropped (spec 0005 AC-15).
+const skillRows = formatSkillRows(cv);
 
 type Section = { readonly id: string; readonly heading: string } & (
   | { readonly kind: 'summary'; readonly text: string }
@@ -112,7 +90,7 @@ type Section = { readonly id: string; readonly heading: string } & (
       readonly kind: 'certificates';
       readonly entries: readonly CvCertificate[];
     }
-  | { readonly kind: 'skills'; readonly items: readonly KeyedItem[] }
+  | { readonly kind: 'skills'; readonly items: readonly KeyedRow[] }
 );
 
 const hasContent = (section: Section): boolean => {
@@ -126,7 +104,7 @@ const hasContent = (section: Section): boolean => {
     case 'certificates':
       return section.entries.length > 0;
     case 'skills':
-      return section.items.some((item) => item.values.length > 0);
+      return section.items.length > 0;
   }
 };
 
@@ -166,7 +144,7 @@ const sections: readonly Section[] = [
     kind: 'skills',
     id: 'skills',
     heading: 'Skills & interests',
-    items: skillItems,
+    items: skillRows,
   },
 ];
 const rendered = sections.filter(hasContent);
@@ -236,7 +214,7 @@ const rendered = sections.filter(hasContent);
               <CvEntry
                 splittable
                 title={group.key}
-                href={groupHref(group)}
+                href={firstUrl(group.items)}
                 meta={groupMeta(group)}
               >
                 <div class="flex flex-col gap-4">

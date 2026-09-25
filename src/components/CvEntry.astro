@@ -8,7 +8,7 @@ interface Props {
   // A date or date range: short, fixed width, never wraps.
   meta?: string;
   subtitle?: string;
-  // A location: free text, may wrap.
+  // A location: free text, wraps only when it alone is wider than the line.
   aside?: string;
   summary?: string;
   highlights?: readonly string[];
@@ -43,6 +43,10 @@ const hasBody = summary !== undefined || highlights.length > 0;
 // the column's right edge.
 const pair =
   'flex flex-col gap-x-4 xs:flex-row xs:items-baseline xs:justify-between';
+// On line 2 the subtitle grows from zero width (`xs:flex-1`), so it wraps
+// beside the location, and the location keeps its width unless it alone
+// cannot fit. If both could shrink, flexbox would split the overflow between
+// them by width and break even a short location like `Toluca, Mexico`.
 ---
 
 <div
@@ -64,7 +68,7 @@ const pair =
   </div>
   {hasSecondLine && (
     <div class={pair}>
-      {subtitle !== undefined && <p>{subtitle}</p>}
+      {subtitle !== undefined && <p class="xs:flex-1">{subtitle}</p>}
       {aside !== undefined && (
         <span class="min-w-0 text-sm text-muted xs:ml-auto xs:text-right">
           {aside}
