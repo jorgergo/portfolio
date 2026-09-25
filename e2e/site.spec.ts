@@ -27,6 +27,8 @@ import {
   cv,
   distFile,
   distFiles,
+  headerBlocks,
+  missingHeaders,
   pngSize,
   rgb,
   scrollsSideways,
@@ -765,6 +767,53 @@ test.describe('icons', () => {
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toBe('image/png');
     expect(pngSize(await response.body())).toEqual({ width: 180, height: 180 });
+  });
+});
+
+// Spec 0007 AC-3: every `/*` header on the pages and the stylesheet, and the
+// year long cache on /_astro/ only, so a deploy shows at once. The expected
+// lines come from dist/_headers, the file Cloudflare serves them from.
+test.describe('response headers', () => {
+  const blocks = () => headerBlocks(distFile('_headers'));
+  const stylesheet = (): string =>
+    /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
+
+  // covers: spec 0007 AC-3
+  for (const path of ['/', '/cv']) {
+    test(`${path} carries every /* header and no immutable cache`, async ({
+      request,
+    }) => {
+      const expected = blocks()['/*'] ?? [];
+      const response = await request.get(path);
+      const actual = response.headersArray();
+
+      expect(expected.length).toBeGreaterThan(0);
+      expect(missingHeaders(actual, expected)).toEqual([]);
+      expect(
+        actual.filter(
+          ({ name, value }) =>
+            name.toLowerCase() === 'cache-control' &&
+            value.includes('immutable'),
+        ),
+      ).toEqual([]);
+    });
+  }
+
+  // covers: spec 0007 AC-3
+  test('the stylesheet carries every /* header and the /_astro/ cache', async ({
+    request,
+  }) => {
+    const { '/*': all = [], '/_astro/*': cache = [] } = blocks();
+    const response = await request.get(stylesheet());
+
+    expect(stylesheet()).not.toBe('');
+    expect(response.status()).toBe(200);
+    expect(cache).toEqual([
+      { name: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ]);
+    expect(missingHeaders(response.headersArray(), [...all, ...cache])).toEqual(
+      [],
+    );
   });
 });
 

@@ -6,4 +6,9 @@
     "not_found_handling": "404-page",
     "html_handling": "drop-trailing-slash",
   },
+  // Spec 0007: jorgergo.dev is the only address. The host matches `site` in
+  // astro.config.mjs, so the live bytes equal dist/ and the smoke check passes.
+  "routes": [{ "pattern": "jorgergo.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
 }
