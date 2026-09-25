@@ -15,3 +15,6 @@ referece-images
 # Playwright page test output
 /test-results/
 /playwright-report/
+
+# Agent research and tool discovery cache: local notes, not project docs
+docs/.agent-cache/
