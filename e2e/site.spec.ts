@@ -635,6 +635,18 @@ for (const { key, path } of SHARE_PAGES) {
       ]);
     });
 
+    // covers: spec 0006 AC-5
+    test('carries each share tag once and no other anywhere in the head, so no og:locale and no twitter:site', async ({
+      page,
+    }) => {
+      await page.goto(path);
+      const shareTags = (await headTags(page)).filter((tag) =>
+        /^(meta (og|twitter):|link canonical$)/.test(tag),
+      );
+
+      expect(shareTags).toEqual(SHARE_TAGS);
+    });
+
     // covers: spec 0006 AC-1, AC-3, AC-4, AC-5
     test('fills every tag from cv.json and site', async ({ page }) => {
       await page.goto(path);

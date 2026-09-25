@@ -101,6 +101,12 @@ describe('monogram', () => {
     expect(monogram(name)).toBe(letter);
   });
 
+  // covers: AC-8, AC-10
+  it('keeps a letter outside the Basic Multilingual Plane whole', () => {
+    // U+10428 is a two unit lowercase letter; its capital is U+10400.
+    expect(monogram('\u{10428}rin')).toBe('\u{10400}');
+  });
+
   // covers: AC-10
   it('returns undefined for an empty name', () => {
     expect(monogram('')).toBeUndefined();
@@ -242,5 +248,10 @@ describe('withDarkFills', () => {
   // covers: AC-10
   it('returns the input unchanged when there is no svg tag', () => {
     expect(withDarkFills('<path/>', swaps)).toBe('<path/>');
+  });
+
+  // covers: AC-10
+  it('returns the input unchanged when the svg tag never closes', () => {
+    expect(withDarkFills('<svg width="32"', swaps)).toBe('<svg width="32"');
   });
 });

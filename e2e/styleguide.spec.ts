@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { COLOR_ROLES, CONTRAST_PAIRS } from '@/lib/contrast';
+import { SHARE_IMAGE, SHARE_PAGES } from '@/lib/site-meta';
 import {
   axeViolations,
   focusables,
@@ -193,6 +194,40 @@ test.describe('style guide page', () => {
     for (const index of [0, 1]) {
       const box = await images.nth(index).boundingBox();
       expect((box?.height ?? 0) / (box?.width ?? 1)).toBeCloseTo(630 / 1200, 2);
+    }
+  });
+
+  // covers: spec 0006 AC-3, AC-5
+  test('keeps the Style guide title and carries no canonical or share tag', async ({
+    page,
+  }) => {
+    await open(page);
+
+    await expect(page).toHaveTitle('Style guide');
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+    await expect(page.locator('meta[property^="og:"]')).toHaveCount(0);
+    await expect(page.locator('meta[name^="twitter:"]')).toHaveCount(0);
+  });
+
+  // covers: spec 0006 AC-6, AC-8, AC-9
+  test('the card and icon endpoints answer under astro dev with their types', async ({
+    request,
+  }) => {
+    const files: readonly (readonly [path: string, type: string])[] = [
+      ...SHARE_PAGES.map(
+        ({ key }) => [`/og/${key}.png`, SHARE_IMAGE.type] as const,
+      ),
+      ['/favicon.svg', 'image/svg+xml'],
+      ['/apple-touch-icon.png', 'image/png'],
+    ];
+
+    for (const [path, type] of files) {
+      const response = await request.get(path);
+
+      expect(response.status(), path).toBe(200);
+      expect(response.headers()['content-type']?.split(';')[0], path).toBe(
+        type,
+      );
     }
   });
 });
