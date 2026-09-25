@@ -133,7 +133,7 @@ spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml
 - [x] Design it (spec): `/architect go live`
 - [ ] Build it: `/develop go live`
   - [x] Repo: `wrangler.jsonc` custom domain with workers.dev off, the `/_astro/*` cache block and its page test, the CI gate with Playwright and the `dist` artifact, `smoke.sh`, the `deploy` job with rollback, and the README (AC-1, AC-3 to AC-9, AC-16)
-  - [ ] Your setup: zone settings, the www record and Redirect Rule, the token and the `production` environment, then the bootstrap deploy from your Mac (AC-2, AC-10, AC-11)
+  - [x] Your setup: zone settings, the www record and Redirect Rule, the token and the `production` environment, then the bootstrap deploy from your Mac (AC-2, AC-10, AC-11)
   - [ ] Launch: merge, and watch `deploy` pass its smoke checks (AC-1, AC-2, AC-4, AC-5, AC-9)
   - [ ] Grow: mail records, the `main` ruleset, Search Console and Bing, and the share checks (AC-12 to AC-15)
 - [ ] Verify it: `/check verify go live`
