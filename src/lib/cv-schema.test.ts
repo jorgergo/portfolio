@@ -369,9 +369,11 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7
-  it('reads every cap from CV_LIMITS with the values in spec 0002', () => {
+  // covers: AC-7, spec 0006 AC-2
+  it('reads every cap from CV_LIMITS with the values in specs 0002 and 0006', () => {
     expect(CV_LIMITS).toEqual({
+      name: 30,
+      label: 27,
       bio: 160,
       summary: 500,
       entrySummary: 220,
@@ -381,16 +383,20 @@ describe('makeCvSchema: caps', () => {
     });
   });
 
-  // covers: AC-7
+  // covers: AC-7, spec 0006 AC-2
   it.each([
+    ['name', CV_LIMITS.name],
+    ['label', CV_LIMITS.label],
     ['bio', CV_LIMITS.bio],
     ['summary', CV_LIMITS.summary],
   ])('accepts basics.%s at exactly %i characters', (field, cap) => {
     expect(issues(withBasics({ [field]: chars(cap) }))).toEqual([]);
   });
 
-  // covers: AC-7
+  // covers: AC-7, spec 0006 AC-2
   it.each([
+    ['name', CV_LIMITS.name],
+    ['label', CV_LIMITS.label],
     ['bio', CV_LIMITS.bio],
     ['summary', CV_LIMITS.summary],
   ])('fails at basics.%s one character past %i', (field, cap) => {

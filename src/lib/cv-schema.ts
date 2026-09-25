@@ -3,7 +3,11 @@ import { z } from 'astro/zod';
 // Imports only astro/zod (never astro:content), so Vitest can load it without
 // Astro's Vite plugin. Shape and rules: spec 0002, Data model sketch.
 
+// name and label are sized to the share card (spec 0006): a 30 character name
+// wraps to two lines and a 27 character role still clears the footer rule.
 export const CV_LIMITS = {
+  name: 30,
+  label: 27,
   bio: 160,
   summary: 500,
   entrySummary: 220,
@@ -175,8 +179,8 @@ const interest = z.strictObject({
 export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
   z.strictObject({
     basics: z.strictObject({
-      name: text(),
-      label: text(),
+      name: text(CV_LIMITS.name),
+      label: text(CV_LIMITS.label),
       bio: text(CV_LIMITS.bio),
       summary: text(CV_LIMITS.summary),
       email: z.email(),
