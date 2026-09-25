@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Home page | Release 1 | done |
 | 6 | CV page | Release 1 | done |
-| 7 | Metadata & share cards | Release 1 | planned |
+| 7 | Metadata & share cards | Release 1 | in-progress |
 | 8 | Go live | Release 1 | planned |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
@@ -110,10 +110,20 @@ spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `sr
 - [x] Review it (fresh model): `/check review cv page`
 - [x] Document it: `/document cv page`
 
-### 7. Metadata & share cards · needs a decision
+### 7. Metadata & share cards · in-progress
 Proper titles and descriptions for every page, plus a clean preview image when someone shares your link on LinkedIn, X, or WhatsApp.
 **Done when:** each page has a unique title and description, and sharing either page shows a branded preview card.
-- [ ] Design it (spec): `/architect metadata & share cards`
+spec [0006](../specs/0006-metadata-share-cards/index.md)
+- [x] Design it (spec): `/architect metadata & share cards`
+- [ ] Build it: `/develop metadata & share cards`
+  - [ ] Page metadata: `site`, the name and role caps, `site-meta.ts` with its Vitest cases, the `share` prop in `BaseLayout`, and the three pages wired (AC-1 to AC-5, AC-10, AC-11)
+  - [ ] Share cards: Satori proven inside Astro's build first, then `share-card.ts`, `render-image.ts`, and the `/og/[page].png` endpoint (AC-6, AC-7, AC-10)
+  - [ ] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
+  - [ ] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
+- [ ] Verify it: `/check verify metadata & share cards`
+- [ ] Test it: `/test metadata & share cards`
+- [ ] Review it (fresh model): `/check review metadata & share cards`
+- [ ] Document it: `/document metadata & share cards`
 
 ### 8. Go live · needs a decision
 Put the site on the internet at your address, with every change deploying automatically.
@@ -154,6 +164,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - **Spanish version**: site and CV in Spanish as a second language · needs a decision
 - **Contact form**: message you from the site instead of just an email link · needs a decision
 - **Visitor analytics**: declined for now to stay light and banner free; if added later, pick a cookieless option so no consent banner is needed · needs a decision
+- **Sitemap and structured data**: a sitemap once the portfolio page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
 
 ## Legend
 
