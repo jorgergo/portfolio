@@ -9,9 +9,12 @@ import { parseColorTokens } from '@/lib/contrast';
 interface Props {
   title: string;
   description: string;
+  // false hides the footer on paper (the CV page, spec 0005); every other page
+  // keeps its city line in print (spec 0003).
+  printFooter?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, printFooter = true } = Astro.props;
 
 // The palette has one source: the theme-color metas are read from global.css,
 // never written by hand (spec 0003).
@@ -54,7 +57,7 @@ const { light, dark } = parseColorTokens(css);
       >
         <slot />
       </main>
-      <SiteFooter />
+      <SiteFooter class={printFooter ? undefined : 'print:hidden'} />
     </div>
   </body>
 </html>

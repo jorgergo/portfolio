@@ -1,7 +1,16 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
+  formatLocation,
+  formatProfilePath,
+  groupConsecutive,
+  joinMeta,
+  sortByDateDesc,
+  sortNewestFirst,
+} from '@/lib/cv-format';
+import {
   axeViolations,
   basics,
+  cv,
   distFile,
   distFiles,
   rgb,
@@ -21,6 +30,53 @@ type PageCase = {
   readonly stops: readonly string[];
 };
 
+// Spec 0005 AC-12: the /cv body links in document order, derived from the
+// fixture, so an entry that gains or loses a url in cv.json moves the expected
+// stops with it. A group links to its newest role that has a url.
+const linked = <T>(
+  items: readonly T[],
+  name: (item: T) => string,
+  url: (item: T) => string | undefined,
+): readonly string[] =>
+  items.flatMap((item) =>
+    url(item) === undefined ? [] : [`a "${name(item)}"`],
+  );
+
+const groupUrl = (group: {
+  readonly items: readonly { readonly url?: string | undefined }[];
+}): string | undefined =>
+  group.items.find((role) => role.url !== undefined)?.url;
+
+const CV_STOPS: readonly string[] = [
+  'a "Skip to content"',
+  `a "${basics.email}"`,
+  ...(basics.profiles ?? []).map(({ url }) => `a "${formatProfilePath(url)}"`),
+  ...linked(
+    groupConsecutive(sortNewestFirst(cv.work), (role) => role.name),
+    (group) => group.key,
+    groupUrl,
+  ),
+  ...linked(
+    sortNewestFirst(cv.education),
+    (entry) => entry.institution,
+    (entry) => entry.url,
+  ),
+  ...linked(
+    groupConsecutive(
+      sortNewestFirst(cv.volunteer ?? []),
+      (role) => role.organization,
+    ),
+    (group) => group.key,
+    groupUrl,
+  ),
+  ...linked(
+    sortByDateDesc(cv.certificates ?? []),
+    (certificate) => certificate.name,
+    (certificate) => certificate.url,
+  ),
+  'a "← home"',
+];
+
 const PAGES: readonly PageCase[] = [
   {
     path: '/',
@@ -38,10 +94,10 @@ const PAGES: readonly PageCase[] = [
   },
   {
     path: '/cv',
-    title: 'CV',
+    title: `CV · ${basics.name}`,
     description: basics.bio,
     h1: basics.name,
-    stops: ['a "Skip to content"', 'a "← home"'],
+    stops: CV_STOPS,
   },
   {
     path: '/missing',
@@ -299,9 +355,12 @@ test.describe('footer home link', () => {
   test('shows the 2px accent ring offset 3px on keyboard focus', async ({
     page,
   }) => {
-    await page.goto('/cv');
+    // On /missing the footer link is the third stop, after the skip link and
+    // the TextLink (on /cv the contact links come first, spec 0005).
+    await page.goto('/missing');
     const home = page.getByRole('contentinfo').getByRole('link');
 
+    await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
 
@@ -374,9 +433,12 @@ test.describe('type and layout', () => {
   }
 
   // covers: AC-4
-  test('the CV label is meta text: text-sm in muted', async ({ page }) => {
+  test('the CV label line is meta text: text-sm in muted', async ({ page }) => {
     await page.goto('/cv');
-    const label = page.getByText(basics.label, { exact: true });
+    const label = page.getByText(
+      joinMeta(basics.label, formatLocation(basics.location)),
+      { exact: true },
+    );
 
     await expect(label).toHaveCSS('font-size', '14px');
     await expect(label).toHaveCSS('color', rgb('light', 'muted'));
