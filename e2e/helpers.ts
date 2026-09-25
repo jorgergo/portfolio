@@ -6,6 +6,7 @@ import { z } from 'astro/zod';
 import cvFile from '@/content/cv.json' with { type: 'json' };
 import { parseColorTokens, type ColorRole, type Scheme } from '@/lib/contrast';
 import { makeCvSchema } from '@/lib/cv-schema';
+import astroConfig from '../astro.config.mjs';
 
 // Shared by the page and style guide specs. The expected colours come from the
 // same global.css the site ships, so a token change never needs a test edit.
@@ -18,6 +19,35 @@ export const tokens = parseColorTokens(
 // optional here as it is there) and invalid content fails the run up front.
 export const cv = makeCvSchema(() => z.string()).parse(cvFile.main);
 export const { basics } = cv;
+
+// The `site` every canonical and card URL derives from (spec 0006), read from
+// the config, so Go live changes one value and no test. A missing site fails
+// the run up front.
+export const site = new URL(astroConfig.site ?? '');
+
+// An absolute URL from a page (a canonical, an og:image) with the test
+// server's origin in place of the site's, keeping the path and query.
+export const toLocal = (url: string, base: string): string => {
+  const { pathname, search } = new URL(url);
+  return new URL(`${pathname}${search}`, base).href;
+};
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+// A PNG's size from its IHDR chunk, the first data block of the file: width
+// and height as big endian numbers at bytes 16 to 23. Undefined when the bytes
+// are not a PNG, so no image library is needed here.
+export const pngSize = (
+  bytes: Uint8Array,
+): { readonly width: number; readonly height: number } | undefined => {
+  if (
+    bytes.length < 24 ||
+    PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
+  )
+    return undefined;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+};
 
 // Every file the build wrote, relative to dist/ (the site project builds first).
 export const distFiles = (): readonly string[] =>

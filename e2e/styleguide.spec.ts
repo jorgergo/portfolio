@@ -143,6 +143,58 @@ test.describe('style guide page', () => {
 
     expect(await scrollsSideways(page)).toBe(false);
   });
+
+  // covers: spec 0006 AC-12
+  test('shows the built share cards and icons, every image loaded', async ({
+    page,
+  }) => {
+    await open(page);
+    const section = page.locator('section').filter({
+      has: page.getByRole('heading', {
+        level: 2,
+        name: 'Share cards and icons',
+      }),
+    });
+    const images = section.getByRole('img');
+
+    await expect(images).toHaveCount(5);
+    expect(
+      await images.evaluateAll((all) =>
+        all.map((el) => el.getAttribute('alt')),
+      ),
+    ).toEqual([
+      'Home share card',
+      'CV share card',
+      'Favicon at 16px',
+      'Favicon at 32px',
+      'Apple touch icon at 60px',
+    ]);
+    for (const image of await images.all()) {
+      await expect
+        .poll(() =>
+          image.evaluate(
+            (el) =>
+              el instanceof HTMLImageElement &&
+              el.complete &&
+              el.naturalWidth > 0,
+          ),
+        )
+        .toBe(true);
+    }
+    for (const [index, size] of [
+      [2, 16],
+      [3, 32],
+      [4, 60],
+    ] as const) {
+      const box = await images.nth(index).boundingBox();
+      expect([box?.width, box?.height]).toEqual([size, size]);
+    }
+    // The cards keep their 1200×630 shape at column width.
+    for (const index of [0, 1]) {
+      const box = await images.nth(index).boundingBox();
+      expect((box?.height ?? 0) / (box?.width ?? 1)).toBeCloseTo(630 / 1200, 2);
+    }
+  });
 });
 
 test.describe('TextLink', () => {
