@@ -90,7 +90,7 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
   - [x] Style guide and `design.md`: `NavRow` examples, the new spacing meanings and prefix widths (AC-9)
   - [x] Page tests and the gate: the `/` case and the menu href check in `e2e/site.spec.ts`, the `NavRow` checks in `e2e/styleguide.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-7, AC-10)
 - [ ] Verify it: `/check verify home page`
-- [ ] Test it: `/test home page`
+- [x] Test it: `/test home page`
 - [ ] Review it (fresh model): `/check review home page`
 - [ ] Document it: `/document home page`
 
