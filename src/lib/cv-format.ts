@@ -76,3 +76,80 @@ export const formatProfileHandle = (profile: {
   readonly network: Network;
   readonly username: string;
 }): string => HANDLE_RULES[profile.network](profile.username);
+
+// Spec 0005: the CV page helpers. Pure, no clock or locale.
+
+const META_SEPARATOR = ' · ';
+
+// `https://www.linkedin.com/in/jorgergo/` → `linkedin.com/in/jorgergo`: the
+// host without a leading `www.` plus the path without a trailing `/`; scheme,
+// port, query, and hash dropped. A string the URL parser rejects (the schema
+// never lets one through) comes back unchanged instead of throwing.
+export const formatProfilePath = (url: string): string => {
+  if (!URL.canParse(url)) return url;
+  const { hostname, pathname } = new URL(url);
+  return `${hostname.replace(/^www\./, '')}${pathname.replace(/\/$/, '')}`;
+};
+
+// The defined, non empty parts joined by a spaced middle dot.
+export const joinMeta = (...parts: readonly (string | undefined)[]): string =>
+  parts
+    .filter((part): part is string => part !== undefined && part !== '')
+    .join(META_SEPARATOR);
+
+// `English (Fluent, C2)`, `Spanish (Native)`.
+export const formatLanguage = (language: {
+  readonly language: string;
+  readonly fluency: string;
+  readonly level?: string | undefined;
+}): string => {
+  const detail = [language.fluency, language.level]
+    .filter((part): part is string => part !== undefined)
+    .join(', ');
+  return `${language.language} (${detail})`;
+};
+
+export type Group<T> = {
+  readonly key: string;
+  readonly items: readonly [T, ...T[]];
+};
+
+// Adjacent items with the same key form one group, in input order, each group
+// non empty; the same key appearing again later starts a new group. Sort
+// first when adjacency should follow date order.
+export const groupConsecutive = <T>(
+  items: readonly T[],
+  key: (item: T) => string,
+): readonly Group<T>[] =>
+  items.reduce<readonly Group<T>[]>((groups, item) => {
+    const itemKey = key(item);
+    const last = groups.at(-1);
+    return last !== undefined && last.key === itemKey
+      ? [...groups.slice(0, -1), { key: itemKey, items: [...last.items, item] }]
+      : [...groups, { key: itemKey, items: [item] }];
+  }, []);
+
+type Span = {
+  readonly startDate: string;
+  readonly endDate?: string | undefined;
+};
+
+// The earliest start and the latest end of a non empty group of roles; the end
+// stays undefined (an open span) when any role is current.
+export const spanOf = <T extends Span>(items: readonly [T, ...T[]]): Span => {
+  const [first, ...rest] = items;
+  const startDate = rest.reduce(
+    (earliest, item) => (item.startDate < earliest ? item.startDate : earliest),
+    first.startDate,
+  );
+  const endDate = rest.reduce<string | undefined>(
+    (latest, item) =>
+      latest === undefined || item.endDate === undefined
+        ? undefined
+        : item.endDate > latest
+          ? item.endDate
+          : latest,
+    first.endDate,
+  );
+  return endDate === undefined ? { startDate } : { startDate, endDate };
+};

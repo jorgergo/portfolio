@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatDateRange,
+  formatLanguage,
   formatLocation,
   formatMonth,
   formatProfileHandle,
+  formatProfilePath,
+  groupConsecutive,
+  joinMeta,
   sortByDateDesc,
   sortNewestFirst,
+  spanOf,
 } from '@/lib/cv-format';
 import type { Network } from '@/lib/cv-schema';
 
@@ -219,5 +224,158 @@ describe('formatProfileHandle', () => {
     expect(
       formatProfileHandle({ network: 'GitHub', username: 'JorgeRGO' }),
     ).toBe('@JorgeRGO');
+  });
+});
+
+describe('formatProfilePath', () => {
+  // covers: spec 0005 AC-9
+  it.each([
+    ['https://www.linkedin.com/in/jorgergo/', 'linkedin.com/in/jorgergo'],
+    ['https://github.com/jorgergo', 'github.com/jorgergo'],
+  ])('formats %s as %s', (url, expected) => {
+    expect(formatProfilePath(url)).toBe(expected);
+  });
+
+  // covers: spec 0005 AC-9
+  it('drops the scheme, port, query, and hash', () => {
+    expect(
+      formatProfilePath('https://www.example.com:8443/a/b/?tab=1#top'),
+    ).toBe('example.com/a/b');
+  });
+
+  // covers: spec 0005 AC-9
+  it('shows a bare host with no trailing slash', () => {
+    expect(formatProfilePath('https://example.com/')).toBe('example.com');
+  });
+
+  it('returns a string the URL parser rejects unchanged', () => {
+    expect(formatProfilePath('not a url')).toBe('not a url');
+  });
+});
+
+describe('joinMeta', () => {
+  // covers: spec 0005 AC-9
+  it('joins two parts with a spaced middle dot', () => {
+    expect(joinMeta('Aug 2025 – Present', 'Remote')).toBe(
+      'Aug 2025 – Present · Remote',
+    );
+  });
+
+  // covers: spec 0005 AC-9
+  it('skips undefined and empty parts', () => {
+    expect(joinMeta('B.S., CS', undefined)).toBe('B.S., CS');
+    expect(joinMeta(undefined, 'Toluca, Mexico', '')).toBe('Toluca, Mexico');
+  });
+
+  it('returns an empty string when every part is missing', () => {
+    expect(joinMeta(undefined, '')).toBe('');
+  });
+});
+
+describe('formatLanguage', () => {
+  // covers: spec 0005 AC-9
+  it('shows the fluency and the level in parentheses', () => {
+    expect(
+      formatLanguage({ language: 'English', fluency: 'Fluent', level: 'C2' }),
+    ).toBe('English (Fluent, C2)');
+  });
+
+  // covers: spec 0005 AC-9
+  it('shows the fluency alone when there is no level', () => {
+    expect(formatLanguage({ language: 'Spanish', fluency: 'Native' })).toBe(
+      'Spanish (Native)',
+    );
+  });
+});
+
+describe('groupConsecutive', () => {
+  type Role = { readonly name: string; readonly position: string };
+  const byName = (role: Role): string => role.name;
+
+  // covers: spec 0005 AC-9
+  it('keeps two adjacent roles at one company in one group', () => {
+    const roles: readonly Role[] = [
+      { name: 'Ford', position: 'Developer' },
+      { name: 'Ford', position: 'Engineer' },
+      { name: 'Liverpool', position: 'Intern' },
+    ];
+
+    expect(groupConsecutive(roles, byName)).toEqual([
+      { key: 'Ford', items: [roles[0], roles[1]] },
+      { key: 'Liverpool', items: [roles[2]] },
+    ]);
+  });
+
+  // covers: spec 0005 AC-9
+  it('starts a new group when the same key appears again later', () => {
+    const roles: readonly Role[] = [
+      { name: 'Ford', position: 'Developer' },
+      { name: 'Liverpool', position: 'Intern' },
+      { name: 'Ford', position: 'Engineer' },
+    ];
+
+    expect(groupConsecutive(roles, byName).map(({ key }) => key)).toEqual([
+      'Ford',
+      'Liverpool',
+      'Ford',
+    ]);
+  });
+
+  // covers: spec 0005 AC-9
+  it('returns an empty list for an empty list', () => {
+    expect(groupConsecutive([], byName)).toEqual([]);
+  });
+
+  // covers: spec 0005 AC-9
+  it('never mutates the input', () => {
+    const roles: readonly Role[] = Object.freeze([
+      { name: 'Ford', position: 'Developer' },
+      { name: 'Ford', position: 'Engineer' },
+    ]);
+
+    const groups = groupConsecutive(roles, byName);
+
+    expect(roles.map(byName)).toEqual(['Ford', 'Ford']);
+    expect(groups[0]?.items).not.toBe(roles);
+  });
+});
+
+describe('spanOf', () => {
+  // covers: spec 0005 AC-9
+  it('leaves the end open when any role is current', () => {
+    expect(
+      spanOf([
+        { startDate: '2025-08' },
+        { startDate: '2025-01', endDate: '2025-07' },
+      ]),
+    ).toEqual({ startDate: '2025-01' });
+  });
+
+  // covers: spec 0005 AC-9
+  it('takes the earliest start and the latest end when every role is closed', () => {
+    expect(
+      spanOf([
+        { startDate: '2025-08', endDate: '2026-06' },
+        { startDate: '2025-01', endDate: '2025-07' },
+      ]),
+    ).toEqual({ startDate: '2025-01', endDate: '2026-06' });
+  });
+
+  // covers: spec 0005 AC-9
+  it('returns a single role as its own span', () => {
+    expect(spanOf([{ startDate: '2023-03', endDate: '2023-05' }])).toEqual({
+      startDate: '2023-03',
+      endDate: '2023-05',
+    });
+  });
+
+  // covers: spec 0005 AC-9
+  it('keeps the latest end even when it belongs to the earlier start', () => {
+    expect(
+      spanOf([
+        { startDate: '2024-01', endDate: '2024-06' },
+        { startDate: '2023-01', endDate: '2025-01' },
+      ]),
+    ).toEqual({ startDate: '2023-01', endDate: '2025-01' });
   });
 });
