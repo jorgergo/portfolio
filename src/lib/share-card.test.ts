@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import cvFile from '@/content/cv.json';
 import {
   parseColorTokens,
   type ColorRole,
@@ -22,8 +21,16 @@ import css from '@/styles/global.css?raw';
 
 // Spec 0006. The trees are checked as data (no rendering): the words in
 // reading order, the colours, and the sizes from the Card design section.
+// Today's words are inline, so a cv.json edit needs no test edit.
 const { light, dark } = parseColorTokens(css);
-const cv: MetaCv = cvFile.main;
+const cv: MetaCv = {
+  basics: {
+    name: 'Jorge González Ozorno',
+    label: 'Full Stack Developer',
+    bio: 'Builds internal platforms.',
+    location: { city: 'Toluca', countryCode: 'MX' },
+  },
+};
 const site = new URL('https://jorgergo.dev');
 
 const without = (scheme: ColorScheme, role: ColorRole): ColorScheme =>

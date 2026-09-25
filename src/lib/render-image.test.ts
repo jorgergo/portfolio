@@ -1,6 +1,5 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import cvFile from '@/content/cv.json';
 import { parseColorTokens } from '@/lib/contrast';
 import { CV_LIMITS } from '@/lib/cv-schema';
 import { renderPng, renderSvg } from '@/lib/render-image';
@@ -25,9 +24,17 @@ import css from '@/styles/global.css?raw';
 // Spec 0006 through the real fonts, Satori, and sharp, composed the way the
 // three endpoints compose them (the endpoints import astro:content, so Vitest
 // cannot call them). These check what the files look like, which the pure
-// trees in share-card.test.ts cannot.
+// trees in share-card.test.ts cannot. Today's words are inline (a name that
+// fits one line), so a cv.json edit needs no test edit.
 const { light, dark } = parseColorTokens(css);
-const cv: MetaCv = cvFile.main;
+const cv: MetaCv = {
+  basics: {
+    name: 'Jorge González Ozorno',
+    label: 'Full Stack Developer',
+    bio: 'Builds internal platforms.',
+    location: { city: 'Toluca', countryCode: 'MX' },
+  },
+};
 const site = new URL('https://jorgergo.dev');
 
 const cardColours = cardPalette(light);

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import cvFile from '@/content/cv.json';
 import { CV_LIMITS } from '@/lib/cv-schema';
 import {
   cardContent,
@@ -13,9 +12,21 @@ import {
   type MetaCv,
 } from '@/lib/site-meta';
 
-// Spec 0006. The committed cv.json gives today's strings; a fixture varies the
-// optional sections and the caps.
-const cv: MetaCv = cvFile.main;
+// Spec 0006. `cv` holds today's words inline rather than reading cv.json, so a
+// content edit needs no test edit (the e2e cases check the real file); a
+// second fixture varies the optional sections and the caps.
+const group = { name: 'Frontend', keywords: ['Astro'] } as const;
+
+const cv: MetaCv = {
+  basics: {
+    name: 'Jorge González Ozorno',
+    label: 'Full Stack Developer',
+    bio: 'Builds internal platforms.',
+    location: { city: 'Toluca', countryCode: 'MX' },
+  },
+  skills: [group],
+  technologies: [group],
+};
 const site = new URL('https://jorgergo.dev');
 
 const fixture: MetaCv = {
@@ -31,8 +42,6 @@ const withSections = (patch: Partial<MetaCv>): MetaCv => ({
   ...fixture,
   ...patch,
 });
-
-const group = { name: 'Frontend', keywords: ['Astro'] } as const;
 
 describe('SHARE_PAGES', () => {
   // covers: AC-10
