@@ -3,15 +3,18 @@ import NavRow from '@/components/NavRow.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 import { formatProfileHandle } from '@/lib/cv-format';
+import { pageMeta } from '@/lib/site-meta';
 import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 
 // Spec 0004: the name, the bio, the pages that exist as numbered rows, and the
-// profiles and email as keyed rows. No avatar, no motion, no script.
-const { basics } = await getCv();
+// profiles and email as keyed rows. No avatar, no motion, no script. The head
+// comes from the `home` row (spec 0006).
+const cv = await getCv();
+const { basics } = cv;
 const profiles = basics.profiles ?? [];
 ---
 
-<BaseLayout title={basics.name} description={basics.bio}>
+<BaseLayout {...pageMeta('home', cv, Astro.site)}>
   <header class="flex flex-col gap-2">
     <h1 class="text-title font-medium">{basics.name}</h1>
     <p class="text-pretty">{basics.bio}</p>

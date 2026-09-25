@@ -23,6 +23,10 @@ const omit = (data: Data, key: string): Data =>
 
 const chars = (count: number): string => 'a'.repeat(count);
 
+// A name of `count` characters in three parts, so no part fills a card line.
+const nameOf = (count: number): string =>
+  `${chars(10)} ${chars(10)} ${chars(count - 22)}`;
+
 const location = { city: 'Monterrey', countryCode: 'MX' } as const;
 
 const basics = {
@@ -369,9 +373,13 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7
-  it('reads every cap from CV_LIMITS with the values in spec 0002', () => {
+  // covers: AC-7, spec 0006 AC-2
+  it('reads every cap from CV_LIMITS with the values in specs 0002 and 0006', () => {
     expect(CV_LIMITS).toEqual({
+      name: 30,
+      namePart: 24,
+      label: 27,
+      city: 24,
       bio: 160,
       summary: 500,
       entrySummary: 220,
@@ -381,21 +389,36 @@ describe('makeCvSchema: caps', () => {
     });
   });
 
-  // covers: AC-7
+  // covers: AC-7, spec 0006 AC-2
   it.each([
-    ['bio', CV_LIMITS.bio],
-    ['summary', CV_LIMITS.summary],
-  ])('accepts basics.%s at exactly %i characters', (field, cap) => {
-    expect(issues(withBasics({ [field]: chars(cap) }))).toEqual([]);
+    ['name', CV_LIMITS.name, nameOf],
+    ['label', CV_LIMITS.label, chars],
+    ['bio', CV_LIMITS.bio, chars],
+    ['summary', CV_LIMITS.summary, chars],
+  ])('accepts basics.%s at exactly %i characters', (field, cap, make) => {
+    expect(issues(withBasics({ [field]: make(cap) }))).toEqual([]);
   });
 
-  // covers: AC-7
+  // covers: AC-7, spec 0006 AC-2
   it.each([
-    ['bio', CV_LIMITS.bio],
-    ['summary', CV_LIMITS.summary],
-  ])('fails at basics.%s one character past %i', (field, cap) => {
-    expect(issues(withBasics({ [field]: chars(cap + 1) }))).toEqual([
+    ['name', CV_LIMITS.name, nameOf],
+    ['label', CV_LIMITS.label, chars],
+    ['bio', CV_LIMITS.bio, chars],
+    ['summary', CV_LIMITS.summary, chars],
+  ])('fails at basics.%s one character past %i', (field, cap, make) => {
+    expect(issues(withBasics({ [field]: make(cap + 1) }))).toEqual([
       expect.stringMatching(`^basics.${field}:`),
+    ]);
+  });
+
+  // covers: spec 0006 AC-17
+  it('accepts basics.location.city at exactly 24 characters and fails at 25', () => {
+    const withCity = (city: string): Data =>
+      withBasics({ location: { ...location, city } });
+
+    expect(issues(withCity(chars(CV_LIMITS.city)))).toEqual([]);
+    expect(issues(withCity(chars(CV_LIMITS.city + 1)))).toEqual([
+      expect.stringMatching(/^basics\.location\.city:/),
     ]);
   });
 
@@ -527,4 +550,122 @@ describe('regionName', () => {
       expect(regionName(code)).toBeUndefined();
     },
   );
+});
+
+describe('makeCvSchema: card text (spec 0006)', () => {
+  const outside = (characters: string): string =>
+    `characters outside the card font (latin): ${characters}; see spec 0006`;
+
+  const withCity = (city: string): Data =>
+    withBasics({ location: { ...location, city } });
+
+  // covers: spec 0006 AC-15
+  it('fails a name with letters the card font lacks, naming each once', () => {
+    expect(issues(withBasics({ name: 'Łukasz Żółkiewski' }))).toEqual([
+      `basics.name: ${outside('Ł, Ż, ł')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15
+  it.each(['Seán O’Brien', 'Zoë'])(
+    'accepts the name %j, whose letters the card font draws',
+    (name) => {
+      expect(issues(withBasics({ name }))).toEqual([]);
+    },
+  );
+
+  // covers: spec 0006 AC-15
+  it('fails a role with letters the card font lacks', () => {
+    expect(issues(withBasics({ label: 'Разработчик' }))).toEqual([
+      `basics.label: ${outside('Р, а, з, р, б, о, т, ч, и, к')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15
+  it('fails a Cyrillic city', () => {
+    expect(issues(withCity('Москва'))).toEqual([
+      `basics.location.city: ${outside('М, о, с, к, в, а')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15
+  it('reports both problems when a name is over its cap and holds a missing letter', () => {
+    const name = `Łukasz ${chars(CV_LIMITS.namePart)}`;
+
+    expect(name).toHaveLength(CV_LIMITS.name + 1);
+    expect(issues(withBasics({ name }))).toEqual([
+      expect.stringMatching(/^basics\.name: Too big/),
+      `basics.name: ${outside('Ł')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15
+  it('fails a name whose hyphen is U+2010, which the card draws as an empty box', () => {
+    // The package's latin range lists U+2000-206F, but the woff files have no
+    // glyph for U+2010 (a 2026-09-25 probe of their cmap and a rendered card).
+    expect(issues(withBasics({ name: 'Jean\u2010Luc Picard' }))).toEqual([
+      `basics.name: ${outside('\u2010')}`,
+    ]);
+  });
+
+  // covers: spec 0006 AC-15, AC-16
+  it('reports the cap, a missing letter, and a long part together in one build', () => {
+    const name = `Ł${chars(CV_LIMITS.namePart)} Lee Cruz`;
+
+    expect(issues(withBasics({ name }))).toEqual([
+      expect.stringMatching(/^basics\.name: Too big/),
+      `basics.name: ${outside('Ł')}`,
+      'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
+    ]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('accepts a name part of exactly 24 characters', () => {
+    expect(issues(withBasics({ name: `Ada ${chars(24)}` }))).toEqual([]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('fails a name part of 25 characters, giving its length', () => {
+    expect(issues(withBasics({ name: `Ada ${chars(25)}` }))).toEqual([
+      'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
+    ]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('splits a part right after a hyphen, where the card breaks the line', () => {
+    const name = 'Wolfeschlegel-Steinhausenberg';
+
+    expect(name).toHaveLength(29);
+    expect(issues(withBasics({ name }))).toEqual([]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('keeps the hyphen with the part before it', () => {
+    // The hyphen stays on the line, so 24 letters plus it need 25 columns.
+    expect(issues(withBasics({ name: `${chars(24)}-Lee` }))).toEqual([
+      expect.stringMatching(/^basics\.name: a name part holds 25 characters/),
+    ]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('counts no empty part at a doubled or trailing hyphen', () => {
+    expect(issues(withBasics({ name: 'Ada--Lee-' }))).toEqual([]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('fails a long run joined by a no break space, where the card cannot break the line', () => {
+    // Satori never breaks at U+00A0, so these 28 characters draw as one line
+    // and run past the right padding.
+    expect(issues(withBasics({ name: `Ana\u00A0${chars(24)}` }))).toEqual([
+      expect.stringMatching(/^basics\.name: /),
+    ]);
+  });
+
+  // covers: spec 0006 AC-16
+  it('counts a separately typed accent as its own character, with no normalizing', () => {
+    // e plus U+0308 is two code points; composed, it would be one ë.
+    expect(issues(withBasics({ name: `Ada ${chars(23)}e\u0308` }))).toEqual([
+      'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
+    ]);
+  });
 });

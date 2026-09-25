@@ -14,14 +14,26 @@ import {
   type Group,
 } from '@/lib/cv-format';
 import {
+  formatPageTitle,
+  OG_TYPE,
+  pageMeta,
+  SHARE_IMAGE,
+  SHARE_PAGES,
+  TWITTER_CARD,
+} from '@/lib/site-meta';
+import {
   axeViolations,
   basics,
   cv,
   distFile,
   distFiles,
+  pngSize,
   rgb,
   scrollsSideways,
+  site,
   tabOrder,
+  toLocal,
+  tokens,
 } from './helpers';
 
 // Spec 0003 on the built site (dist/ through wrangler): the shell every page
@@ -82,11 +94,16 @@ const CV_STOPS: readonly string[] = [
   'a "← home"',
 ];
 
+// Spec 0006 AC-3, AC-4: titles and descriptions come from cv.json through
+// site-meta.ts, as the pages get them.
+const homeMeta = pageMeta('home', cv, site);
+const cvMeta = pageMeta('cv', cv, site);
+
 const PAGES: readonly PageCase[] = [
   {
     path: '/',
-    title: basics.name,
-    description: basics.bio,
+    title: homeMeta.title,
+    description: homeMeta.description,
     h1: basics.name,
     // Spec 0004 AC-7: the menu rows, then the social rows, and nothing after.
     stops: [
@@ -99,14 +116,14 @@ const PAGES: readonly PageCase[] = [
   },
   {
     path: '/cv',
-    title: `CV · ${basics.name}`,
-    description: basics.bio,
+    title: cvMeta.title,
+    description: cvMeta.description,
     h1: basics.name,
     stops: CV_STOPS,
   },
   {
     path: '/missing',
-    title: 'Not found',
+    title: formatPageTitle(basics, 'Not found'),
     description: 'This page does not exist.',
     h1: 'Not found',
     stops: ['a "Skip to content"', 'a "Back to the home page"', 'a "← home"'],
@@ -144,6 +161,46 @@ const pageMargins = (page: Page): Promise<readonly string[]> =>
     return [...document.styleSheets].flatMap((sheet) => walk(sheet.cssRules));
   });
 
+// Every head element as `tag key` (a meta's name or property, a link's rel),
+// so a test can read the tag order.
+const headTags = (page: Page): Promise<readonly string[]> =>
+  page.evaluate(() =>
+    [...document.head.children].map((el) => {
+      const tag = el.tagName.toLowerCase();
+      const key =
+        tag === 'link'
+          ? el.getAttribute('rel')
+          : (el.getAttribute('name') ?? el.getAttribute('property'));
+      return key === null ? tag : `${tag} ${key}`;
+    }),
+  );
+
+// The tags that follow the description meta: the share tags in spec 0006
+// AC-5 order on a page with a SHARE_PAGES row, then the two icon links.
+const ICON_LINKS = ['link icon', 'link apple-touch-icon'] as const;
+const SHARE_TAGS = [
+  'link canonical',
+  'meta og:type',
+  'meta og:site_name',
+  'meta og:title',
+  'meta og:description',
+  'meta og:url',
+  'meta og:image',
+  'meta og:image:type',
+  'meta og:image:width',
+  'meta og:image:height',
+  'meta og:image:alt',
+  'meta twitter:card',
+] as const;
+
+const tagsAfterDescription = async (page: Page): Promise<readonly string[]> => {
+  const tags = await headTags(page);
+  return tags.slice(
+    tags.indexOf('meta description') + 1,
+    tags.indexOf('link apple-touch-icon') + 1,
+  );
+};
+
 for (const { path, title, description, h1, stops } of PAGES) {
   test.describe(`${path}`, () => {
     // covers: AC-6
@@ -160,6 +217,26 @@ for (const { path, title, description, h1, stops } of PAGES) {
         'content',
         'light dark',
       );
+    });
+
+    // covers: spec 0006 AC-8, AC-9
+    test('links the generated favicon, then the Apple touch icon', async ({
+      page,
+    }) => {
+      await page.goto(path);
+
+      await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+        'href',
+        '/favicon.svg',
+      );
+      await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+        'type',
+        'image/svg+xml',
+      );
+      await expect(
+        page.locator('link[rel="apple-touch-icon"]'),
+      ).toHaveAttribute('href', '/apple-touch-icon.png');
+      expect((await tagsAfterDescription(page)).slice(-2)).toEqual(ICON_LINKS);
     });
 
     // covers: AC-1, AC-6, AC-12
@@ -390,6 +467,16 @@ test.describe('404 page', () => {
     await expect(page).toHaveURL('/');
   });
 
+  // covers: spec 0006 AC-5
+  test('carries no canonical and no share tag', async ({ page }) => {
+    await page.goto('/missing');
+
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+    await expect(page.locator('meta[property^="og:"]')).toHaveCount(0);
+    await expect(page.locator('meta[name^="twitter:"]')).toHaveCount(0);
+    expect(await tagsAfterDescription(page)).toEqual(ICON_LINKS);
+  });
+
   // covers: AC-7
   test('its TextLink is underlined in fg at rest', async ({ page }) => {
     await page.goto('/missing');
@@ -527,12 +614,175 @@ test.describe('print', () => {
   });
 });
 
+// Spec 0006: every expected value comes from cv.json through site-meta.ts and
+// `site` from astro.config.mjs, so a content edit or a new domain needs no
+// test edit.
+for (const { key, path } of SHARE_PAGES) {
+  const meta = pageMeta(key, cv, site);
+  const share = meta.share;
+
+  test.describe(`share tags on ${path}`, () => {
+    // covers: spec 0006 AC-5
+    test('carries the canonical and share tags right after the description', async ({
+      page,
+    }) => {
+      const response = await page.goto(path);
+
+      expect(response?.status()).toBe(200);
+      expect(await tagsAfterDescription(page)).toEqual([
+        ...SHARE_TAGS,
+        ...ICON_LINKS,
+      ]);
+    });
+
+    // covers: spec 0006 AC-5
+    test('carries each share tag once and no other anywhere in the head, so no og:locale and no twitter:site', async ({
+      page,
+    }) => {
+      await page.goto(path);
+      const shareTags = (await headTags(page)).filter((tag) =>
+        /^(meta (og|twitter):|link canonical$)/.test(tag),
+      );
+
+      expect(shareTags).toEqual(SHARE_TAGS);
+    });
+
+    // covers: spec 0006 AC-1, AC-3, AC-4, AC-5
+    test('fills every tag from cv.json and site', async ({ page }) => {
+      await page.goto(path);
+      const content = (property: string) =>
+        page.locator(`meta[property="${property}"]`);
+
+      expect(share).toBeDefined();
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        share?.url ?? 'missing',
+      );
+      await expect(content('og:type')).toHaveAttribute('content', OG_TYPE);
+      await expect(content('og:site_name')).toHaveAttribute(
+        'content',
+        share?.siteName ?? 'missing',
+      );
+      await expect(content('og:title')).toHaveAttribute('content', meta.title);
+      await expect(content('og:description')).toHaveAttribute(
+        'content',
+        meta.description,
+      );
+      await expect(content('og:url')).toHaveAttribute(
+        'content',
+        share?.url ?? 'missing',
+      );
+      await expect(content('og:image')).toHaveAttribute(
+        'content',
+        share?.image.url ?? 'missing',
+      );
+      await expect(content('og:image:type')).toHaveAttribute(
+        'content',
+        SHARE_IMAGE.type,
+      );
+      await expect(content('og:image:width')).toHaveAttribute(
+        'content',
+        String(SHARE_IMAGE.width),
+      );
+      await expect(content('og:image:height')).toHaveAttribute(
+        'content',
+        String(SHARE_IMAGE.height),
+      );
+      await expect(content('og:image:alt')).toHaveAttribute(
+        'content',
+        share?.image.alt ?? 'missing',
+      );
+      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+        'content',
+        TWITTER_CARD,
+      );
+    });
+
+    // covers: spec 0006 AC-5
+    test('keeps og:title, og:description, and og:url equal to the title, description, and canonical', async ({
+      page,
+    }) => {
+      await page.goto(path);
+      const attribute = (selector: string, name: string) =>
+        page.locator(selector).getAttribute(name);
+
+      expect(await attribute('meta[property="og:title"]', 'content')).toBe(
+        await page.title(),
+      );
+      expect(
+        await attribute('meta[property="og:description"]', 'content'),
+      ).toBe(await attribute('meta[name="description"]', 'content'));
+      expect(await attribute('meta[property="og:url"]', 'content')).toBe(
+        await attribute('link[rel="canonical"]', 'href'),
+      );
+    });
+
+    // covers: spec 0006 AC-6, AC-13
+    test('its og:image answers a 1200×630 PNG under 300 KB', async ({
+      page,
+      request,
+      baseURL,
+    }) => {
+      await page.goto(path);
+      const image = await page
+        .locator('meta[property="og:image"]')
+        .getAttribute('content');
+      const response = await request.get(toLocal(image ?? '', baseURL ?? ''));
+      const body = await response.body();
+
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toBe(SHARE_IMAGE.type);
+      expect(body.length).toBeLessThan(300_000);
+      expect(pngSize(body)).toEqual({
+        width: SHARE_IMAGE.width,
+        height: SHARE_IMAGE.height,
+      });
+    });
+  });
+}
+
+test.describe('icons', () => {
+  // covers: spec 0006 AC-8
+  test('/favicon.svg answers an SVG with its dark switch', async ({
+    request,
+  }) => {
+    const response = await request.get('/favicon.svg');
+    const svg = await response.text();
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toMatch(/^image\/svg\+xml/);
+    expect(svg).toContain('prefers-color-scheme: dark');
+    expect(svg).toContain(`fill="${tokens.light.bg ?? 'missing'}"`);
+    expect(svg).toContain(`{fill:${tokens.dark.bg ?? 'missing'}}`);
+    expect(svg).toContain(`{fill:${tokens.dark.fg ?? 'missing'}}`);
+    expect(svg).not.toMatch(/<text|@font-face/);
+  });
+
+  // covers: spec 0006 AC-9
+  test('/apple-touch-icon.png answers a 180×180 PNG', async ({ request }) => {
+    const response = await request.get('/apple-touch-icon.png');
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('image/png');
+    expect(pngSize(await response.body())).toEqual({ width: 180, height: 180 });
+  });
+});
+
 test.describe('build output', () => {
   // covers: AC-3
   test('ships exactly four self hosted woff2 files', () => {
     const fonts = distFiles().filter((file) => file.endsWith('.woff2'));
 
     expect(fonts).toHaveLength(4);
+  });
+
+  // covers: spec 0006 AC-6, AC-8, AC-9
+  test('writes one card per SHARE_PAGES row and both icons', () => {
+    const files = distFiles();
+
+    for (const { key } of SHARE_PAGES) expect(files).toContain(`og/${key}.png`);
+    expect(files).toContain('favicon.svg');
+    expect(files).toContain('apple-touch-icon.png');
   });
 
   // covers: AC-13

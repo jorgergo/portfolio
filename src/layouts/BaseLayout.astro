@@ -5,16 +5,25 @@ import { Font } from 'astro:assets';
 import SiteFooter from '@/components/SiteFooter.astro';
 import SkipLink from '@/components/SkipLink.astro';
 import { parseColorTokens } from '@/lib/contrast';
+import {
+  OG_TYPE,
+  SHARE_IMAGE,
+  TWITTER_CARD,
+  type ShareMeta,
+} from '@/lib/site-meta';
 
 interface Props {
   title: string;
   description: string;
+  // The canonical and share tags, from pageMeta (spec 0006). The 404 page and
+  // the style guide pass none and get none.
+  share?: ShareMeta | undefined;
   // false hides the footer on paper (the CV page, spec 0005); every other page
   // keeps its city line in print (spec 0003).
   printFooter?: boolean;
 }
 
-const { title, description, printFooter = true } = Astro.props;
+const { title, description, share, printFooter = true } = Astro.props;
 
 // The palette has one source: the theme-color metas are read from global.css,
 // never written by hand (spec 0003).
@@ -43,7 +52,24 @@ const { light, dark } = parseColorTokens(css);
     )}
     <title>{title}</title>
     <meta name="description" content={description} />
+    {share !== undefined && (
+      <>
+        <link rel="canonical" href={share.url} />
+        <meta property="og:type" content={OG_TYPE} />
+        <meta property="og:site_name" content={share.siteName} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={share.url} />
+        <meta property="og:image" content={share.image.url} />
+        <meta property="og:image:type" content={SHARE_IMAGE.type} />
+        <meta property="og:image:width" content={String(share.image.width)} />
+        <meta property="og:image:height" content={String(share.image.height)} />
+        <meta property="og:image:alt" content={share.image.alt} />
+        <meta name="twitter:card" content={TWITTER_CARD} />
+      </>
+    )}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <Font cssVariable="--font-plex-mono" preload={[{ weight: 400 }]} />
     <Font cssVariable="--font-plex-sans" />
   </head>

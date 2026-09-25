@@ -86,7 +86,7 @@ A `NavRow` prefix is a fixed column on the same scale: `w-6` (24px) for a two di
 
 All in `src/components/`, all semantic HTML, no UI library. Each takes a `class` prop merged with `class:list` unless noted.
 
-- `BaseLayout` (`src/layouts/`): the shell every page renders through. Required props `title` and `description`. It loads the stylesheet, computes the theme colour metas from the tokens, loads both fonts (preloading only Plex Mono 400), and places `SkipLink`, `<main id="main">`, and `SiteFooter`.
+- `BaseLayout` (`src/layouts/`): the shell every page renders through. Required props `title` and `description`, plus an optional `share` that adds the canonical link and the Open Graph and X tags (a page spreads `pageMeta(key, cv, Astro.site)` from `src/lib/site-meta.ts` into it; the 404 page and the style guide pass none). It loads the stylesheet, computes the theme colour metas from the tokens, links the favicon and the Apple touch icon, loads both fonts (preloading only Plex Mono 400), and places `SkipLink`, `<main id="main">`, and `SiteFooter`.
 - `SkipLink`: the first focusable element. Do not add another.
 - `SiteFooter`: `City, CC · YYYY` from the CV, plus `← home` on every route except `/`. It reads `getCv()` itself, an exception spec 0003 allows.
 - `TextLink`: a link inside running text. Underlined at rest in muted, terracotta text and underline on hover and focus. Use it for every link in prose. Never add `target`.
@@ -111,6 +111,23 @@ The only animation on the base pages is `transition-colors`, at the theme defaul
 The tokens take their paper values, `color-scheme` becomes `light`, the page gets an 18mm margin, and the root size drops to 11pt so the rem scale follows. The page drops its minimum height and the column its padding. The skip link, the footer home link, and every `Button` are hidden. Links print as plain text without underline, and chips print as plain text without a border. The CV page builds on this layer, and the PDF spec reuses it.
 
 The CV page adds its own print rules (spec 0005): `BaseLayout` takes `printFooter={false}`, which gives `SiteFooter` `print:hidden` (every other page keeps its city line on paper); the page wrapper tightens `gap-14` to `print:gap-6` (1.5rem, 22px at 11pt) and each section `gap-6` to `print:gap-4` (1rem); every `CvEntry` except a `splittable` group and every `KeyedList` row is `break-inside-avoid`; every section heading and a group's first line is `break-after-avoid` (honoured by Chromium, best effort elsewhere); the contact links (`fg`, kept by `a { color: inherit }`) and every `TextLink` print as plain ink with no underline; muted meta prints in the paper muted value; nothing else on the page is hidden, and the page ships no script and no print button.
+
+## Share cards and icons
+
+The images the build draws for link previews and browser tabs (spec 0006), from `src/content/cv.json` and the tokens, by Satori and sharp. They are images, not markup, so the style guide shows the built files. Pages never load them.
+
+- Canvas: 1200×630, the light `bg` ground, 80px padding on every side. Light tokens only, in every scheme: on a dark feed the paper card is bright by design. Plex Mono only, at 400 and 500.
+- Top group, at the top: the page label (only on a page with one, such as `CV`: 28px, uppercase, tracked 0.1em, `accent`, 32px above the name), the name (72px, weight 500, `fg`, line height 1.2), then the role (`basics.label`, 40px, `muted`, line height 1.3, 12px below the name). The home card has no label, as the home page has no section heading.
+- Footer, pinned to the bottom edge: a 2px `line` rule, 24px of space, then one row (28px, `muted`, line height 1.3) with the host and path on the left (`jorgergo.dev`, `jorgergo.dev/cv`) and `City, CC` on the right, the short form `SiteFooter` prints.
+- The caps hold the layout: a name of up to 30 characters (three lines at most, when a long middle part sits between two short ones) and a role of up to 27 still end above the rule, about 22px clear. A longer role needs a new layout, not a quiet wrap, so the schema fails the build instead.
+- Limits that keep every card drawable, each failing the build instead of drawing a broken card:
+  - Glyphs: the name, role, and city use only characters of the `latin` subset the site already ships (`FONT_SUBSET`, read from the font package's own `unicode.json`, less the `FONT_GAPS` its woff files have no glyph for, such as `U+2010`), so a letter such as `Ł` fails the build instead of drawing an empty box.
+  - Name parts: each part of the name, split at spaces and right after a hyphen (where the card breaks a line), holds at most 24 characters, one 1040px line at 43.2px per glyph.
+  - City: at most 24 characters.
+  - Footer: its two sides hold at most 60 characters together. 61 columns of 16.8px fit the row and one stays free, so at least 32px separates them. A longer host or path at Go live fails the card build too.
+- Favicon: a 32 unit tile with radius 6 in the light `bg`, the first letter of the name at 26px weight 500 in the light `fg`, drawn as paths. Inside its own `prefers-color-scheme: dark` query the tile and letter take the dark `bg` and `fg`.
+- Apple touch icon: 180×180, square corners (iOS rounds them), opaque, the same letter at 136px on the light `bg`.
+- A new page gets its card by adding a `SHARE_PAGES` row with a `label` and a `DESCRIPTIONS` rule in `src/lib/site-meta.ts`; never draw a card by hand.
 
 ## Hardening
 

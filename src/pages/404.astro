@@ -1,9 +1,18 @@
 ---
 import TextLink from '@/components/TextLink.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCv } from '@/lib/cv';
+import { formatPageTitle } from '@/lib/site-meta';
+
+// Spec 0006: the title pattern and nothing else. Workers answers with HTTP 404,
+// so no noindex is needed, and a canonical to a missing page would be wrong.
+const { basics } = await getCv();
 ---
 
-<BaseLayout title="Not found" description="This page does not exist.">
+<BaseLayout
+  title={formatPageTitle(basics, 'Not found')}
+  description="This page does not exist."
+>
   <section class="flex flex-col gap-6">
     <h1 class="text-lg font-medium">Not found</h1>
     <p>This page does not exist.</p>

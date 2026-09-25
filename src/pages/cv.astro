@@ -25,10 +25,12 @@ import {
   type Group,
   type KeyedRow,
 } from '@/lib/cv-format';
+import { pageMeta } from '@/lib/site-meta';
 
 // Spec 0005: the whole CV as a Harvard style document from cv.json, read once.
 // Header and contact line, then one section per non empty source in a fixed
-// order; consecutive roles at one company group under one company line.
+// order; consecutive roles at one company group under one company line. The
+// head comes from the `cv` row (spec 0006).
 const cv = await getCv();
 const { basics } = cv;
 
@@ -150,11 +152,7 @@ const sections: readonly Section[] = [
 const rendered = sections.filter(hasContent);
 ---
 
-<BaseLayout
-  title={`CV · ${basics.name}`}
-  description={basics.bio}
-  printFooter={false}
->
+<BaseLayout {...pageMeta('cv', cv, Astro.site)} printFooter={false}>
   <div class="flex flex-col gap-14 print:gap-6">
     <header class="flex flex-col gap-2">
       <h1 class="text-lg font-medium">{basics.name}</h1>

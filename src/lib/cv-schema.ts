@@ -1,9 +1,19 @@
 import { z } from 'astro/zod';
+import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 
-// Imports only astro/zod (never astro:content), so Vitest can load it without
-// Astro's Vite plugin. Shape and rules: spec 0002, Data model sketch.
+// Imports astro/zod and the pure card glyph helpers only (never
+// astro:content), so Vitest can load it without Astro's Vite plugin. Shape and
+// rules: spec 0002, Data model sketch.
 
+// name, label, and city are sized to the share card (spec 0006): a 30
+// character name wraps to at most three lines and a 27 character role still
+// clears the footer rule; a name part fills one card line at most; the city
+// keeps the footer on one row.
 export const CV_LIMITS = {
+  name: 30,
+  namePart: 24,
+  label: 27,
+  city: 24,
   bio: 160,
   summary: 500,
   entrySummary: 220,
@@ -45,6 +55,38 @@ const text = (max?: number) =>
   max === undefined
     ? z.string().trim().min(1)
     : z.string().trim().min(1).max(max);
+
+// Text the share card draws (spec 0006): only characters the card font has,
+// so a letter it lacks fails the build instead of drawing an empty box. No
+// abort, so a value over its cap reports both problems in one build.
+const cardText = (max: number) =>
+  text(max).superRefine((value, ctx) => {
+    const missing = missingGlyphs(value);
+    if (missing.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `characters outside the card font (${FONT_SUBSET}): ${missing.join(', ')}; see spec 0006`,
+      });
+    }
+  });
+
+// The name's parts break where Satori breaks a line: at whitespace other than
+// the no break spaces (U+00A0, U+2007, U+202F, U+FEFF), and right after a
+// hyphen. Each must fit one card line.
+const nameParts = (name: string): readonly string[] =>
+  name.split(/[^\S\u00A0\u2007\u202F\uFEFF]+|(?<=-)/).filter(Boolean);
+
+const cardName = cardText(CV_LIMITS.name).superRefine((value, ctx) => {
+  nameParts(value)
+    .map((part) => Array.from(part).length)
+    .filter((length) => length > CV_LIMITS.namePart)
+    .forEach((length) => {
+      ctx.addIssue({
+        code: 'custom',
+        message: `a name part holds ${length} characters, over ${CV_LIMITS.namePart} (one card line); see spec 0006`,
+      });
+    });
+});
 
 const month = z
   .string()
@@ -175,12 +217,15 @@ const interest = z.strictObject({
 export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
   z.strictObject({
     basics: z.strictObject({
-      name: text(),
-      label: text(),
+      name: cardName,
+      label: cardText(CV_LIMITS.label),
       bio: text(CV_LIMITS.bio),
       summary: text(CV_LIMITS.summary),
       email: z.email(),
-      location: z.strictObject({ city: text(), countryCode }),
+      location: z.strictObject({
+        city: cardText(CV_LIMITS.city),
+        countryCode,
+      }),
       image: image().optional(),
       profiles: profiles.optional(),
     }),

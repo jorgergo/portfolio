@@ -34,6 +34,9 @@ const devStyleguide = {
 };
 
 export default defineConfig({
+  // Spec 0006: every canonical, share image URL, and card footer derives from
+  // this one value, so Go live confirms or changes it here and nowhere else.
+  site: 'https://jorgergo.dev',
   output: 'static',
   compressHTML: true,
   trailingSlash: 'never',

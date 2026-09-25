@@ -390,4 +390,41 @@ const printValues = COLOR_ROLES.map(
       <KeyedList items={KEYED_ROWS} />
     </section>
   ))}
+  <section class="flex flex-col gap-6">
+    <SectionHeading>Share cards and icons</SectionHeading>
+    <p class="text-sm text-muted">
+      The files the build draws from cv.json and the light tokens (spec 0006):
+      both share cards at column width, the favicon at 16 and 32px (it follows
+      your system setting), and the Apple touch icon at 60px, its size on a home
+      screen. Pages never load the cards or the Apple icon.
+    </p>
+    <div class="border border-line">
+      <img
+        src="/og/home.png"
+        width="1200"
+        height="630"
+        class="h-auto w-full"
+        alt="Home share card"
+      />
+    </div>
+    <div class="border border-line">
+      <img
+        src="/og/cv.png"
+        width="1200"
+        height="630"
+        class="h-auto w-full"
+        alt="CV share card"
+      />
+    </div>
+    <div class="flex flex-wrap items-end gap-6">
+      <img src="/favicon.svg" width="16" height="16" alt="Favicon at 16px" />
+      <img src="/favicon.svg" width="32" height="32" alt="Favicon at 32px" />
+      <img
+        src="/apple-touch-icon.png"
+        width="60"
+        height="60"
+        alt="Apple touch icon at 60px"
+      />
+    </div>
+  </section>
 </BaseLayout>
