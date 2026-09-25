@@ -113,13 +113,13 @@ spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `sr
 ### 7. Metadata & share cards · in-progress
 Proper titles and descriptions for every page, plus a clean preview image when someone shares your link on LinkedIn, X, or WhatsApp.
 **Done when:** each page has a unique title and description, and sharing either page shows a branded preview card.
-spec [0006](../specs/0006-metadata-share-cards/index.md)
+spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/site-meta.ts`, `src/lib/share-card.ts`, `src/lib/render-image.ts`, `src/pages/og/[page].png.ts`, `src/pages/favicon.svg.ts`, `src/pages/apple-touch-icon.png.ts`
 - [x] Design it (spec): `/architect metadata & share cards`
-- [ ] Build it: `/develop metadata & share cards`
-  - [ ] Page metadata: `site`, the name and role caps, `site-meta.ts` with its Vitest cases, the `share` prop in `BaseLayout`, and the three pages wired (AC-1 to AC-5, AC-10, AC-11)
-  - [ ] Share cards: Satori proven inside Astro's build first, then `share-card.ts`, `render-image.ts`, and the `/og/[page].png` endpoint (AC-6, AC-7, AC-10)
-  - [ ] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
-  - [ ] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
+- [x] Build it: `/develop metadata & share cards`
+  - [x] Page metadata: `site`, the name and role caps, `site-meta.ts` with its Vitest cases, the `share` prop in `BaseLayout`, and the three pages wired (AC-1 to AC-5, AC-10, AC-11)
+  - [x] Share cards: Satori proven inside Astro's build first, then `share-card.ts`, `render-image.ts`, and the `/og/[page].png` endpoint (AC-6, AC-7, AC-10)
+  - [x] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
+  - [x] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
 - [ ] Verify it: `/check verify metadata & share cards`
 - [ ] Test it: `/test metadata & share cards`
 - [ ] Review it (fresh model): `/check review metadata & share cards`
