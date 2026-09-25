@@ -46,3 +46,22 @@ Light and dark follow the operating system setting; toggle it in System Settings
 - The VoiceOver landmark and list checks are manual; axe does not test Safari's list heuristic for the contact `<ul>` or the `<dl>`.
 - The Tab stop list depends on which entries carry a `url` in `cv.json`; the page test derives it from the fixture, so editing URLs changes the expected stops, by design.
 - External URLs (Ford, Tec, EF SET) are not fetched by the tests; they are yours to keep current.
+
+## Added after the build (/develop, 2026-09-24)
+
+_Break steps for value sources the list above does not exercise yet. Each changes `src/content/cv.json`, runs `pnpm build`, checks `dist/cv.html`, then restores the file with `git checkout src/content/cv.json`._
+
+### UI / manual
+
+- [ ] Break step: delete `url` from the first Ford role (the current one) → the Ford company line still links, now to the second role's `https://www.ford.com`; delete it from both → `Ford Motor Company` is plain text and `pnpm exec playwright test --project site` still passes, since the Tab stops derive from the fixture and lose the Ford stop; restore → AC-5, AC-12, AC-14
+- [ ] Break step: delete `score` and `courses` from the Tec entry → the degree line reads `B.S., Computer Science and Technology` with no dot, and no `Coursework:` line follows; restore → AC-6
+- [ ] Break step: delete `location` from the Liverpool role → its second line holds `Process Automation Intern` alone with no right value, and the entry still renders its bullets; restore → AC-4, AC-5
+- [ ] Break step: delete `summary` and empty `highlights` (`[]`) on the Daimler role → the entry ends after its second line with no `Prose` block (`grep -c 'font-sans' dist/cv.html` drops by one); restore → AC-4
+
+### Commands
+
+- [ ] `pnpm exec playwright test` after each break step above → the `cv page` block passes without a test edit, because its expectations derive from the fixture → AC-14
+
+### Acceptance-criteria coverage
+
+- AC-4: the location and body break steps · AC-5: the group link and location break steps · AC-6: the degree line break step · AC-12, AC-14: the group link break step and the Playwright rerun
