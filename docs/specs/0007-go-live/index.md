@@ -178,14 +178,14 @@ Skateboard: the thinnest usable whole is the site live at jorgergo.dev through t
 
 **Launch**
 
-10. [ ] Merge the PR. Watch `deploy` pass its smoke checks, then open jorgergo.dev, www, and the old `workers.dev` address (it should no longer serve the site), satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**, **AC-9**
+10. [x] Merge the PR. Watch `deploy` pass its smoke checks, then open jorgergo.dev, www, and the old `workers.dev` address (it should no longer serve the site), satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**, **AC-9**
 
 **Grow (after launch)**
 
-11. [ ] Mail records: SPF, DMARC, and the null MX, satisfies **AC-12**
-12. [ ] GitHub ruleset on `main`, satisfies **AC-13**
-13. [ ] Google Search Console by DNS TXT, request indexing of `/` and `/cv`, import into Bing, satisfies **AC-14**
-14. [ ] The LinkedIn, X, and WhatsApp share checks, then tick them in spec 0006's `verify.md`, satisfies **AC-15**
+11. [x] Mail records: SPF, DMARC, and the null MX, satisfies **AC-12**
+12. [x] GitHub ruleset on `main`, satisfies **AC-13**
+13. [x] Google Search Console by DNS TXT, request indexing of `/` and `/cv`, import into Bing, satisfies **AC-14**
+14. [x] The LinkedIn, X, and WhatsApp share checks, then tick them in spec 0006's `verify.md`, satisfies **AC-15**
 
 ## Consequences
 
