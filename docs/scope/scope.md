@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Home page | Release 1 | done |
 | 6 | CV page | Release 1 | done |
-| 7 | Metadata & share cards | Release 1 | in-progress |
+| 7 | Metadata & share cards | Release 1 | done |
 | 8 | Go live | Release 1 | planned |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
@@ -110,7 +110,7 @@ spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `sr
 - [x] Review it (fresh model): `/check review cv page`
 - [x] Document it: `/document cv page`
 
-### 7. Metadata & share cards · in-progress
+### 7. Metadata & share cards · done
 Proper titles and descriptions for every page, plus a clean preview image when someone shares your link on LinkedIn, X, or WhatsApp.
 **Done when:** each page has a unique title and description, and sharing either page shows a branded preview card.
 spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/site-meta.ts`, `src/lib/share-card.ts`, `src/lib/render-image.ts`, `src/pages/og/[page].png.ts`, `src/pages/favicon.svg.ts`, `src/pages/apple-touch-icon.png.ts`
@@ -124,7 +124,7 @@ spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/sit
 - [x] Verify it: `/check verify metadata & share cards`
 - [x] Test it: `/test metadata & share cards`
 - [x] Review it (fresh model): `/check review metadata & share cards`
-- [ ] Document it: `/document metadata & share cards`
+- [x] Document it: `/document metadata & share cards`
 
 ### 8. Go live · needs a decision
 Put the site on the internet at your address, with every change deploying automatically.

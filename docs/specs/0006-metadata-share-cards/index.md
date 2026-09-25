@@ -1,7 +1,7 @@
 # 0006. Page metadata and share cards generated from the content
 
 **Date**: 2026-09-25
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
