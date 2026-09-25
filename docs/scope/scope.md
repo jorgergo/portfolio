@@ -115,12 +115,12 @@ Proper titles and descriptions for every page, plus a clean preview image when s
 **Done when:** each page has a unique title and description, and sharing either page shows a branded preview card.
 spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/site-meta.ts`, `src/lib/share-card.ts`, `src/lib/render-image.ts`, `src/pages/og/[page].png.ts`, `src/pages/favicon.svg.ts`, `src/pages/apple-touch-icon.png.ts`
 - [x] Design it (spec): `/architect metadata & share cards`
-- [ ] Build it: `/develop metadata & share cards`
+- [x] Build it: `/develop metadata & share cards`
   - [x] Page metadata: `site`, the name and role caps, `site-meta.ts` with its Vitest cases, the `share` prop in `BaseLayout`, and the three pages wired (AC-1 to AC-5, AC-10, AC-11)
   - [x] Share cards: Satori proven inside Astro's build first, then `share-card.ts`, `render-image.ts`, and the `/og/[page].png` endpoint (AC-6, AC-7, AC-10)
   - [x] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
   - [x] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
-  - [ ] Card limits from the review: the glyph rule read from the font's `unicode.json`, the 24 character name part, the 24 character city and the 60 character footer check, the `monogram` fix, `design.md`, and the break steps; the inline test fixtures are already done (AC-7, AC-8, AC-15 to AC-18)
+  - [x] Card limits from the review: the glyph rule read from the font's `unicode.json`, the 24 character name part, the 24 character city and the 60 character footer check, the `monogram` fix, `design.md`, and the break steps; the inline test fixtures are already done (AC-7, AC-8, AC-15 to AC-18)
 - [ ] Verify it: `/check verify metadata & share cards`
 - [ ] Test it: `/test metadata & share cards`
 - [x] Review it (fresh model): `/check review metadata & share cards`
