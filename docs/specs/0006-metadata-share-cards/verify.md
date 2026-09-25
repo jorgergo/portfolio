@@ -40,3 +40,29 @@ The first build was compared pixel by pixel with the bench renders (the private 
 
 ## Acceptance-criteria coverage
 - AC-1 … `site` break step, domain break step · AC-2 … label and name break steps, the 28 character build failure, `pnpm test` · AC-3 … `/`, `/cv`, and `/missing` head steps · AC-4 … `/cv` head step, bio and sections break steps · AC-5 … the three head steps, `SHARE_PAGES` read · AC-6 … card files step, `pnpm build`, missing `site` failure · AC-7 … card files step, label, name, city, and accent break steps · AC-8 … favicon step, dark `bg` break step, `dist/favicon.svg` read · AC-9 … Apple icon step, name break step · AC-10 … `pnpm test` · AC-11 … network step, `_headers` diff, Playwright · AC-12 … style guide and `design.md` steps · AC-13 … Playwright, lint, format · AC-14 … the after Go live step
+
+## Card limits (added after the review, 2026-09-25)
+_Steps for AC-15 to AC-18. Break steps edit `src/content/cv.json` (or `astro.config.mjs`), run `pnpm build`, check, then copy the file back, as above._
+
+### UI / manual
+- [ ] Open `/og/home.png`, `/og/cv.png`, and `/favicon.svg` → unchanged from before the limits: today's content passes every new rule, the name still sits on one line, and the favicon still shows `J` → AC-7, AC-8
+
+### Value sourcing (vary the input, check the output)
+- [ ] Break step: set `basics.name` to `Łukasz Żółkiewski` → the build fails with `basics.name: characters outside the card font (latin): Ł, Ż, ł; see spec 0006`; restore → AC-15 (`CARD_GLYPHS`)
+- [ ] Break step: set `basics.name` to `Seán O’Brien` → the build passes and `/og/cv.png` draws the `é` and the curly apostrophe, with no empty box; restore → AC-15
+- [ ] Break step: set `basics.label` to `Разработчик`, then `basics.location.city` to `Москва` → each build fails at that field, naming every Cyrillic letter once; restore → AC-15
+- [ ] Break step: set `basics.name` to `Łukasz` plus a space and 24 letters (31 characters) → one build reports both problems, the 30 character cap and the `Ł`; restore → AC-15
+- [ ] Break step: in a scratch copy, set `FONT_SUBSET` in `src/lib/share-card.ts` to `'latn'` → `astro check` fails; then confirm `render-image.ts` builds the font paths from `FONT_SUBSET` and `cv-schema.ts` names it in the glyph message, so one constant sets both → AC-15 (`FONT_SUBSET`)
+- [ ] Break step: set `basics.name` to `Ada` plus a space and a 25 letter part → the build fails with `a name part holds 25 characters, over 24 (one card line); see spec 0006`; restore → AC-16 (`CV_LIMITS.namePart`)
+- [ ] Break step: set `basics.name` to `Ada Wolfeschlegelsteinhausen` (a 24 letter part), then to `Wolfeschlegel-Steinhausenberg` → both build; on `/og/cv.png` the long part sits on its own line and the hyphenated name breaks right after its hyphen, both inside the right padding; restore → AC-16
+- [ ] Break step: set `basics.location.city` to 25 letters → the build fails at `basics.location.city` (`<=24 characters`); restore → AC-17 (`CV_LIMITS.city`)
+- [ ] Break step: set `basics.location.city` to 24 letters and `site` to `https://jorge-ramon-gonzalez-ozorno.dev` → the build fails with `the cv card footer holds 62 characters, over 60; shorten basics.location.city, the site host, or the page path; see spec 0006`; restore both → AC-17 (`FOOTER_BUDGET`)
+- [ ] Break step: set `basics.label` to `Senior Full Stack Developer` → the build passes, the `/` title, both card role lines, and both alt texts change, and `pnpm test` and `pnpm exec playwright test` both pass with no test edit; restore → AC-18
+
+### Commands
+- [ ] `pnpm test` → passes, including the glyph, `monogram`, name part, city, and `footerLength` cases, and the render cases: a 24 letter part and the hyphenated name inside the padding, the footer gap at least 32px at 60 characters (34px measured) and under 32px at 61 → AC-10, AC-15, AC-16, AC-17
+- [ ] `grep -l cv.json src/lib/*.test.ts` → only `src/lib/cv-schema.test.ts` → AC-18
+- [ ] `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm exec playwright test` → pass → AC-13
+
+### Acceptance-criteria coverage
+- AC-7 … card files step, 24 letter part and hyphen steps · AC-8 … favicon step, `monogram` cases in `pnpm test` · AC-15 … the `Ł`, `Seán`, Cyrillic, two problem, and `FONT_SUBSET` steps · AC-16 … the 25 letter part, 24 letter part, and hyphen steps · AC-17 … the city cap and footer budget steps, the footer gap render cases · AC-18 … the label edit step, the `grep` step
