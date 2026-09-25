@@ -6,12 +6,16 @@ import {
 } from '@/lib/contrast';
 import {
   APPLE_ICON,
+  CARD_GLYPHS,
   cardPalette,
   cardTree,
   FAVICON,
+  FONT_SUBSET,
   iconPalette,
   iconTree,
+  missingGlyphs,
   monogram,
+  parseUnicodeRange,
   withDarkFills,
   type CardNode,
   type CardPalette,
@@ -61,6 +65,57 @@ const treeFor = (key: (typeof SHARE_PAGES)[number]['key']): CardNode => {
   return cardTree(content, palette);
 };
 
+describe('parseUnicodeRange', () => {
+  // covers: AC-15
+  it('reads ranges and single code points, both ends included', () => {
+    expect(parseUnicodeRange('U+0000-00FF,U+0131')).toEqual([
+      [0x0, 0xff],
+      [0x131, 0x131],
+    ]);
+  });
+
+  // covers: AC-15
+  it('leaves out an item that is not a code point or a range', () => {
+    expect(parseUnicodeRange('U+4??, U+0041')).toEqual([[0x41, 0x41]]);
+  });
+});
+
+describe('CARD_GLYPHS', () => {
+  // covers: AC-15
+  it('holds the ranges the font package lists for the latin subset', () => {
+    expect(FONT_SUBSET).toBe('latin');
+    for (const range of [
+      [0x0, 0xff],
+      [0x2000, 0x206f],
+      [0x131, 0x131],
+      [0x20ac, 0x20ac],
+    ]) {
+      expect(CARD_GLYPHS).toContainEqual(range);
+    }
+  });
+});
+
+describe('missingGlyphs', () => {
+  // covers: AC-15
+  it.each(['Jorge González Ozorno', 'Seán O’Brien', 'Zoë', 'Toluca'])(
+    'finds nothing missing in %j',
+    (text) => {
+      // The curly apostrophe is U+2019, inside the subset.
+      expect(missingGlyphs(text)).toEqual([]);
+    },
+  );
+
+  // covers: AC-15
+  it('returns each missing character once, in order', () => {
+    expect(missingGlyphs('Łukasz Żółkiewski Ł')).toEqual(['Ł', 'Ż', 'ł']);
+  });
+
+  // covers: AC-15
+  it('returns a character outside the Basic Multilingual Plane whole', () => {
+    expect(missingGlyphs('a\u{1F600}b')).toEqual(['\u{1F600}']);
+  });
+});
+
 describe('cardPalette', () => {
   // covers: AC-7, AC-10
   it('reads the five card colours from the light tokens', () => {
@@ -108,11 +163,24 @@ describe('monogram', () => {
     expect(monogram(name)).toBe(letter);
   });
 
-  // covers: AC-8, AC-10
+  // covers: AC-8, AC-10, AC-15
   it('keeps a letter outside the Basic Multilingual Plane whole', () => {
-    // U+10428 is a two unit lowercase letter; its capital is U+10400.
-    expect(monogram('\u{10428}rin')).toBe('\u{10400}');
+    // U+10428 is a two unit lowercase letter; its capital, U+10400, is
+    // outside the card font, so the letter stays as written.
+    expect(monogram('\u{10428}rin')).toBe('\u{10428}');
   });
+
+  // covers: AC-8, AC-15
+  it.each([
+    ['ÿvonne', 'ÿ'],
+    ['ßophie', 'ß'],
+  ])(
+    'keeps the first letter of %j as written when its capital is not one card glyph',
+    (name, letter) => {
+      // ÿ uppercases to Ÿ (U+0178, outside the subset), ß to SS.
+      expect(monogram(name)).toBe(letter);
+    },
+  );
 
   // covers: AC-10
   it('returns undefined for an empty name', () => {

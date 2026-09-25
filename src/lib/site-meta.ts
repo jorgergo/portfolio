@@ -146,6 +146,16 @@ export const pageMeta = (
   };
 };
 
+// The most characters the card footer's two sides hold together: 61 columns
+// of 16.8px (28px Plex Mono) fit the 1040px row, and one stays free, so at
+// least 32px separates the sides.
+export const FOOTER_BUDGET = 60;
+
+// The characters of the footer's two sides, for the card endpoint to compare
+// with FOOTER_BUDGET.
+export const footerLength = (content: CardContent): number =>
+  Array.from(content.footerStart).length + Array.from(content.footerEnd).length;
+
 // The words on a page's card. The footer names the host, plus the path unless
 // it is `/`, and the city in the short form SiteFooter prints.
 export const cardContent = (

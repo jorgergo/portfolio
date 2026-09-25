@@ -3,6 +3,8 @@ import { CV_LIMITS } from '@/lib/cv-schema';
 import {
   cardContent,
   DESCRIPTIONS,
+  FOOTER_BUDGET,
+  footerLength,
   formatPageTitle,
   formatSectionList,
   pageMeta,
@@ -10,6 +12,7 @@ import {
   SHARE_PAGES,
   sharePage,
   type MetaCv,
+  type SharePageKey,
 } from '@/lib/site-meta';
 
 // Spec 0006. `cv` holds today's words inline rather than reading cv.json, so a
@@ -282,5 +285,47 @@ describe('cardContent', () => {
   // covers: AC-10
   it('returns undefined without site', () => {
     expect(cardContent('cv', cv, undefined)).toBeUndefined();
+  });
+});
+
+describe('footerLength', () => {
+  const footerOf = (key: SharePageKey, source: MetaCv): number => {
+    const content = cardContent(key, source, site);
+    if (content === undefined) throw new Error('cardContent needs site here');
+    return footerLength(content);
+  };
+
+  // covers: AC-17
+  it.each([
+    ['home', 22],
+    ['cv', 25],
+  ] as const)(
+    'counts today’s %s card footer as %i characters',
+    (key, length) => {
+      expect(footerOf(key, cv)).toBe(length);
+    },
+  );
+
+  // covers: AC-17
+  it('counts code points, so a letter outside the Basic Multilingual Plane counts once', () => {
+    const content = { name: 'A', role: 'B', footerStart: 'a\u{10428}' };
+
+    expect(footerLength({ ...content, footerEnd: 'b' })).toBe(3);
+  });
+
+  // covers: AC-17
+  it('keeps every card within the budget with the city at its cap', () => {
+    const longCity: MetaCv = {
+      ...cv,
+      basics: {
+        ...cv.basics,
+        location: { city: 'a'.repeat(CV_LIMITS.city), countryCode: 'MX' },
+      },
+    };
+
+    expect(FOOTER_BUDGET).toBe(60);
+    for (const { key } of SHARE_PAGES) {
+      expect(footerOf(key, longCity)).toBeLessThanOrEqual(FOOTER_BUDGET);
+    }
   });
 });

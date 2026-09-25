@@ -119,7 +119,12 @@ The images the build draws for link previews and browser tabs (spec 0006), from 
 - Canvas: 1200×630, the light `bg` ground, 80px padding on every side. Light tokens only, in every scheme: on a dark feed the paper card is bright by design. Plex Mono only, at 400 and 500.
 - Top group, at the top: the page label (only on a page with one, such as `CV`: 28px, uppercase, tracked 0.1em, `accent`, 32px above the name), the name (72px, weight 500, `fg`, line height 1.2), then the role (`basics.label`, 40px, `muted`, line height 1.3, 12px below the name). The home card has no label, as the home page has no section heading.
 - Footer, pinned to the bottom edge: a 2px `line` rule, 24px of space, then one row (28px, `muted`, line height 1.3) with the host and path on the left (`jorgergo.dev`, `jorgergo.dev/cv`) and `City, CC` on the right, the short form `SiteFooter` prints.
-- The caps hold the layout: a name of up to 30 characters (two lines at most) and a role of up to 27 still end above the rule. A longer role needs a new layout, not a quiet wrap, so the schema fails the build instead.
+- The caps hold the layout: a name of up to 30 characters (three lines at most, when a long middle part sits between two short ones) and a role of up to 27 still end above the rule, about 22px clear. A longer role needs a new layout, not a quiet wrap, so the schema fails the build instead.
+- Limits that keep every card drawable, each failing the build instead of drawing a broken card:
+  - Glyphs: the name, role, and city use only characters of the `latin` subset the site already ships (`FONT_SUBSET`, read from the font package's own `unicode.json`), so a letter such as `Ł` fails the build instead of drawing an empty box.
+  - Name parts: each part of the name, split at spaces and right after a hyphen (where the card breaks a line), holds at most 24 characters, one 1040px line at 43.2px per glyph.
+  - City: at most 24 characters.
+  - Footer: its two sides hold at most 60 characters together. 61 columns of 16.8px fit the row and one stays free, so at least 32px separates them. A longer host or path at Go live fails the card build too.
 - Favicon: a 32 unit tile with radius 6 in the light `bg`, the first letter of the name at 26px weight 500 in the light `fg`, drawn as paths. Inside its own `prefers-color-scheme: dark` query the tile and letter take the dark `bg` and `fg`.
 - Apple touch icon: 180×180, square corners (iOS rounds them), opaque, the same letter at 136px on the light `bg`.
 - A new page gets its card by adding a `SHARE_PAGES` row with a `label` and a `DESCRIPTIONS` rule in `src/lib/site-meta.ts`; never draw a card by hand.

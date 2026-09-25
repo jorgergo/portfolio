@@ -15,7 +15,10 @@ import {
 } from '@/lib/share-card';
 import {
   cardContent,
+  FOOTER_BUDGET,
+  footerLength,
   SHARE_IMAGE,
+  type CardContent,
   type MetaCv,
   type SharePageKey,
 } from '@/lib/site-meta';
@@ -129,6 +132,25 @@ const cardLayout = async (png: Buffer): Promise<CardLayout> => {
   return { lines, ruleTop, inkInPadding };
 };
 
+// The widest run of blank columns between the footer's first and last ink,
+// read in its text band: from under the 2px rule and its 24px of space down
+// to the bottom padding.
+const footerGap = async (png: Buffer, ruleTop: number): Promise<number> => {
+  const image = await raster(png);
+  const ground = hexRgb(cardColours.bg);
+  const top = ruleTop + 26;
+  const rows = Array.from({ length: BOX.bottom - top }, (_, i) => top + i);
+  const blank = Array.from({ length: BOX.right - BOX.left }, (_, i) =>
+    rows.every((y) => !isInk(image.rgb(BOX.left + i, y), ground)),
+  );
+  const inside = blank.slice(blank.indexOf(false), blank.lastIndexOf(false));
+  return inside.reduce<readonly [widest: number, run: number]>(
+    ([widest, run], isBlank) =>
+      isBlank ? [Math.max(widest, run + 1), run + 1] : [widest, 0],
+    [0, 0],
+  )[0];
+};
+
 const renderCard = (key: SharePageKey, source: MetaCv): Promise<Buffer> => {
   const content = cardContent(key, source, site);
   if (content === undefined) throw new Error('cardContent needs site here');
@@ -146,6 +168,24 @@ const withBasics = (name: string, label: string): MetaCv => ({
 const CAPPED_ROLE = 'Senior Full Stack Developer';
 const TWO_LINE_NAME = 'Maximiliano Alejandro Ferreira';
 const THREE_LINE_NAME = 'Anna Wolfeschlegelsteinha Cruz';
+
+// The longest name part the schema allows, and a longer name the card breaks
+// after its hyphen (spec 0006 AC-16).
+const LONGEST_PART = 'Wolfeschlegelsteinhausen';
+const HYPHENATED_NAME = 'Wolfeschlegel-Steinhausenberg';
+
+// A footer at the budget: the planned `/portfolio` path on today's host, and a
+// city with no inner space, so the only wide gap is the one between the sides.
+const footerAt = (length: number): CardContent => {
+  const footerStart = 'jorgergo.dev/portfolio';
+  return {
+    label: 'CV',
+    name: cv.basics.name,
+    role: cv.basics.label,
+    footerStart,
+    footerEnd: `${'Wolfeschlegelsteinhausenbergerdorfer'.slice(0, length - footerStart.length - 4)}, MX`,
+  };
+};
 
 describe('renderSvg: the favicon', () => {
   const favicon = (): Promise<string> =>
@@ -297,4 +337,47 @@ describe('renderPng: the share cards', () => {
       expect(capped.inkInPadding).toBe(0);
     },
   );
+
+  // covers: AC-16
+  it.each([
+    ['a 24 character part', `Ana ${LONGEST_PART}`],
+    ['a hyphen, broken after it', HYPHENATED_NAME],
+  ])(
+    'keeps a name with %s on two lines inside the padding, above the rule',
+    async (_, name) => {
+      expect(LONGEST_PART).toHaveLength(CV_LIMITS.namePart);
+      const { lines, ruleTop, inkInPadding } = await cardLayout(
+        await renderCard('cv', withBasics(name, CAPPED_ROLE)),
+      );
+      const roleBottom = lines.at(-1)?.[1] ?? Infinity;
+
+      // The label, two lines of the name, then the role.
+      expect(lines).toHaveLength(4);
+      expect(ruleTop - roleBottom).toBeGreaterThan(1);
+      expect(inkInPadding).toBe(0);
+    },
+  );
+
+  // covers: AC-17
+  it('keeps the footer sides at least 32px apart at the 60 character budget', async () => {
+    const content = footerAt(FOOTER_BUDGET);
+    expect(footerLength(content)).toBe(FOOTER_BUDGET);
+
+    const png = await renderPng(cardTree(content, cardColours), SHARE_IMAGE);
+    const { ruleTop, inkInPadding } = await cardLayout(png);
+
+    expect(await footerGap(png, ruleTop)).toBeGreaterThanOrEqual(32);
+    expect(inkInPadding).toBe(0);
+  });
+
+  // covers: AC-17
+  it('leaves the footer sides under 32px apart one character past the budget', async () => {
+    const content = footerAt(FOOTER_BUDGET + 1);
+    expect(footerLength(content)).toBe(FOOTER_BUDGET + 1);
+
+    const png = await renderPng(cardTree(content, cardColours), SHARE_IMAGE);
+    const { ruleTop } = await cardLayout(png);
+
+    expect(await footerGap(png, ruleTop)).toBeLessThan(32);
+  });
 });

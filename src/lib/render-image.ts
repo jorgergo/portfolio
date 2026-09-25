@@ -6,18 +6,19 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
-import { FONT_FAMILY, type CardNode } from '@/lib/share-card';
+import { FONT_FAMILY, FONT_SUBSET, type CardNode } from '@/lib/share-card';
 
 export type Size = { readonly width: number; readonly height: number };
 
 // Satori reads woff, not woff2 (Fontsource ships both). Resolved through
 // Node's package resolution, as astro.config.mjs does for the woff2 files;
-// `astro dev` and `astro build` both run from the project root.
+// `astro dev` and `astro build` both run from the project root. The subset
+// is the one the schema checks the name, role, and city against.
 const WEIGHTS = [400, 500] as const;
 
 const fontPath = (weight: (typeof WEIGHTS)[number]): string =>
   createRequire(join(process.cwd(), 'package.json')).resolve(
-    `@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-${weight}-normal.woff`,
+    `@fontsource/ibm-plex-mono/files/ibm-plex-mono-${FONT_SUBSET}-${weight}-normal.woff`,
   );
 
 const loadFonts = () =>

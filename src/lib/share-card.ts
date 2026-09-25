@@ -1,10 +1,45 @@
 // Share card and icon layouts for Satori (spec 0006). Pure: words and colours
 // in, plain element objects out. `render-image.ts` turns them into files.
+import unicode from '@fontsource/ibm-plex-mono/unicode.json' with { type: 'json' };
 import type { ColorScheme } from '@/lib/contrast';
 import type { CardContent } from '@/lib/site-meta';
 
 // The family name the fonts are registered under in `render-image.ts`.
 export const FONT_FAMILY = 'IBM Plex Mono';
+
+// The one Plex Mono subset the cards load, the one the site ships too.
+// `render-image.ts` builds the font paths from it and the schema allows only
+// the characters it lists, so the two cannot drift; a subset the package
+// lacks fails `astro check`.
+export const FONT_SUBSET = 'latin' satisfies keyof typeof unicode;
+
+// Code points, both ends included.
+export type GlyphRange = readonly [from: number, to: number];
+
+const RANGE = /^U\+([0-9a-f]{1,6})(?:-([0-9a-f]{1,6}))?$/i;
+
+// A CSS `unicode-range` list such as `U+0000-00FF,U+0131` to its ranges; an
+// item that is not a plain code point or range is left out.
+export const parseUnicodeRange = (list: string): readonly GlyphRange[] =>
+  list.split(',').flatMap((item) => {
+    const match = RANGE.exec(item.trim());
+    if (match === null) return [];
+    const [, from = '', to = from] = match;
+    return [[Number.parseInt(from, 16), Number.parseInt(to, 16)] as const];
+  });
+
+// The characters the card font draws, as the font package itself lists them.
+export const CARD_GLYPHS = parseUnicodeRange(unicode[FONT_SUBSET]);
+
+const drawable = (char: string): boolean => {
+  const point = char.codePointAt(0) ?? -1;
+  return CARD_GLYPHS.some(([from, to]) => point >= from && point <= to);
+};
+
+// Each character of the text the card font cannot draw, once, in order.
+export const missingGlyphs = (text: string): readonly string[] => [
+  ...new Set(Array.from(text).filter((char) => !drawable(char))),
+];
 
 export type CardStyle = Readonly<Record<string, string | number>>;
 
@@ -83,9 +118,17 @@ export const iconPalette = (
       };
 
 // The first character of the name, uppercased; undefined for an empty name,
-// which the schema already forbids.
-export const monogram = (name: string): string | undefined =>
-  Array.from(name).at(0)?.toUpperCase();
+// which the schema already forbids. The letter stays as written when its
+// uppercase form is not one character the card font draws (`ÿ` gives `Ÿ`,
+// outside the subset; `ß` gives `SS`).
+export const monogram = (name: string): string | undefined => {
+  const first = Array.from(name).at(0);
+  if (first === undefined) return undefined;
+  const upper = first.toUpperCase();
+  return Array.from(upper).length === 1 && missingGlyphs(upper).length === 0
+    ? upper
+    : first;
+};
 
 // The card from the Card design section of spec 0006: a top group (label,
 // name, role) and a footer pinned to the bottom edge under a hairline.

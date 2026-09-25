@@ -5,6 +5,8 @@ import { renderPng } from '@/lib/render-image';
 import { cardPalette, cardTree } from '@/lib/share-card';
 import {
   cardContent,
+  FOOTER_BUDGET,
+  footerLength,
   SHARE_IMAGE,
   SHARE_PAGES,
   sharePage,
@@ -30,6 +32,14 @@ export const GET: APIRoute = async ({ params, site }) => {
   if (content === undefined) {
     throw new Error(
       'astro.config.mjs sets no site, so the card has no URL; see spec 0006',
+    );
+  }
+  // The schema caps the city; the host and path come from `site` and the
+  // row, which only this check sees.
+  const footer = footerLength(content);
+  if (footer > FOOTER_BUDGET) {
+    throw new Error(
+      `the ${page.key} card footer holds ${footer} characters, over ${FOOTER_BUDGET}; shorten basics.location.city, the site host, or the page path; see spec 0006`,
     );
   }
   const palette = cardPalette(parseColorTokens(css).light);
