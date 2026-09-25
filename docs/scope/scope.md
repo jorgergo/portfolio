@@ -120,7 +120,7 @@ spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/sit
   - [x] Share cards: Satori proven inside Astro's build first, then `share-card.ts`, `render-image.ts`, and the `/og/[page].png` endpoint (AC-6, AC-7, AC-10)
   - [x] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
   - [x] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
-- [ ] Verify it: `/check verify metadata & share cards`
+- [x] Verify it: `/check verify metadata & share cards`
 - [ ] Test it: `/test metadata & share cards`
 - [ ] Review it (fresh model): `/check review metadata & share cards`
 - [ ] Document it: `/document metadata & share cards`
