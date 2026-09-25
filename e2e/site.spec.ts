@@ -534,7 +534,7 @@ test.describe('home page', () => {
     const nav = elsewhereNav(page);
     const links = nav.getByRole('link');
     const hrefs = [
-      ...basics.profiles.map(({ url }) => url),
+      ...(basics.profiles ?? []).map(({ url }) => url),
       `mailto:${basics.email}`,
     ];
 
