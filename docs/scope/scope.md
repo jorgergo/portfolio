@@ -16,7 +16,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Content model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Home page | Release 1 | done |
-| 6 | CV page | Release 1 | in-progress |
+| 6 | CV page | Release 1 | done |
 | 7 | Metadata & share cards | Release 1 | planned |
 | 8 | Go live | Release 1 | planned |
 | 9 | CV PDF download | Release 2 | planned |
@@ -94,7 +94,7 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
 - [x] Review it (fresh model): `/check review home page`
 - [x] Document it: `/document home page`
 
-### 6. CV page · in-progress
+### 6. CV page · done
 Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
 **Done when:** every Harvard section renders from the content model; browser print or "Save as PDF" gives a clean document with no site chrome; it reads well on phone and desktop; it has its own title and description.
 spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `src/components/CvEntry.astro`, `src/components/KeyedList.astro`
