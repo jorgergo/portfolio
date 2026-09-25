@@ -944,7 +944,7 @@ test.describe('home page', () => {
   });
 
   // covers: AC-6
-  test('at 320px the email address moves whole under its key, and back beside it at 330px', async ({
+  test('at 320px the email address moves whole under its key, and back beside it once the row fits', async ({
     page,
   }) => {
     const row = elsewhereNav(page).getByRole('link', {
@@ -952,6 +952,7 @@ test.describe('home page', () => {
       exact: true,
     });
     const boxes = async () => ({
+      row: await row.boundingBox(),
       key: await spans(row).nth(0).boundingBox(),
       value: await spans(row).nth(1).boundingBox(),
     });
@@ -969,7 +970,20 @@ test.describe('home page', () => {
     ).toBeLessThanOrEqual(320);
     expect(await scrollsSideways(page)).toBe(false);
 
-    await page.setViewportSize({ width: 330, height: 640 });
+    // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
+    // Chromium, so the width where the row fits again (327px or 334px today)
+    // is measured, not hard coded.
+    const gap = await row.evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).columnGap),
+    );
+    const fits = Math.ceil(
+      320 -
+        (narrow.row?.width ?? 0) +
+        (narrow.key?.width ?? 0) +
+        gap +
+        (narrow.value?.width ?? 0),
+    );
+    await page.setViewportSize({ width: fits, height: 640 });
     const wide = await boxes();
     expect(wide.value?.y).toBe(wide.key?.y);
     expect(wide.value?.x ?? 0).toBeGreaterThan(
