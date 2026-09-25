@@ -28,7 +28,7 @@ During the build, `/develop` already ran the local steps once: the dry run with 
 - [x] Merge a PR → `check` green, then `deploy` green with `pages` and `redirects` passed and `rollback` skipped; the Worker's newest version message is the merge commit SHA → AC-5, AC-7, AC-9
 - [x] Open a PR → only `check` runs; `deploy` shows as skipped; no `dist` artifact is uploaded → AC-5, AC-6
 - [x] Open a PR whose page test fails → `check` red, no deploy, the live site unchanged (the smoke check against the old build still passes) → AC-5
-- [ ] Push to the same PR twice quickly → the older run is cancelled. Push to `main` twice quickly → the second run waits for the first deploy; a third push cancels the waiting second → AC-8
+- [x] Push to the same PR twice quickly → the older run is cancelled. Push to `main` twice quickly → the second run waits for the first deploy; a third push cancels the waiting second → AC-8
 - [x] Break step: switch Email Address Obfuscation on, rerun the last `deploy` → `pages` fails after its 10 attempts (the bytes differ), `rollback` runs, the job is red; switch it off again and rerun → green → AC-9, AC-11
 - [x] Break step: disable the www Redirect Rule, rerun `deploy` → `pages` passes, `redirects` fails red, `rollback` stays skipped, the new version stays live; enable the rule and rerun → green → AC-2, AC-9
 
@@ -40,7 +40,7 @@ During the build, `/develop` already ran the local steps once: the dry run with 
 
 ## Value sourcing (vary the input, check the output)
 - [x] Break step: in a scratch copy of `dist/`, change the canonical in `index.html` to another host and run the smoke check with no `SMOKE_ORIGIN` → it tests that host, so the origin comes from the canonical; remove the canonical → exit 1 at once with no retries → (smoke origin)
-- [ ] Break step: add an indented `X-Test: 1` line under `/*` in a scratch `dist/_headers` → the smoke check and the page test both demand it and fail → (expected headers)
+- [x] Break step: add an indented `X-Test: 1` line under `/*` in a scratch `dist/_headers` → the smoke check and the page test both demand it and fail → (expected headers)
 - [x] Break step: in a scratch copy, remove the `/_astro/*` block → the smoke check exits 1 at once → (expected cache header)
 - [x] Break step: append a byte to scratch `dist/cv.html` → `/cv body expected the bytes of dist/cv.html got different bytes` → (expected page bytes)
 - [x] After a CI deploy, read the Worker's Deployments tab → the version message is the commit SHA; the `pages` step log opens with the origin it tested → (version message, origin)

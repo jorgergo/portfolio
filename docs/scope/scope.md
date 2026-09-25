@@ -136,7 +136,7 @@ spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml
   - [x] Your setup: zone settings, the www record and Redirect Rule, the token and the `production` environment, then the bootstrap deploy from your Mac (AC-2, AC-10, AC-11)
   - [x] Launch: merge, and watch `deploy` pass its smoke checks (AC-1, AC-2, AC-4, AC-5, AC-9)
   - [x] Grow: mail records, the `main` ruleset, Search Console and Bing, and the share checks (AC-12 to AC-15)
-- [ ] Verify it: `/check verify go live`
+- [x] Verify it: `/check verify go live`
 - [ ] Test it: `/test go live`
 - [ ] Review it (fresh model): `/check review go live`
 - [ ] Document it: `/document go live`
