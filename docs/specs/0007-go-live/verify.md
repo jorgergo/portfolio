@@ -21,6 +21,7 @@ During the build, `/develop` already ran the local steps once: the dry run with 
 - [ ] `curl -sSI https://www.jorgergo.dev/` → 301 to `https://jorgergo.dev/` (the empty path case) → AC-2
 - [ ] Open `portfolio.<your subdomain>.workers.dev` → it no longer serves the site → AC-4
 - [ ] In the Cloudflare dashboard, walk the AC-11 list for the `jorgergo.dev` zone → every setting as listed, DNSSEC on, auto renew on → AC-11
+- [ ] `curl -sS https://jorgergo.dev/robots.txt | grep -v -e '^#' -e '^[[:space:]]*$'` → prints nothing (the Content Signals Policy comments only, no rules) → AC-11
 - [ ] Open the token in Cloudflare → made from `Edit Cloudflare Workers`, one account, zone `jorgergo.dev`, no expiry; in GitHub, environment `production` limits deployments to `main` and holds the secret `CLOUDFLARE_API_TOKEN` and the variable `CLOUDFLARE_ACCOUNT_ID`; `git grep -i cloudflare_api_token` shows only the workflow's `secrets.` reference → AC-10
 
 ## Pipeline (after the merge)
