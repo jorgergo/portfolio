@@ -13,6 +13,7 @@ export const CV_LIMITS = {
 } as const;
 
 export const NETWORKS = ['GitHub', 'LinkedIn'] as const;
+export type Network = (typeof NETWORKS)[number];
 
 export const FLUENCY_LEVELS = [
   'Native',
