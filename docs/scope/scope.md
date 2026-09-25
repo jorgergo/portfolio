@@ -89,10 +89,10 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
   - [x] Helper tests: Vitest cases for the row number and the profile handles (AC-8)
   - [x] Style guide and `design.md`: `NavRow` examples, the new spacing meanings and prefix widths (AC-9)
   - [x] Page tests and the gate: the `/` case and the menu href check in `e2e/site.spec.ts`, the `NavRow` checks in `e2e/styleguide.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-7, AC-10)
-- [ ] Verify it: `/check verify home page`
+- [x] Verify it: `/check verify home page`
 - [x] Test it: `/test home page`
-- [ ] Review it (fresh model): `/check review home page`
-- [ ] Document it: `/document home page`
+- [x] Review it (fresh model): `/check review home page`
+- [x] Document it: `/document home page`
 
 ### 6. CV page · needs a decision
 Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
