@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  firstUrl,
   formatDateRange,
   formatLanguage,
   formatLocation,
   formatMonth,
   formatProfileHandle,
   formatProfilePath,
+  formatSkillRows,
   groupConsecutive,
   joinMeta,
   sortByDateDesc,
@@ -248,8 +250,43 @@ describe('formatProfilePath', () => {
     expect(formatProfilePath('https://example.com/')).toBe('example.com');
   });
 
+  // covers: spec 0005 AC-9
+  it.each([
+    [
+      'https://www.linkedin.com/in/jorge-gonz%C3%A1lez/',
+      'linkedin.com/in/jorge-gonzález',
+    ],
+    [
+      'https://www.linkedin.com/in/jorge-gonzález/',
+      'linkedin.com/in/jorge-gonzález',
+    ],
+  ])('decodes a non ASCII path in %s', (url, expected) => {
+    expect(formatProfilePath(url)).toBe(expected);
+  });
+
+  // covers: spec 0005 AC-9
+  it('keeps a reserved escape such as %2F encoded', () => {
+    expect(formatProfilePath('https://example.com/a%2Fb')).toBe(
+      'example.com/a%2Fb',
+    );
+  });
+
+  // covers: spec 0005 AC-9
+  it('keeps a malformed escape encoded instead of throwing', () => {
+    expect(formatProfilePath('https://example.com/%E0%A4%A')).toBe(
+      'example.com/%E0%A4%A',
+    );
+  });
+
   it('returns a string the URL parser rejects unchanged', () => {
     expect(formatProfilePath('not a url')).toBe('not a url');
+  });
+
+  // covers: spec 0005 AC-2
+  it('lowercases the host but keeps the handle in the path as typed', () => {
+    expect(formatProfilePath('https://GitHub.com/JorgeRGO')).toBe(
+      'github.com/JorgeRGO',
+    );
   });
 });
 
@@ -270,6 +307,13 @@ describe('joinMeta', () => {
   it('returns an empty string when every part is missing', () => {
     expect(joinMeta(undefined, '')).toBe('');
   });
+
+  // covers: spec 0005 AC-8
+  it('joins any number of values in the order given, as a keyed row does', () => {
+    expect(joinMeta('TypeScript', 'Astro', 'Tailwind CSS', 'Go')).toBe(
+      'TypeScript · Astro · Tailwind CSS · Go',
+    );
+  });
 });
 
 describe('formatLanguage', () => {
@@ -285,6 +329,116 @@ describe('formatLanguage', () => {
     expect(formatLanguage({ language: 'Spanish', fluency: 'Native' })).toBe(
       'Spanish (Native)',
     );
+  });
+});
+
+describe('formatSkillRows', () => {
+  // covers: spec 0005 AC-15
+  it('gathers the name only interests into one last Interests row', () => {
+    expect(
+      formatSkillRows({
+        interests: [
+          { name: 'Sports', keywords: ['Tennis'] },
+          { name: 'Chess' },
+          { name: 'Go', keywords: [] },
+        ],
+      }),
+    ).toEqual([
+      { key: 'Sports', values: ['Tennis'] },
+      { key: 'Interests', values: ['Chess', 'Go'] },
+    ]);
+  });
+
+  // covers: spec 0005 AC-15
+  it('gives no Languages row for an empty languages list', () => {
+    expect(
+      formatSkillRows({
+        skills: [{ name: 'Focus', keywords: ['Automation'] }],
+        languages: [],
+      }),
+    ).toEqual([{ key: 'Focus', values: ['Automation'] }]);
+  });
+
+  // covers: spec 0005 AC-15
+  it('returns no rows when every source is absent', () => {
+    expect(formatSkillRows({})).toEqual([]);
+  });
+
+  // covers: spec 0005 AC-15
+  it('orders skills, technologies, languages, then interests', () => {
+    expect(
+      formatSkillRows({
+        interests: [{ name: 'Chess' }, { name: 'Music', keywords: ['Piano'] }],
+        languages: [
+          { language: 'Spanish', fluency: 'Native' },
+          { language: 'English', fluency: 'Fluent', level: 'C2' },
+        ],
+        technologies: [{ name: 'Technologies', keywords: ['Astro', 'Go'] }],
+        skills: [{ name: 'Additional skills', keywords: ['Automation'] }],
+      }),
+    ).toEqual([
+      { key: 'Additional skills', values: ['Automation'] },
+      { key: 'Technologies', values: ['Astro', 'Go'] },
+      {
+        key: 'Languages',
+        values: ['Spanish (Native)', 'English (Fluent, C2)'],
+      },
+      { key: 'Music', values: ['Piano'] },
+      { key: 'Interests', values: ['Chess'] },
+    ]);
+  });
+
+  // covers: spec 0005 AC-8, AC-15
+  it('drops a skills or technologies group with no keywords', () => {
+    expect(
+      formatSkillRows({
+        skills: [{ name: 'Additional skills', keywords: [] }],
+        technologies: [
+          { name: 'Frontend', keywords: ['Astro'] },
+          { name: 'Backend', keywords: [] },
+        ],
+      }),
+    ).toEqual([{ key: 'Frontend', values: ['Astro'] }]);
+  });
+
+  // covers: spec 0005 AC-15
+  it('keeps several groups of one source in file order', () => {
+    expect(
+      formatSkillRows({
+        technologies: [
+          { name: 'Frontend', keywords: ['Astro'] },
+          { name: 'Backend', keywords: ['Go'] },
+        ],
+      }).map(({ key }) => key),
+    ).toEqual(['Frontend', 'Backend']);
+  });
+
+  // covers: spec 0005 AC-15
+  it('takes the whole parsed CV, where an absent source is undefined', () => {
+    const cv = {
+      basics: { name: 'Jorge González Ozorno' },
+      work: [],
+      skills: undefined,
+      technologies: undefined,
+      languages: [{ language: 'Spanish', fluency: 'Native' }],
+      interests: undefined,
+    };
+
+    expect(formatSkillRows(cv)).toEqual([
+      { key: 'Languages', values: ['Spanish (Native)'] },
+    ]);
+  });
+
+  // covers: spec 0005 AC-15
+  it('never mutates the input', () => {
+    const interests = Object.freeze([
+      Object.freeze({ name: 'Chess' }),
+      Object.freeze({ name: 'Music', keywords: Object.freeze(['Piano']) }),
+    ]);
+
+    formatSkillRows({ interests });
+
+    expect(interests.map(({ name }) => name)).toEqual(['Chess', 'Music']);
   });
 });
 
@@ -324,6 +478,61 @@ describe('groupConsecutive', () => {
   // covers: spec 0005 AC-9
   it('returns an empty list for an empty list', () => {
     expect(groupConsecutive([], byName)).toEqual([]);
+  });
+
+  // covers: spec 0005 AC-9
+  it('keeps three adjacent roles together in input order', () => {
+    const roles: readonly Role[] = [
+      { name: 'Ford', position: 'Lead' },
+      { name: 'Ford', position: 'Developer' },
+      { name: 'Ford', position: 'Engineer' },
+    ];
+
+    expect(groupConsecutive(roles, byName)).toEqual([
+      { key: 'Ford', items: roles },
+    ]);
+  });
+
+  // covers: spec 0005 AC-5
+  it('compares keys exactly, so a company spelled two ways is two groups', () => {
+    const roles: readonly Role[] = [
+      { name: 'Ford Motor Company', position: 'Developer' },
+      { name: 'Ford Motor Co.', position: 'Engineer' },
+    ];
+
+    expect(groupConsecutive(roles, byName).map(({ key }) => key)).toEqual([
+      'Ford Motor Company',
+      'Ford Motor Co.',
+    ]);
+  });
+
+  // covers: spec 0005 AC-5
+  it('after sortNewestFirst, joins roles at one company that the file keeps apart', () => {
+    type Job = Role & Omit<Dated, 'id'>;
+    const jobs: readonly Job[] = [
+      { name: 'Ford', position: 'Developer', startDate: '2025-08' },
+      {
+        name: 'Liverpool',
+        position: 'Intern',
+        startDate: '2023-05',
+        endDate: '2024-03',
+      },
+      {
+        name: 'Ford',
+        position: 'Engineer',
+        startDate: '2025-01',
+        endDate: '2025-07',
+      },
+    ];
+
+    const groups = groupConsecutive(sortNewestFirst(jobs), byName);
+
+    expect(
+      groups.map(({ key, items }) => [key, items.map((job) => job.position)]),
+    ).toEqual([
+      ['Ford', ['Developer', 'Engineer']],
+      ['Liverpool', ['Intern']],
+    ]);
   });
 
   // covers: spec 0005 AC-9
@@ -370,6 +579,27 @@ describe('spanOf', () => {
   });
 
   // covers: spec 0005 AC-9
+  it('leaves the end open when a later role in the list is the current one', () => {
+    expect(
+      spanOf([
+        { startDate: '2023-01', endDate: '2023-06' },
+        { startDate: '2025-01' },
+        { startDate: '2024-01', endDate: '2024-12' },
+      ]),
+    ).toEqual({ startDate: '2023-01' });
+  });
+
+  // covers: spec 0005 AC-9
+  it('returns a single current role as an open span', () => {
+    const span = spanOf([{ startDate: '2025-08' }]);
+
+    expect(span).toEqual({ startDate: '2025-08' });
+    expect(formatDateRange(span.startDate, span.endDate)).toBe(
+      'Aug 2025 – Present',
+    );
+  });
+
+  // covers: spec 0005 AC-9
   it('keeps the latest end even when it belongs to the earlier start', () => {
     expect(
       spanOf([
@@ -377,5 +607,37 @@ describe('spanOf', () => {
         { startDate: '2023-01', endDate: '2025-01' },
       ]),
     ).toEqual({ startDate: '2023-01', endDate: '2025-01' });
+  });
+});
+
+describe('firstUrl', () => {
+  type Role = { readonly position: string; readonly url?: string };
+
+  // covers: spec 0005 AC-15
+  it('skips a first role with no url and returns the next one', () => {
+    expect(
+      firstUrl([
+        { position: 'Developer' },
+        { position: 'Engineer', url: 'https://www.ford.com' },
+      ]),
+    ).toBe('https://www.ford.com');
+  });
+
+  // covers: spec 0005 AC-15
+  it('returns the first url when several roles have one', () => {
+    expect(
+      firstUrl([{ url: 'https://a.example' }, { url: 'https://b.example' }]),
+    ).toBe('https://a.example');
+  });
+
+  // covers: spec 0005 AC-15
+  it('returns undefined when no role has a url', () => {
+    const roles: readonly Role[] = [
+      { position: 'Developer' },
+      { position: 'Engineer' },
+    ];
+
+    expect(firstUrl(roles)).toBeUndefined();
+    expect(firstUrl([])).toBeUndefined();
   });
 });

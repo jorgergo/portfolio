@@ -1,15 +1,17 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
+  firstUrl,
   formatDateRange,
-  formatLanguage,
   formatLocation,
   formatMonth,
   formatProfilePath,
+  formatSkillRows,
   groupConsecutive,
   joinMeta,
   sortByDateDesc,
   sortNewestFirst,
   spanOf,
+  type Group,
 } from '@/lib/cv-format';
 import {
   axeViolations,
@@ -36,7 +38,7 @@ type PageCase = {
 
 // Spec 0005 AC-12: the /cv body links in document order, derived from the
 // fixture, so an entry that gains or loses a url in cv.json moves the expected
-// stops with it. A group links to its newest role that has a url.
+// stops with it. A group links through `firstUrl`, as the page does.
 const linked = <T>(
   items: readonly T[],
   name: (item: T) => string,
@@ -48,8 +50,7 @@ const linked = <T>(
 
 const groupUrl = (group: {
   readonly items: readonly { readonly url?: string | undefined }[];
-}): string | undefined =>
-  group.items.find((role) => role.url !== undefined)?.url;
+}): string | undefined => firstUrl(group.items);
 
 const CV_STOPS: readonly string[] = [
   'a "Skip to content"',
@@ -745,9 +746,7 @@ test.describe('cv page', () => {
     {
       id: 'skills',
       heading: 'Skills & interests',
-      present: [cv.skills, cv.technologies, cv.languages, cv.interests].some(
-        (list) => (list ?? []).length > 0,
-      ),
+      present: formatSkillRows(cv).length > 0,
     },
   ].filter(({ present }) => present);
 
@@ -773,8 +772,20 @@ test.describe('cv page', () => {
   const lines = (entry: Locator): Locator => entry.locator(':scope > div');
   const meta = (entry: Locator): Locator =>
     lines(entry).first().locator('span');
+  // The right values (a date, then a location when there is one) sit straight
+  // under the pair lines; the Prose body, the one div in `font-sans`, holds
+  // the summary, the bullets, or the coursework line. Optional parts are read
+  // as arrays, so a missing one counts as zero instead of failing (AC-16).
+  const rightValues = (entry: Locator): Locator =>
+    entry.locator(':scope > div > span');
+  const subtitles = (entry: Locator): Locator =>
+    entry.locator(':scope > div:not(.font-sans) > p');
+  const body = (entry: Locator): Locator =>
+    entry.locator(':scope > div.font-sans');
+  const optional = (value: string | undefined): readonly string[] =>
+    value === undefined ? [] : [value];
 
-  // covers: AC-1, AC-2, AC-3
+  // covers: spec 0005 AC-1, AC-2, AC-3
   test('the header holds the name, the label line, and the contact links, then the sections in order', async ({
     page,
   }) => {
@@ -842,7 +853,7 @@ test.describe('cv page', () => {
     );
   });
 
-  // covers: AC-2, AC-12
+  // covers: spec 0005 AC-2, AC-12
   test('a contact link turns accent-warm on hover and shows the ring on keyboard focus', async ({
     page,
   }) => {
@@ -860,7 +871,63 @@ test.describe('cv page', () => {
     await expect(link).toHaveCSS('outline-offset', '3px');
   });
 
-  // covers: AC-4, AC-5
+  // covers: spec 0005 AC-2
+  test('a contact link turns accent-warm on keyboard focus alone, with no hover', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const link = page.locator('address').getByRole('link').first();
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+
+    await expect(link).toBeFocused();
+    await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
+  });
+
+  // covers: spec 0005 AC-4
+  test('every linked entry title turns accent-warm on hover, its underline with it', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const links = page.locator('main section h3 a');
+    test.skip((await links.count()) === 0, 'the fixture has no linked entry');
+
+    for (const link of await links.all()) {
+      await link.hover();
+      await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
+      await expect(link).toHaveCSS('text-decoration-line', 'underline');
+      await expect(link).toHaveCSS(
+        'text-decoration-color',
+        rgb('light', 'accent-warm'),
+      );
+    }
+  });
+
+  // covers: spec 0005 AC-2, AC-8
+  test('a date and a keyed row key stay muted under the pointer', async ({
+    page,
+  }) => {
+    // Reduced motion drops the colour transition, so a hover colour, if one
+    // existed, would show at once instead of partway through 150ms.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/cv');
+    const date = meta(entryOf(page.locator('main section h3').first()));
+    const keys = page.locator('main dt');
+    const targets = (await keys.count()) > 0 ? [date, keys.first()] : [date];
+
+    for (const target of targets) {
+      await target.hover();
+      // A colour that should not change passes on its first read, so wait
+      // until the pointer has landed before reading it.
+      await expect
+        .poll(() => target.evaluate((el) => el.matches(':hover')))
+        .toBe(true);
+      await expect(target).toHaveCSS('color', rgb('light', 'muted'));
+    }
+  });
+
+  // covers: spec 0005 AC-4, AC-5
   test('consecutive roles at one company group under one company line', async ({
     page,
   }) => {
@@ -875,7 +942,7 @@ test.describe('cv page', () => {
     const entry = entryOf(company);
     const roles = entry.locator(':scope > div').last().locator(':scope > div');
     const span = spanOf(group.items);
-    const url = group.items.find((role) => role.url !== undefined)?.url;
+    const url = firstUrl(group.items);
 
     await expect(company).toHaveCSS('font-weight', '500');
     await expect(company.getByRole('link')).toHaveCount(
@@ -897,12 +964,12 @@ test.describe('cv page', () => {
       await expect(heading).toHaveText(role.position);
       await expect(heading).toHaveCSS('font-weight', '400');
       await expect(roles.nth(index)).toHaveCSS('break-inside', 'avoid');
-      await expect(meta(roles.nth(index))).toHaveText(
+      // Line 2 holds the location alone, and exists only when there is one.
+      await expect(rightValues(roles.nth(index))).toHaveText([
         formatDateRange(role.startDate, role.endDate),
-      );
-      const second = lines(roles.nth(index)).nth(1);
-      await expect(second.locator('p')).toHaveCount(0);
-      await expect(second.locator('span')).toHaveText(role.location ?? '');
+        ...optional(role.location),
+      ]);
+      await expect(subtitles(roles.nth(index))).toHaveCount(0);
       await expect(roles.nth(index).locator('li')).toHaveCount(
         role.highlights.length,
       );
@@ -915,7 +982,7 @@ test.describe('cv page', () => {
     );
   });
 
-  // covers: AC-4, AC-5
+  // covers: spec 0005 AC-4, AC-5
   test('a company with one role is a single entry: company and dates, position and location, bullets', async ({
     page,
   }) => {
@@ -941,14 +1008,90 @@ test.describe('cv page', () => {
       '400',
     );
     await expect(lines(entry).nth(1).locator('span')).toHaveText(
-      role.location ?? '',
+      optional(role.location),
+    );
+    await expect(body(entry)).toHaveCount(
+      role.summary !== undefined || role.highlights.length > 0 ? 1 : 0,
+    );
+    await expect(body(entry).locator(':scope > p')).toHaveText(
+      optional(role.summary),
     );
     await expect(entry.locator('ul > li')).toHaveText([...role.highlights]);
-    await expect(entry.locator('ul')).toHaveCSS('list-style-type', 'disc');
+    if (role.highlights.length > 0) {
+      await expect(entry.locator('ul')).toHaveCSS('list-style-type', 'disc');
+    }
     await expect(entry.locator('h4')).toHaveCount(0);
   });
 
-  // covers: AC-6, AC-7
+  // Experience and Leadership & activities share one rule (AC-5): the roles
+  // sorted newest first, then grouped by company or organization, so every
+  // entry of both sections is checked in order, not only the first of a kind.
+  type Role = {
+    readonly position: string;
+    readonly url?: string | undefined;
+    readonly location?: string | undefined;
+    readonly startDate: string;
+    readonly endDate?: string | undefined;
+    readonly summary?: string | undefined;
+    readonly highlights: readonly string[];
+  };
+  const ROLE_SECTIONS: readonly {
+    readonly id: string;
+    readonly groups: readonly Group<Role>[];
+  }[] = [
+    { id: 'experience', groups: work },
+    {
+      id: 'leadership',
+      groups: groupConsecutive(
+        sortNewestFirst(cv.volunteer ?? []),
+        (role) => role.organization,
+      ),
+    },
+  ];
+
+  for (const { id, groups } of ROLE_SECTIONS) {
+    // covers: spec 0005 AC-4, AC-5
+    test(`the ${id} section lists every entry newest first, each with its span, roles, location, and bullets`, async ({
+      page,
+    }) => {
+      test.skip(groups.length === 0, `the fixture has no ${id} entries`);
+      await page.goto('/cv');
+      const titles = section(page, id).getByRole('heading', { level: 3 });
+
+      await expect(titles).toHaveText(groups.map(({ key }) => key));
+      for (const [index, group] of groups.entries()) {
+        const entry = entryOf(titles.nth(index));
+        const span = spanOf(group.items);
+        const [role, ...others] = group.items;
+
+        await expect(titles.nth(index).getByRole('link')).toHaveCount(
+          firstUrl(group.items) === undefined ? 0 : 1,
+        );
+        await expect(meta(entry)).toHaveText(
+          formatDateRange(span.startDate, span.endDate),
+        );
+        if (others.length > 0) {
+          await expect(entry.getByRole('heading', { level: 4 })).toHaveText(
+            group.items.map(({ position }) => position),
+          );
+          continue;
+        }
+        await expect(subtitles(entry)).toHaveText([role.position]);
+        await expect(rightValues(entry)).toHaveText([
+          formatDateRange(role.startDate, role.endDate),
+          ...optional(role.location),
+        ]);
+        await expect(body(entry).locator(':scope > p')).toHaveText(
+          optional(role.summary),
+        );
+        await expect(body(entry).locator('li')).toHaveText([
+          ...role.highlights,
+        ]);
+      }
+    });
+  }
+
+  // covers: spec 0005 AC-6, AC-7
   test('education, awards, and certificates render newest first with the date on the right', async ({
     page,
   }) => {
@@ -970,10 +1113,10 @@ test.describe('cv page', () => {
         joinMeta(`${entry.studyType}, ${entry.area}`, entry.score),
       );
       await expect(lines(root).nth(1).locator('span')).toHaveText(
-        entry.location ?? '',
+        optional(entry.location),
       );
       const courses = entry.courses ?? [];
-      await expect(root.locator(':scope > div').nth(2).locator('p')).toHaveText(
+      await expect(body(root).locator('p')).toHaveText(
         courses.length > 0 ? [`Coursework: ${courses.join(', ')}.`] : [],
       );
     }
@@ -987,9 +1130,7 @@ test.describe('cv page', () => {
       await expect(awardTitles.nth(index).getByRole('link')).toHaveCount(0);
       await expect(meta(root)).toHaveText(formatMonth(award.date));
       await expect(lines(root).nth(1).locator('p')).toHaveText(award.awarder);
-      await expect(root.locator(':scope > div').nth(2).locator('p')).toHaveText(
-        award.summary === undefined ? [] : [award.summary],
-      );
+      await expect(body(root).locator('p')).toHaveText(optional(award.summary));
     }
 
     const names = section(page, 'certifications').getByRole('heading', {
@@ -1011,7 +1152,7 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: AC-8
+  // covers: spec 0005 AC-8
   test('Skills & interests is one keyed list: groups, technologies, languages, interests', async ({
     page,
   }) => {
@@ -1022,30 +1163,14 @@ test.describe('cv page', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/cv');
     const rows = section(page, 'skills').locator('dl > div');
-    const interests = cv.interests ?? [];
-    const named = interests.filter(
-      ({ keywords = [] }) => keywords.length === 0,
-    );
-    const languages = (cv.languages ?? []).map(formatLanguage);
-    const expected = [
-      ...(cv.skills ?? []).map((g) => ({ key: g.name, values: g.keywords })),
-      ...(cv.technologies ?? []).map((g) => ({
-        key: g.name,
-        values: g.keywords,
-      })),
-      { key: 'Languages', values: languages },
-      ...interests.flatMap(({ name, keywords = [] }) =>
-        keywords.length > 0 ? [{ key: name, values: keywords }] : [],
-      ),
-      ...(named.length > 0
-        ? [{ key: 'Interests', values: named.map(({ name }) => name) }]
-        : []),
-    ].filter(({ values }) => values.length > 0);
+    // The rows and their order are formatSkillRows's, proven by its Vitest
+    // cases (AC-15); this checks the page draws exactly those rows.
+    const expected = formatSkillRows(cv);
 
     await expect(section(page, 'skills').locator('dl')).toHaveCount(1);
     await expect(rows.locator('dt')).toHaveText(expected.map(({ key }) => key));
     await expect(rows.locator('dd')).toHaveText(
-      expected.map(({ values }) => values.join(' · ')),
+      expected.map(({ values }) => joinMeta(...values)),
     );
     for (const row of await rows.all()) {
       await expect(row.locator('dt')).toHaveCSS('width', '160px');
@@ -1054,7 +1179,7 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: AC-11
+  // covers: spec 0005 AC-11
   test('at 479px a pair stacks at one x, and at 480px it shares a line ending at the column edge', async ({
     page,
   }) => {
@@ -1086,7 +1211,59 @@ test.describe('cv page', () => {
     expect((wide.meta?.x ?? 0) + (wide.meta?.width ?? 0)).toBeCloseTo(456, 0);
   });
 
-  // covers: AC-11
+  // covers: spec 0005 AC-4, AC-11
+  test('from 480px no date or location wraps, at 480px, 640px, and 1280px', async ({
+    page,
+  }) => {
+    // Every right value is a span straight under one of its entry's pair
+    // lines. Its lines are the distinct tops of its text fragments; its width
+    // on one line is their sum. A location may wrap only when it alone is
+    // wider than the line (AC-4), so the check skips any value wider than
+    // half its row, which keeps it true for any schema valid cv.json.
+    const rightValues = (target: Page) =>
+      target.evaluate(() => {
+        const headings = [
+          ...document.querySelectorAll('main section :is(h3, h4)'),
+        ];
+        const values = headings.flatMap((heading) => [
+          ...(heading.parentElement?.parentElement?.querySelectorAll(
+            ':scope > div > span',
+          ) ?? []),
+        ]);
+        return {
+          headings: headings.length,
+          values: values.map((span) => {
+            const range = document.createRange();
+            range.selectNodeContents(span);
+            const rects = [...range.getClientRects()].filter(
+              (rect) => rect.width > 0,
+            );
+            return {
+              text: span.textContent,
+              lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+              width: rects.reduce((sum, rect) => sum + rect.width, 0),
+              row: span.parentElement?.getBoundingClientRect().width ?? 0,
+            };
+          }),
+        };
+      });
+
+    await page.goto('/cv');
+    for (const width of [480, 640, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      const { headings, values } = await rightValues(page);
+
+      // Every entry and role has a date, so none of them can go unchecked.
+      expect(values.length).toBeGreaterThanOrEqual(headings);
+      for (const value of values.filter(({ width: w, row }) => w <= row / 2)) {
+        expect(value.lines, `${value.text ?? ''} at ${String(width)}px`).toBe(
+          1,
+        );
+      }
+    }
+  });
+
+  // covers: spec 0005 AC-11
   test('at 320px every contact item wraps whole, its separator on the same line', async ({
     page,
   }) => {
@@ -1111,7 +1288,7 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: AC-11
+  // covers: spec 0005 AC-11
   test('the heading outline never skips a level, and nothing carries a role, style, or target', async ({
     page,
   }) => {
@@ -1135,7 +1312,7 @@ test.describe('cv page', () => {
     await expect(page.locator('a[target]')).toHaveCount(0);
   });
 
-  // covers: AC-12
+  // covers: spec 0005 AC-12
   test('every Tab stop shows the 2px accent ring offset 3px', async ({
     page,
   }) => {
@@ -1163,7 +1340,7 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: AC-10, AC-12
+  // covers: spec 0005 AC-10, AC-12
   test('ships no script and loads only the page, the stylesheet, and three Plex files', async ({
     page,
   }) => {
@@ -1192,7 +1369,7 @@ test.describe('cv page', () => {
       await page.goto('/cv');
     });
 
-    // covers: AC-10
+    // covers: spec 0005 AC-10
     test('hides the footer and the skip link, and nothing else', async ({
       page,
     }) => {
@@ -1211,7 +1388,7 @@ test.describe('cv page', () => {
       expect(hidden).toBe(0);
     });
 
-    // covers: AC-10
+    // covers: spec 0005 AC-10
     test('tightens the gaps to 1.5rem and 1rem at the 11pt root', async ({
       page,
     }) => {
@@ -1222,7 +1399,7 @@ test.describe('cv page', () => {
       }
     });
 
-    // covers: AC-10
+    // covers: spec 0005 AC-10
     test('keeps entries, keyed rows, headings, and a group line whole across pages', async ({
       page,
     }) => {
@@ -1258,19 +1435,25 @@ test.describe('cv page', () => {
       }
     });
 
-    // covers: AC-10
+    // covers: spec 0005 AC-10
     test('prints the paper tokens: plain ink links, muted meta, white paper', async ({
       page,
     }) => {
       const contact = page.locator('address').getByRole('link').first();
-      const body = page.locator('main h3 a').first();
+      // A CV with no linked entry, or no keyed rows, has nothing to check there.
+      const bodyLinks = page.locator('main h3 a');
+      const keys = page.locator('dt');
 
       await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
       await expect(page.locator('html')).toHaveCSS(
         'background-color',
         rgb('print', 'bg'),
       );
-      for (const link of [contact, body]) {
+      const links =
+        (await bodyLinks.count()) > 0
+          ? [contact, bodyLinks.first()]
+          : [contact];
+      for (const link of links) {
         await expect(link).toHaveCSS('text-decoration-line', 'none');
         await expect(link).toHaveCSS('color', rgb('print', 'fg'));
       }
@@ -1278,10 +1461,9 @@ test.describe('cv page', () => {
         'color',
         rgb('print', 'muted'),
       );
-      await expect(page.locator('dt').first()).toHaveCSS(
-        'color',
-        rgb('print', 'muted'),
-      );
+      if ((await keys.count()) > 0) {
+        await expect(keys.first()).toHaveCSS('color', rgb('print', 'muted'));
+      }
     });
   });
 });

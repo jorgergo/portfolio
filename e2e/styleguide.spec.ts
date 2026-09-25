@@ -804,7 +804,7 @@ test.describe('CvEntry', () => {
       }),
     );
 
-  // covers: AC-4, AC-13
+  // covers: spec 0005 AC-4, AC-13
   test('a single entry is an h3 at 500 with a TextLink, a right aligned muted meta, and a sans body with disc bullets', async ({
     page,
   }) => {
@@ -865,7 +865,7 @@ test.describe('CvEntry', () => {
     );
   });
 
-  // covers: AC-4, AC-5, AC-13
+  // covers: spec 0005 AC-4, AC-5, AC-13
   test('a splittable group may split, its first line never ends a page, and its roles are h4 at 400 with the location alone on line 2', async ({
     page,
   }) => {
@@ -906,7 +906,7 @@ test.describe('CvEntry', () => {
     }
   });
 
-  // covers: AC-11, AC-13
+  // covers: spec 0005 AC-11, AC-13
   test('below 480px each pair stacks, the right value under its left text', async ({
     page,
   }) => {
@@ -928,7 +928,38 @@ test.describe('CvEntry', () => {
     expect(await scrollsSideways(page)).toBe(false);
   });
 
-  // covers: AC-13
+  // covers: spec 0005 AC-4, AC-11, AC-13
+  test('from 480px a short location stays whole on the first line of the left text, which wraps beside it', async ({
+    page,
+  }) => {
+    for (const width of [480, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await open(page);
+      const entry = single(page, 'Document, light');
+      const meta = lines(entry).nth(0).locator('span');
+      const subtitle = lines(entry).nth(1).locator('p');
+      const aside = lines(entry).nth(1).locator('span');
+      const [metaBox, subtitleBox, asideBox, sectionBox] = [
+        await meta.boundingBox(),
+        await subtitle.boundingBox(),
+        await aside.boundingBox(),
+        await block(page, 'Document, light').boundingBox(),
+      ];
+
+      // The date on line 1 is one line of the same text-sm meta.
+      expect(asideBox?.height).toBe(metaBox?.height);
+      expect(subtitleBox?.height ?? 0).toBeGreaterThan(asideBox?.height ?? 0);
+      expect(asideBox?.y ?? 0).toBeLessThan(
+        (subtitleBox?.y ?? 0) + (asideBox?.height ?? 0),
+      );
+      expect((asideBox?.x ?? 0) + (asideBox?.width ?? 0)).toBeCloseTo(
+        (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) - 25,
+        0,
+      );
+    }
+  });
+
+  // covers: spec 0005 AC-13
   test('in the dark block the title link is dark fg and the meta dark muted', async ({
     page,
   }) => {
@@ -945,7 +976,7 @@ test.describe('CvEntry', () => {
     await expect(entry.locator('ul')).toHaveCSS('color', rgb('dark', 'fg'));
   });
 
-  // covers: AC-4, AC-13
+  // covers: spec 0005 AC-4, AC-13
   test('the title link turns accent-warm on hover and on keyboard focus', async ({
     page,
   }) => {
@@ -967,7 +998,7 @@ test.describe('KeyedList', () => {
   const list = (page: Page, name: 'Document, light' | 'Document, dark') =>
     block(page, name).locator('dl');
 
-  // covers: AC-8, AC-13
+  // covers: spec 0005 AC-8, AC-13
   test('draws each row as a muted key in a 160px column beside its values joined by a middle dot', async ({
     page,
   }) => {
@@ -996,7 +1027,7 @@ test.describe('KeyedList', () => {
     }
   });
 
-  // covers: AC-11, AC-13
+  // covers: spec 0005 AC-11, AC-13
   test('below 480px the values drop under their key', async ({ page }) => {
     await page.setViewportSize({ width: 479, height: 800 });
     await open(page);
@@ -1013,7 +1044,7 @@ test.describe('KeyedList', () => {
     );
   });
 
-  // covers: AC-13
+  // covers: spec 0005 AC-13
   test('in the dark block the key is dark muted', async ({ page }) => {
     await open(page);
 
