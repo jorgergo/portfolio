@@ -35,3 +35,13 @@ Light and dark follow the operating system setting; toggle it in System Settings
 - The VoiceOver list check is manual; axe does not test Safari's list heuristic, and the label in name rule is outside the WCAG tag set the Playwright axe pass runs.
 - A social value wider than the whole column (over 28 characters at 320px) would overflow sideways; no current content is near that and the schema keeps the email a plain address.
 - The 200 check covers the Pages nav only; external profile URLs are not fetched by the tests (they are yours to keep current in `cv.json`).
+
+## Value sourcing · added by /develop 2026-09-24
+_One step per row of the spec's Value sourcing table that the steps above do not vary yet. Each is a temporary edit: change the file, run the command, check the result, then restore it with `git checkout <file>`._
+- [ ] In `src/content/cv.json` set `basics.name` to `Test Name` and `basics.bio` to `Test bio.`, run `pnpm build` → `dist/index.html` has `<title>Test Name</title>`, the h1 reads `Test Name`, the meta description and the paragraph read `Test bio.`; restore → AC-1
+- [ ] Swap the two entries of `basics.profiles`, run `pnpm build` → the `linkedin` row renders above the `github` row (file order), the email row stays last; restore → AC-3
+- [ ] Set `basics.email` to `test@example.com`, run `pnpm build` → the last row reads `email test@example.com` and its href is `mailto:test@example.com`; restore → AC-3
+- [ ] Set the GitHub profile `url` to `https://github.com/example`, run `pnpm build` → the `github` row href follows and the arrow stays (the href is still https); restore → AC-3, AC-4
+- [ ] In `src/lib/site-nav.ts` add `{ label: 'about', href: '/about' }` before the `cv` entry, run `pnpm build` → the menu reads `01 about` then `02 cv` (numbers from position); `pnpm exec playwright test --project site -g "answers 200"` fails on `/about` (404); restore → AC-2, AC-10
+
+Coverage: AC-1 name and bio steps · AC-2 and AC-10 the `SITE_NAV` step · AC-3 the profiles, email, and url steps · AC-4 the url step (arrow rule).
