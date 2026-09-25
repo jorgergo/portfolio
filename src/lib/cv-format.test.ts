@@ -3,9 +3,11 @@ import {
   formatDateRange,
   formatLocation,
   formatMonth,
+  formatProfileHandle,
   sortByDateDesc,
   sortNewestFirst,
 } from '@/lib/cv-format';
+import type { Network } from '@/lib/cv-schema';
 
 type Dated = {
   readonly id: string;
@@ -195,5 +197,27 @@ describe('formatLocation', () => {
     expect(formatLocation({ city: 'Toluca', countryCode: 'mx' })).toBe(
       'Toluca, mx',
     );
+  });
+});
+
+describe('formatProfileHandle', () => {
+  const cases: readonly (readonly [Network, string, string])[] = [
+    ['GitHub', 'jorgergo', '@jorgergo'],
+    ['LinkedIn', 'jorgergo', 'in/jorgergo'],
+  ];
+
+  // covers: spec 0004 AC-8
+  it.each(cases)(
+    'formats a %s username %s as %s',
+    (network, username, expected) => {
+      expect(formatProfileHandle({ network, username })).toBe(expected);
+    },
+  );
+
+  // covers: spec 0004 AC-8
+  it('keeps the username as written, with no lowercasing or trimming', () => {
+    expect(
+      formatProfileHandle({ network: 'GitHub', username: 'JorgeRGO' }),
+    ).toBe('@JorgeRGO');
   });
 });
