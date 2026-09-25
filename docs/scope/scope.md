@@ -121,8 +121,8 @@ spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/sit
   - [x] Icons: the generated `favicon.svg` with its dark switch and `apple-touch-icon.png` (AC-8, AC-9)
   - [x] Style guide, `design.md`, the `toLocal` and `pngSize` page test helpers, page tests, and the gate, with the live share check recorded for Go live (AC-11 to AC-14)
   - [x] Card limits from the review: the glyph rule read from the font's `unicode.json`, the 24 character name part, the 24 character city and the 60 character footer check, the `monogram` fix, `design.md`, and the break steps; the inline test fixtures are already done (AC-7, AC-8, AC-15 to AC-18)
-- [ ] Verify it: `/check verify metadata & share cards`
-- [ ] Test it: `/test metadata & share cards`
+- [x] Verify it: `/check verify metadata & share cards`
+- [x] Test it: `/test metadata & share cards`
 - [x] Review it (fresh model): `/check review metadata & share cards`
 - [ ] Document it: `/document metadata & share cards`
 
