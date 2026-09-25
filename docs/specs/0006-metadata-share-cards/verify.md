@@ -15,7 +15,7 @@ The first build was compared pixel by pixel with the bench renders (the private 
 - [x] Open `/` and `/cv` with the network panel open and reload → no script, no request to `/og/` or `/apple-touch-icon.png`, only the page, the stylesheet, the Plex files, and at most the favicon; the console shows no Content Security Policy error → AC-11
 - [x] `pnpm dev`, open `/styleguide`, scroll to the end → below the panels a `Share cards and icons` section shows the home card and the CV card at column width inside a hairline border, then the favicon at 16 and 32px and the Apple icon at 60px, all loaded; switch light and dark → the cards stay light, the favicons switch → AC-12
 - [x] Read `design.md` → a `Share cards and icons` section with the canvas, padding, sizes, the label and footer rules, light tokens only, Plex Mono only, the two caps, the favicon tile and its dark switch, and the square opaque Apple icon; the `BaseLayout` entry names the `share` prop → AC-12
-- [ ] After Go live: paste `https://jorgergo.dev/cv` into LinkedIn's Post Inspector, a new X post, and a WhatsApp chat → each shows the CV card and the CV title; the home URL shows the home card → AC-14
+- [x] After Go live: paste `https://jorgergo.dev/cv` into LinkedIn's Post Inspector, a new X post, and a WhatsApp chat → each shows the CV card and the CV title; the home URL shows the home card → AC-14
 
 ## Value sourcing (vary the input, check the output)
 - [x] Break step: in `src/content/cv.json` set `basics.label` to `Senior Full Stack Developer` (27 characters), run `pnpm build` → the `/` title, both cards' role line, and both `og:image:alt` values change, with no code edit; restore → AC-2, AC-3, AC-7 (title, card role, alt)
