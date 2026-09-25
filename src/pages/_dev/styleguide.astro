@@ -1,6 +1,8 @@
 ---
 import Button from '@/components/Button.astro';
+import CvEntry from '@/components/CvEntry.astro';
 import IconLink from '@/components/IconLink.astro';
+import KeyedList from '@/components/KeyedList.astro';
 import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
 import Download from '@/components/icons/Download.astro';
 import GitHub from '@/components/icons/GitHub.astro';
@@ -51,19 +53,82 @@ const PANELS: readonly Panel[] = [
   { scheme: 'dark', label: 'Dark', panel: 'scheme-dark' },
 ];
 
+// Spec 0005: the document components need the full column, since a pair
+// (left text, right meta) has no room in a 234px panel while `xs:` (a
+// viewport query) is already active.
+const DOCUMENTS: readonly Panel[] = [
+  { scheme: 'light', label: 'Document, light', panel: 'scheme-light' },
+  { scheme: 'dark', label: 'Document, dark', panel: 'scheme-dark' },
+];
+
+const SINGLE_ENTRY = {
+  title: 'Tecnológico de Monterrey',
+  href: 'https://tec.mx',
+  meta: 'Aug 2020 – Jun 2024',
+  subtitle: 'B.S., Computer Science and Technology · GPA 4.0/4.0',
+  aside: 'Toluca, Mexico',
+  summary:
+    'A single entry: a linked title with its date on line 1, a subtitle with its location on line 2, then a sans body.',
+  highlights: [
+    'The first bullet, in sans with a muted disc marker.',
+    'The second bullet, a gap-1 below the first.',
+  ],
+} as const;
+
+const GROUP_ENTRY = {
+  title: 'Ford Motor Company',
+  href: 'https://www.ford.com',
+  meta: 'Jan 2025 – Present',
+  roles: [
+    {
+      title: 'Full Stack Developer, PDPO',
+      meta: 'Aug 2025 – Present',
+      aside: 'Remote',
+      summary:
+        'A role inside a group: an h4 at weight 400, its location alone on the right of line 2.',
+      highlights: ['One bullet under the current role.'],
+    },
+    {
+      title: 'Software Engineer, IT Academy',
+      meta: 'Jan 2025 – Jul 2025',
+      aside: 'Mexico City, Mexico',
+      highlights: ['One bullet under the closed role.'],
+    },
+  ],
+} as const;
+
+const KEYED_ROWS = [
+  { key: 'Technologies', values: ['TypeScript', 'Astro', 'Tailwind CSS'] },
+  { key: 'Languages', values: ['Spanish (Native)', 'English (Fluent, C2)'] },
+] as const;
+
 type Step = {
   readonly name: string;
   readonly use: string;
   readonly bar: string;
 };
 const SPACING: readonly Step[] = [
-  { name: 'gap-1', use: 'between rows in a list', bar: 'w-1' },
-  { name: 'gap-2', use: 'icon to label, heading to subtitle', bar: 'w-2' },
-  { name: 'gap-4', use: 'a row prefix to its label', bar: 'w-4' },
+  { name: 'gap-1', use: 'between rows in a list, between bullets', bar: 'w-1' },
+  {
+    name: 'gap-2',
+    use: 'icon to label, heading to subtitle, between keyed rows',
+    bar: 'w-2',
+  },
+  { name: 'pb-2', use: 'a heading over its rule', bar: 'w-2' },
+  { name: 'mx-2', use: 'a contact separator', bar: 'w-2' },
+  {
+    name: 'gap-4',
+    use: 'a row prefix to its label, between roles in a group',
+    bar: 'w-4',
+  },
+  { name: 'gap-x-4', use: "a pair's left text to its right meta", bar: 'w-4' },
+  { name: 'pl-5', use: 'bullet indent', bar: 'w-5' },
   { name: 'gap-6', use: 'blocks inside a section', bar: 'w-6' },
+  { name: 'min-h-6', use: 'a contact or footer link', bar: 'w-6' },
   { name: 'pt-10', use: 'page top', bar: 'w-10' },
   { name: 'gap-14', use: 'between sections, main to footer', bar: 'w-14' },
   { name: 'pb-20', use: 'page bottom', bar: 'w-20' },
+  { name: 'xs:w-40', use: "a keyed row's key column", bar: 'w-40' },
 ];
 
 const ICONS = [
@@ -282,4 +347,47 @@ const printValues = COLOR_ROLES.map(
       );
     })}
   </div>
+  {DOCUMENTS.map(({ label, panel }) => (
+    <section
+      class:list={[
+        panel,
+        'flex flex-col gap-6 rounded-xs border border-line bg-bg p-6 text-fg',
+      ]}
+    >
+      <SectionHeading>{label}</SectionHeading>
+      <p class="text-sm text-muted">
+        The CV page components at full width: one entry, a splittable group of
+        two roles, and a keyed list.
+      </p>
+      <CvEntry
+        title={SINGLE_ENTRY.title}
+        href={SINGLE_ENTRY.href}
+        meta={SINGLE_ENTRY.meta}
+        subtitle={SINGLE_ENTRY.subtitle}
+        aside={SINGLE_ENTRY.aside}
+        summary={SINGLE_ENTRY.summary}
+        highlights={SINGLE_ENTRY.highlights}
+      />
+      <CvEntry
+        splittable
+        title={GROUP_ENTRY.title}
+        href={GROUP_ENTRY.href}
+        meta={GROUP_ENTRY.meta}
+      >
+        <div class="flex flex-col gap-4">
+          {GROUP_ENTRY.roles.map((role) => (
+            <CvEntry
+              as="h4"
+              title={role.title}
+              meta={role.meta}
+              aside={role.aside}
+              summary={'summary' in role ? role.summary : undefined}
+              highlights={role.highlights}
+            />
+          ))}
+        </div>
+      </CvEntry>
+      <KeyedList items={KEYED_ROWS} />
+    </section>
+  ))}
 </BaseLayout>

@@ -770,3 +770,287 @@ test.describe('print', () => {
     await expect(chip).toHaveCSS('padding-left', '0px');
   });
 });
+
+// Spec 0005: the document components in the full width blocks under the panels.
+const block = (
+  page: Page,
+  name: 'Document, light' | 'Document, dark',
+): Locator =>
+  page.locator('section').filter({
+    has: page.getByRole('heading', { level: 2, name, exact: true }),
+  });
+
+// An entry's root sits two levels above its heading; its lines are its child divs.
+const entryOf = (heading: Locator): Locator => heading.locator('xpath=../..');
+const lines = (entry: Locator): Locator => entry.locator(':scope > div');
+
+// The colour of a list marker, which toHaveCSS cannot read.
+const markerColor = (item: Locator): Promise<string> =>
+  item.evaluate((el) => getComputedStyle(el, '::marker').color);
+
+test.describe('CvEntry', () => {
+  const single = (page: Page, name: 'Document, light' | 'Document, dark') =>
+    entryOf(
+      block(page, name).getByRole('heading', {
+        level: 3,
+        name: 'Tecnológico de Monterrey',
+      }),
+    );
+  const group = (page: Page, name: 'Document, light' | 'Document, dark') =>
+    entryOf(
+      block(page, name).getByRole('heading', {
+        level: 3,
+        name: 'Ford Motor Company',
+      }),
+    );
+
+  // covers: spec 0005 AC-4, AC-13
+  test('a single entry is an h3 at 500 with a TextLink, a right aligned muted meta, and a sans body with disc bullets', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page);
+    const entry = single(page, 'Document, light');
+    const title = entry.getByRole('heading', { level: 3 });
+    const link = title.getByRole('link');
+    const meta = lines(entry).nth(0).locator('span');
+    const subtitle = lines(entry).nth(1).locator('p');
+    const aside = lines(entry).nth(1).locator('span');
+    const body = entry.locator(':scope > div').nth(2);
+    const bullets = body.locator('ul > li');
+
+    await expect(entry).toHaveCSS('row-gap', '8px');
+    await expect(entry).toHaveCSS('break-inside', 'avoid');
+    await expect(title).toHaveCSS('font-weight', '500');
+    await expect(title).toHaveCSS('font-size', '16px');
+    await expect(link).toHaveAttribute('href', 'https://tec.mx');
+    await expect(link).toHaveCSS('text-decoration-line', 'underline');
+    await expect(link).toHaveCSS('color', rgb('light', 'fg'));
+    await expect(lines(entry).nth(0)).toHaveCSS('flex-direction', 'row');
+    await expect(lines(entry).nth(0)).toHaveCSS('column-gap', '16px');
+    await expect(lines(entry).nth(0)).toHaveCSS('align-items', 'baseline');
+    await expect(meta).toHaveText('Aug 2020 – Jun 2024');
+    await expect(meta).toHaveCSS('text-align', 'right');
+    await expect(meta).toHaveCSS('font-size', '14px');
+    await expect(meta).toHaveCSS('color', rgb('light', 'muted'));
+    await expect(meta).toHaveCSS('flex-shrink', '0');
+    await expect(subtitle).toHaveText(
+      'B.S., Computer Science and Technology · GPA 4.0/4.0',
+    );
+    await expect(subtitle).toHaveCSS('font-weight', '400');
+    await expect(aside).toHaveText('Toluca, Mexico');
+    await expect(aside).toHaveCSS('text-align', 'right');
+    await expect(aside).toHaveCSS('flex-shrink', '1');
+    await expect(body).toHaveCSS('font-family', /^"IBM Plex Sans-/);
+    await expect(body).toHaveCSS('row-gap', '8px');
+    await expect(body.locator('p')).toHaveText(/^A single entry/);
+    await expect(bullets).toHaveCount(2);
+    await expect(body.locator('ul')).toHaveCSS('list-style-type', 'disc');
+    await expect(body.locator('ul')).toHaveCSS('padding-left', '20px');
+    await expect(body.locator('ul')).toHaveCSS('row-gap', '4px');
+    expect(await markerColor(bullets.first())).toBe(rgb('light', 'muted'));
+    const [titleBox, metaBox, sectionBox] = [
+      await title.boundingBox(),
+      await meta.boundingBox(),
+      await block(page, 'Document, light').boundingBox(),
+    ];
+    expect(metaBox?.y ?? 0).toBeLessThan(
+      (titleBox?.y ?? 0) + (titleBox?.height ?? 0),
+    );
+    // The block has p-6 inside a 1px border, so the meta ends 25px inside
+    // the block's right edge.
+    expect((metaBox?.x ?? 0) + (metaBox?.width ?? 0)).toBeCloseTo(
+      (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) - 25,
+      0,
+    );
+  });
+
+  // covers: spec 0005 AC-4, AC-5, AC-13
+  test('a splittable group may split, its first line never ends a page, and its roles are h4 at 400 with the location alone on line 2', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page);
+    const entry = group(page, 'Document, light');
+    const roles = entry.locator(':scope > div').last();
+    const role = roles.locator(':scope > div');
+
+    await expect(entry).toHaveCSS('break-inside', 'auto');
+    await expect(lines(entry).first()).toHaveCSS('break-after', 'avoid');
+    await expect(lines(entry).first().locator('span')).toHaveText(
+      'Jan 2025 – Present',
+    );
+    await expect(entry.getByRole('heading', { level: 3 })).toHaveCSS(
+      'font-weight',
+      '500',
+    );
+    await expect(roles).toHaveCSS('row-gap', '16px');
+    await expect(role).toHaveCount(2);
+    await expect(entry.getByRole('heading', { level: 4 })).toHaveText([
+      'Full Stack Developer, PDPO',
+      'Software Engineer, IT Academy',
+    ]);
+    for (const [index, aside] of ['Remote', 'Mexico City, Mexico'].entries()) {
+      const heading = role.nth(index).getByRole('heading', { level: 4 });
+      await expect(heading).toHaveCSS('font-weight', '400');
+      await expect(heading.getByRole('link')).toHaveCount(0);
+      await expect(role.nth(index)).toHaveCSS('break-inside', 'avoid');
+      await expect(lines(role.nth(index)).nth(1).locator('p')).toHaveCount(0);
+      await expect(lines(role.nth(index)).nth(1).locator('span')).toHaveText(
+        aside,
+      );
+      await expect(lines(role.nth(index)).nth(1).locator('span')).toHaveCSS(
+        'text-align',
+        'right',
+      );
+    }
+  });
+
+  // covers: spec 0005 AC-11, AC-13
+  test('below 480px each pair stacks, the right value under its left text', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 479, height: 800 });
+    await open(page);
+    const entry = single(page, 'Document, light');
+    const title = entry.getByRole('heading', { level: 3 });
+    const meta = lines(entry).nth(0).locator('span');
+
+    await expect(lines(entry).nth(0)).toHaveCSS('flex-direction', 'column');
+    const [titleBox, metaBox] = [
+      await title.boundingBox(),
+      await meta.boundingBox(),
+    ];
+    expect(metaBox?.x).toBe(titleBox?.x);
+    expect(metaBox?.y ?? 0).toBeGreaterThanOrEqual(
+      (titleBox?.y ?? 0) + (titleBox?.height ?? 0),
+    );
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  // covers: spec 0005 AC-4, AC-11, AC-13
+  test('from 480px a short location stays whole on the first line of the left text, which wraps beside it', async ({
+    page,
+  }) => {
+    for (const width of [480, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await open(page);
+      const entry = single(page, 'Document, light');
+      const meta = lines(entry).nth(0).locator('span');
+      const subtitle = lines(entry).nth(1).locator('p');
+      const aside = lines(entry).nth(1).locator('span');
+      const [metaBox, subtitleBox, asideBox, sectionBox] = [
+        await meta.boundingBox(),
+        await subtitle.boundingBox(),
+        await aside.boundingBox(),
+        await block(page, 'Document, light').boundingBox(),
+      ];
+
+      // The date on line 1 is one line of the same text-sm meta.
+      expect(asideBox?.height).toBe(metaBox?.height);
+      expect(subtitleBox?.height ?? 0).toBeGreaterThan(asideBox?.height ?? 0);
+      expect(asideBox?.y ?? 0).toBeLessThan(
+        (subtitleBox?.y ?? 0) + (asideBox?.height ?? 0),
+      );
+      expect((asideBox?.x ?? 0) + (asideBox?.width ?? 0)).toBeCloseTo(
+        (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) - 25,
+        0,
+      );
+    }
+  });
+
+  // covers: spec 0005 AC-13
+  test('in the dark block the title link is dark fg and the meta dark muted', async ({
+    page,
+  }) => {
+    await open(page);
+    const entry = single(page, 'Document, dark');
+
+    await expect(
+      entry.getByRole('heading', { level: 3 }).getByRole('link'),
+    ).toHaveCSS('color', rgb('dark', 'fg'));
+    await expect(lines(entry).nth(0).locator('span')).toHaveCSS(
+      'color',
+      rgb('dark', 'muted'),
+    );
+    await expect(entry.locator('ul')).toHaveCSS('color', rgb('dark', 'fg'));
+  });
+
+  // covers: spec 0005 AC-4, AC-13
+  test('the title link turns accent-warm on hover and on keyboard focus', async ({
+    page,
+  }) => {
+    await open(page);
+    const link = single(page, 'Document, light')
+      .getByRole('heading', { level: 3 })
+      .getByRole('link');
+
+    await link.hover();
+    await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
+
+    await keyboardFocus(page, link);
+    await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
+    await expect(link).toHaveCSS('outline-style', 'solid');
+  });
+});
+
+test.describe('KeyedList', () => {
+  const list = (page: Page, name: 'Document, light' | 'Document, dark') =>
+    block(page, name).locator('dl');
+
+  // covers: spec 0005 AC-8, AC-13
+  test('draws each row as a muted key in a 160px column beside its values joined by a middle dot', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page);
+    const dl = list(page, 'Document, light');
+    const rows = dl.locator(':scope > div');
+
+    await expect(dl).toHaveCSS('row-gap', '8px');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.locator('dt')).toHaveText(['Technologies', 'Languages']);
+    await expect(rows.locator('dd')).toHaveText([
+      'TypeScript · Astro · Tailwind CSS',
+      'Spanish (Native) · English (Fluent, C2)',
+    ]);
+    for (const row of await rows.all()) {
+      await expect(row).toHaveCSS('flex-direction', 'row');
+      await expect(row).toHaveCSS('column-gap', '16px');
+      await expect(row).toHaveCSS('break-inside', 'avoid');
+      await expect(row.locator('dt')).toHaveCSS('width', '160px');
+      await expect(row.locator('dt')).toHaveCSS('flex-shrink', '0');
+      await expect(row.locator('dt')).toHaveCSS('font-size', '14px');
+      await expect(row.locator('dt')).toHaveCSS('color', rgb('light', 'muted'));
+      await expect(row.locator('dd')).toHaveCSS('color', rgb('light', 'fg'));
+      await expect(row.locator('dd')).toHaveCSS('margin-left', '0px');
+    }
+  });
+
+  // covers: spec 0005 AC-11, AC-13
+  test('below 480px the values drop under their key', async ({ page }) => {
+    await page.setViewportSize({ width: 479, height: 800 });
+    await open(page);
+    const row = list(page, 'Document, light').locator(':scope > div').first();
+
+    await expect(row).toHaveCSS('flex-direction', 'column');
+    const [key, value] = [
+      await row.locator('dt').boundingBox(),
+      await row.locator('dd').boundingBox(),
+    ];
+    expect(value?.x).toBe(key?.x);
+    expect(value?.y ?? 0).toBeGreaterThanOrEqual(
+      (key?.y ?? 0) + (key?.height ?? 0),
+    );
+  });
+
+  // covers: spec 0005 AC-13
+  test('in the dark block the key is dark muted', async ({ page }) => {
+    await open(page);
+
+    await expect(list(page, 'Document, dark').locator('dt').first()).toHaveCSS(
+      'color',
+      rgb('dark', 'muted'),
+    );
+  });
+});

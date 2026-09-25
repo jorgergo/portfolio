@@ -1,0 +1,23 @@
+---
+import { joinMeta, type KeyedRow } from '@/lib/cv-format';
+
+interface Props {
+  items: readonly KeyedRow[];
+  class?: string;
+}
+
+// Keyed rows for skills, technologies, languages, and interests: a muted key
+// in a fixed column, then its values joined by a middle dot. A row with no
+// values is skipped, so a heading is never followed by an empty row (spec 0005).
+const { items, class: className } = Astro.props;
+const rows = items.filter((item) => item.values.length > 0);
+---
+
+<dl class:list={['flex flex-col gap-2', className]}>
+  {rows.map(({ key, values }) => (
+    <div class="flex flex-col gap-x-4 break-inside-avoid xs:flex-row xs:items-baseline">
+      <dt class="shrink-0 text-sm text-muted xs:w-40">{key}</dt>
+      <dd>{joinMeta(...values)}</dd>
+    </div>
+  ))}
+</dl>

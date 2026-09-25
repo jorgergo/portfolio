@@ -16,7 +16,8 @@ export const tokens = parseColorTokens(
 // The fixture parsed through the site's own schema, with the `image` stub the
 // Vitest schema tests use, so its type is what the pages read (`profiles` is
 // optional here as it is there) and invalid content fails the run up front.
-export const { basics } = makeCvSchema(() => z.string()).parse(cvFile.main);
+export const cv = makeCvSchema(() => z.string()).parse(cvFile.main);
+export const { basics } = cv;
 
 // Every file the build wrote, relative to dist/ (the site project builds first).
 export const distFiles = (): readonly string[] =>

@@ -16,7 +16,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Content model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Home page | Release 1 | done |
-| 6 | CV page | Release 1 | planned |
+| 6 | CV page | Release 1 | in-progress |
 | 7 | Metadata & share cards | Release 1 | planned |
 | 8 | Go live | Release 1 | planned |
 | 9 | CV PDF download | Release 2 | planned |
@@ -94,10 +94,21 @@ spec [0004](../specs/0004-home-page/index.md) · code in `src/pages/index.astro`
 - [x] Review it (fresh model): `/check review home page`
 - [x] Document it: `/document home page`
 
-### 6. CV page · needs a decision
+### 6. CV page · in-progress
 Your CV in English, laid out in the Harvard format (header with contact line, summary, experience, education, skills, technologies), styled like cv.jarocki.me. Content comes from the CV you paste in, rewritten into English and the Harvard structure.
 **Done when:** every Harvard section renders from the content model; browser print or "Save as PDF" gives a clean document with no site chrome; it reads well on phone and desktop; it has its own title and description.
-- [ ] Design it (spec): `/architect cv page`
+spec [0005](../specs/0005-cv-page/index.md) · code in `src/pages/cv.astro`, `src/components/CvEntry.astro`, `src/components/KeyedList.astro`
+- [x] Design it (spec): `/architect cv page`
+- [x] Build it: `/develop cv page`
+  - [x] Helpers: `formatProfilePath`, `joinMeta`, `formatLanguage`, `groupConsecutive`, and `spanOf` in `src/lib/cv-format.ts` with their Vitest cases (AC-9)
+  - [x] Page and pieces: `CvEntry`, `KeyedList`, the `printFooter` and `SiteFooter` `class` props, and `cv.astro` recomposed as header, contact line, and seven sections from `getCv()`, with the forced page test edits (AC-1 to AC-8, AC-10, AC-14)
+  - [x] Style guide and `design.md`: both components full width in both schemes with their anatomy checks, eleven components, the new rules and spacing meanings (AC-13)
+  - [x] Page tests and the gate: the `cv page` block in `e2e/site.spec.ts`, build, lint, format, tests, the manual steps in `verify.md` (AC-10 to AC-12, AC-14)
+  - [x] Review fixes (spec build plan tasks 5 to 7): land the line 2 pair rule, `decodeURI`, and `joinMeta` changes already in your tree and update `design.md`; add `KeyedRow`, `formatSkillRows`, and `firstUrl` with their Vitest cases; make the page tests count optional elements, proven by the `verify.md` break steps (AC-4, AC-8, AC-9, AC-13 to AC-16)
+- [x] Verify it: `/check verify cv page`
+- [x] Test it: `/test cv page`
+- [x] Review it (fresh model): `/check review cv page`
+- [x] Document it: `/document cv page`
 
 ### 7. Metadata & share cards · needs a decision
 Proper titles and descriptions for every page, plus a clean preview image when someone shares your link on LinkedIn, X, or WhatsApp.

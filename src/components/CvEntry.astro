@@ -1,0 +1,92 @@
+---
+import Prose from '@/components/Prose.astro';
+import TextLink from '@/components/TextLink.astro';
+
+interface Props {
+  title: string;
+  href?: string;
+  // A date or date range: short, fixed width, never wraps.
+  meta?: string;
+  subtitle?: string;
+  // A location: free text, wraps only when it alone is wider than the line.
+  aside?: string;
+  summary?: string;
+  highlights?: readonly string[];
+  as?: 'h3' | 'h4';
+  // A group of roles may split across pages; each role inside it never does.
+  splittable?: boolean;
+  class?: string;
+}
+
+// One dated entry of the CV as two Harvard pairs (left text, right meta), an
+// optional sans body, and a slot for nested roles or a coursework line. The
+// title is the entry's one medium line; an h4 role and a position stay at 400
+// (spec 0005).
+const {
+  title,
+  href,
+  meta,
+  subtitle,
+  aside,
+  summary,
+  highlights = [],
+  as: Tag = 'h3',
+  splittable = false,
+  class: className,
+} = Astro.props;
+
+const hasSecondLine = subtitle !== undefined || aside !== undefined;
+const hasBody = summary !== undefined || highlights.length > 0;
+
+// Below `xs` (480px) the right value drops under the left text, left aligned;
+// from 480px the pair shares one line, baseline aligned, the right value at
+// the column's right edge.
+const pair =
+  'flex flex-col gap-x-4 xs:flex-row xs:items-baseline xs:justify-between';
+// On line 2 the subtitle grows from zero width (`xs:flex-1`), so it wraps
+// beside the location, and the location keeps its width unless it alone
+// cannot fit. If both could shrink, flexbox would split the overflow between
+// them by width and break even a short location like `Toluca, Mexico`.
+---
+
+<div
+  class:list={[
+    'flex flex-col gap-2',
+    !splittable && 'break-inside-avoid',
+    className,
+  ]}
+>
+  <div class:list={[pair, splittable && 'break-after-avoid']}>
+    <Tag class:list={[Tag === 'h3' && 'font-medium']}>
+      {href !== undefined ? <TextLink href={href}>{title}</TextLink> : title}
+    </Tag>
+    {meta !== undefined && (
+      <span class="shrink-0 text-sm text-muted xs:ml-auto xs:text-right">
+        {meta}
+      </span>
+    )}
+  </div>
+  {hasSecondLine && (
+    <div class={pair}>
+      {subtitle !== undefined && <p class="xs:flex-1">{subtitle}</p>}
+      {aside !== undefined && (
+        <span class="min-w-0 text-sm text-muted xs:ml-auto xs:text-right">
+          {aside}
+        </span>
+      )}
+    </div>
+  )}
+  {hasBody && (
+    <Prose class="flex flex-col gap-2">
+      {summary !== undefined && <p>{summary}</p>}
+      {highlights.length > 0 && (
+        <ul class="flex list-disc flex-col gap-1 pl-5 marker:text-muted">
+          {highlights.map((highlight) => (
+            <li>{highlight}</li>
+          ))}
+        </ul>
+      )}
+    </Prose>
+  )}
+  <slot />
+</div>

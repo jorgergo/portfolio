@@ -1,14 +1,276 @@
 ---
+import CvEntry from '@/components/CvEntry.astro';
+import KeyedList from '@/components/KeyedList.astro';
+import Prose from '@/components/Prose.astro';
+import SectionHeading from '@/components/SectionHeading.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { getCv } from '@/lib/cv';
+import {
+  getCv,
+  type CvAward,
+  type CvCertificate,
+  type CvEducation,
+} from '@/lib/cv';
+import {
+  firstUrl,
+  formatDateRange,
+  formatLocation,
+  formatMonth,
+  formatProfilePath,
+  formatSkillRows,
+  groupConsecutive,
+  joinMeta,
+  sortByDateDesc,
+  sortNewestFirst,
+  spanOf,
+  type Group,
+  type KeyedRow,
+} from '@/lib/cv-format';
 
-// Composition belongs to the CV page spec; this is the shell with real content.
-const { basics } = await getCv();
+// Spec 0005: the whole CV as a Harvard style document from cv.json, read once.
+// Header and contact line, then one section per non empty source in a fixed
+// order; consecutive roles at one company group under one company line.
+const cv = await getCv();
+const { basics } = cv;
+
+const contacts = [
+  { href: `mailto:${basics.email}`, text: basics.email },
+  ...(basics.profiles ?? []).map(({ url }) => ({
+    href: url,
+    text: formatProfilePath(url),
+  })),
+];
+// Every contact item but the last ends with a muted dot that wraps with it.
+const last = contacts.length - 1;
+const DOT = '·';
+
+type Role = {
+  readonly name: string;
+  readonly position: string;
+  readonly url?: string | undefined;
+  readonly location?: string | undefined;
+  readonly startDate: string;
+  readonly endDate?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly highlights: readonly string[];
+};
+
+// Sorting precedes grouping, so the current role at a company and its closed
+// predecessor sit together.
+const groupRoles = (roles: readonly Role[]): readonly Group<Role>[] =>
+  groupConsecutive(sortNewestFirst(roles), (role) => role.name);
+
+const single = (group: Group<Role>): Role | undefined =>
+  group.items.length === 1 ? group.items[0] : undefined;
+
+// A group's company line spans all its roles and links to the newest role
+// that has a url (`firstUrl`, since the roles are sorted newest first).
+const groupMeta = (group: Group<Role>): string => {
+  const span = spanOf(group.items);
+  return formatDateRange(span.startDate, span.endDate);
+};
+
+const experience = groupRoles(cv.work);
+const leadership = groupRoles(
+  (cv.volunteer ?? []).map(({ organization, ...role }) => ({
+    ...role,
+    name: organization,
+  })),
+);
+
+// Skills, technologies, languages, and interests as `KeyedList` rows, with
+// empty rows already dropped (spec 0005 AC-15).
+const skillRows = formatSkillRows(cv);
+
+type Section = { readonly id: string; readonly heading: string } & (
+  | { readonly kind: 'summary'; readonly text: string }
+  | { readonly kind: 'roles'; readonly groups: readonly Group<Role>[] }
+  | { readonly kind: 'education'; readonly entries: readonly CvEducation[] }
+  | { readonly kind: 'awards'; readonly entries: readonly CvAward[] }
+  | {
+      readonly kind: 'certificates';
+      readonly entries: readonly CvCertificate[];
+    }
+  | { readonly kind: 'skills'; readonly items: readonly KeyedRow[] }
+);
+
+const hasContent = (section: Section): boolean => {
+  switch (section.kind) {
+    case 'summary':
+      return true;
+    case 'roles':
+      return section.groups.length > 0;
+    case 'education':
+    case 'awards':
+    case 'certificates':
+      return section.entries.length > 0;
+    case 'skills':
+      return section.items.length > 0;
+  }
+};
+
+const sections: readonly Section[] = [
+  { kind: 'summary', id: 'summary', heading: 'Summary', text: basics.summary },
+  {
+    kind: 'roles',
+    id: 'experience',
+    heading: 'Experience',
+    groups: experience,
+  },
+  {
+    kind: 'education',
+    id: 'education',
+    heading: 'Education',
+    entries: sortNewestFirst(cv.education),
+  },
+  {
+    kind: 'roles',
+    id: 'leadership',
+    heading: 'Leadership & activities',
+    groups: leadership,
+  },
+  {
+    kind: 'awards',
+    id: 'awards',
+    heading: 'Awards',
+    entries: sortByDateDesc(cv.awards ?? []),
+  },
+  {
+    kind: 'certificates',
+    id: 'certifications',
+    heading: 'Certifications',
+    entries: sortByDateDesc(cv.certificates ?? []),
+  },
+  {
+    kind: 'skills',
+    id: 'skills',
+    heading: 'Skills & interests',
+    items: skillRows,
+  },
+];
+const rendered = sections.filter(hasContent);
 ---
 
-<BaseLayout title="CV" description={basics.bio}>
-  <section class="flex flex-col gap-6">
-    <h1 class="text-lg font-medium">{basics.name}</h1>
-    <p class="text-sm text-muted">{basics.label}</p>
-  </section>
+<BaseLayout
+  title={`CV · ${basics.name}`}
+  description={basics.bio}
+  printFooter={false}
+>
+  <div class="flex flex-col gap-14 print:gap-6">
+    <header class="flex flex-col gap-2">
+      <h1 class="text-lg font-medium">{basics.name}</h1>
+      <p class="text-sm text-muted">
+        {joinMeta(basics.label, formatLocation(basics.location))}
+      </p>
+      <address class="not-italic">
+        <ul class="flex flex-wrap text-sm text-muted">
+          {contacts.map(({ href, text }, index) => (
+            <li class="flex items-center">
+              <a
+                href={href}
+                class="inline-flex min-h-6 items-center text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm"
+              >
+                {text}
+              </a>
+              {index < last && (
+                <span aria-hidden="true" class="mx-2">
+                  {DOT}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </address>
+    </header>
+    {rendered.map((section) => (
+      <section
+        class="flex flex-col gap-6 print:gap-4"
+        aria-labelledby={section.id}
+      >
+        <SectionHeading
+          id={section.id}
+          class="border-b border-line pb-2 break-after-avoid"
+        >
+          {section.heading}
+        </SectionHeading>
+        {section.kind === 'summary' && (
+          <Prose>
+            <p>{section.text}</p>
+          </Prose>
+        )}
+        {section.kind === 'roles' &&
+          section.groups.map((group) => {
+            const role = single(group);
+            return role !== undefined ? (
+              <CvEntry
+                title={group.key}
+                href={role.url}
+                meta={formatDateRange(role.startDate, role.endDate)}
+                subtitle={role.position}
+                aside={role.location}
+                summary={role.summary}
+                highlights={role.highlights}
+              />
+            ) : (
+              <CvEntry
+                splittable
+                title={group.key}
+                href={firstUrl(group.items)}
+                meta={groupMeta(group)}
+              >
+                <div class="flex flex-col gap-4">
+                  {group.items.map((item) => (
+                    <CvEntry
+                      as="h4"
+                      title={item.position}
+                      meta={formatDateRange(item.startDate, item.endDate)}
+                      aside={item.location}
+                      summary={item.summary}
+                      highlights={item.highlights}
+                    />
+                  ))}
+                </div>
+              </CvEntry>
+            );
+          })}
+        {section.kind === 'education' &&
+          section.entries.map((entry) => (
+            <CvEntry
+              title={entry.institution}
+              href={entry.url}
+              meta={formatDateRange(entry.startDate, entry.endDate)}
+              subtitle={joinMeta(
+                `${entry.studyType}, ${entry.area}`,
+                entry.score,
+              )}
+              aside={entry.location}
+            >
+              {entry.courses !== undefined && entry.courses.length > 0 && (
+                <Prose>
+                  <p>Coursework: {entry.courses.join(', ')}.</p>
+                </Prose>
+              )}
+            </CvEntry>
+          ))}
+        {section.kind === 'awards' &&
+          section.entries.map((award) => (
+            <CvEntry
+              title={award.title}
+              meta={formatMonth(award.date)}
+              subtitle={award.awarder}
+              summary={award.summary}
+            />
+          ))}
+        {section.kind === 'certificates' &&
+          section.entries.map((certificate) => (
+            <CvEntry
+              title={certificate.name}
+              href={certificate.url}
+              meta={formatMonth(certificate.date)}
+              subtitle={certificate.issuer}
+            />
+          ))}
+        {section.kind === 'skills' && <KeyedList items={section.items} />}
+      </section>
+    ))}
+  </div>
 </BaseLayout>
