@@ -29,9 +29,18 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - [ ] With `pnpm preview` running on the built site, `SMOKE_ORIGIN=http://localhost:8787 bash .github/scripts/smoke.sh pages` → passes; `grep -n 'about' .github/scripts/smoke.sh e2e/helpers.ts` → the `/about` page check, the `/og/about.png` check, and `about.html` in `SMOKE_FILES` → AC-12
 - [ ] `pnpm dev`, open `/styleguide` → the share card section shows the home, CV, and About cards, then the icons → AC-11
 
+## Value sourcing (added by /develop)
+Each step changes one source in `src/content/cv.json`, runs `pnpm build`, checks `dist/`, then restores the file (copy your own saved `cv.json` back if it holds uncommitted edits).
+- [ ] Set `basics.name` to `Ana Ruiz` → `dist/about.html` has `<title>About · Ana Ruiz</title>`, the description `What Ana cares about, at work and away from it.`, and `og:image:alt` `About, Ana Ruiz, Full Stack Developer`; `dist/og/about.png` draws `Ana Ruiz` → AC-1, AC-2
+- [ ] Set `basics.email` to `ana@example.com` → the closing's link reads `ana@example.com` with `href="mailto:ana@example.com"`; `pnpm exec playwright test --project site -g "about page"` passes with no test edit → AC-7
+- [ ] Set `about.closing` to `Email me at {email} any time.` → the sentence renders as `Email me at `, the link, then ` any time.` with one space on each side of the address → AC-7
+- [ ] Set `basics.location.city` to `Mexico City` → `dist/og/about.png` ends its footer with `Mexico City, MX` on one row → AC-2
+- [ ] `pnpm exec playwright test --project site -g "smoke check"` → the `/about` rows pass: one byte off `dist/about.html`, an immutable cache on `/about`, and `/og/about.png` served as `image/jpeg` each fail the smoke run → AC-12
+
 ## Acceptance-criteria coverage
 AC-1 · AC-2 · AC-3 · AC-4 · AC-5 · AC-6 · AC-7 · AC-8 · AC-9 · AC-10 · AC-11 · AC-12: each has at least one step above.
 
 ## Known gaps (not AC failures)
 - Safari's VoiceOver does not announce the lines as a list (the marker is a hidden span, not a CSS marker); the lines still read in order.
 - The CDP font check runs in Chromium only; the Safari look is checked by eye above.
+- `TextLink` emits one space before its `<a>`, so a closing with text right before `{email}` (such as `({email})`) would print a stray gap after the `(`. Today's closing has a space there, so the two collapse; the closing page test fails if a content edit exposes it. A separate fix is suggested.
