@@ -211,7 +211,7 @@ Skateboard: the thinnest usable whole is the site live at jorgergo.dev through t
 
 ## Follow-up
 
-- [ ] Spec 0001: tick the Go live follow-up and drop the Cloudflare build image caveat (a small in place update, after launch).
-- [ ] Spec 0006: tick its Go live follow-up and the AC-14 `verify.md` line once step 14 passes.
+- [x] Spec 0001: tick the Go live follow-up and drop the Cloudflare build image caveat (a small in place update, after launch).
+- [x] Spec 0006: tick its Go live follow-up and the AC-14 `verify.md` line once step 14 passes.
 - [ ] Revisit PR previews (Workers Previews, wrangler 4.135 or later) if visual reviews ever need a shared URL.
 - [ ] Revisit an address at the domain (Cloudflare Email Routing) if you want one on the CV.
