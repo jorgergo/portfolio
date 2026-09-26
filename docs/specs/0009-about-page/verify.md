@@ -34,6 +34,7 @@ Each step changes one source in `src/content/cv.json`, runs `pnpm build`, checks
 - [ ] Set `basics.name` to `Ana Ruiz` → `dist/about.html` has `<title>About · Ana Ruiz</title>`, the description `What Ana cares about, at work and away from it.`, and `og:image:alt` `About, Ana Ruiz, Full Stack Developer`; `dist/og/about.png` draws `Ana Ruiz` → AC-1, AC-2
 - [ ] Set `basics.email` to `ana@example.com` → the closing's link reads `ana@example.com` with `href="mailto:ana@example.com"`; `pnpm exec playwright test --project site -g "about page"` passes with no test edit → AC-7
 - [ ] Set `about.closing` to `Email me at {email} any time.` → the sentence renders as `Email me at `, the link, then ` any time.` with one space on each side of the address → AC-7
+- [ ] Set `about.closing` to `Write to me ({email}).` → the sentence renders `Write to me (`, the link, then `).`, with no space inside the parentheses (`TextLink` adds no whitespace of its own) → AC-7
 - [ ] Set `basics.location.city` to `Mexico City` → `dist/og/about.png` ends its footer with `Mexico City, MX` on one row → AC-2
 - [ ] `pnpm exec playwright test --project site -g "smoke check"` → the `/about` rows pass: one byte off `dist/about.html`, an immutable cache on `/about`, and `/og/about.png` served as `image/jpeg` each fail the smoke run → AC-12
 
@@ -43,4 +44,3 @@ AC-1 · AC-2 · AC-3 · AC-4 · AC-5 · AC-6 · AC-7 · AC-8 · AC-9 · AC-10 ·
 ## Known gaps (not AC failures)
 - Safari's VoiceOver does not announce the lines as a list (the marker is a hidden span, not a CSS marker); the lines still read in order.
 - The CDP font check runs in Chromium only; the Safari look is checked by eye above.
-- `TextLink` emits one space before its `<a>`, so a closing with text right before `{email}` (such as `({email})`) would print a stray gap after the `(`. Today's closing has a space there, so the two collapse; the closing page test fails if a content edit exposes it. A separate fix is suggested.
