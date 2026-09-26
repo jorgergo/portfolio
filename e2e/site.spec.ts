@@ -1671,6 +1671,22 @@ test.describe('about page', () => {
     expect(await link.textContent()).toBe(basics.email);
   });
 
+  // covers: spec 0009 AC-7
+  test('the closing adds no whitespace of its own around the email link', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const closing = splitAtEmail(about.closing);
+    const sentence = block(page).locator(':scope > p').last();
+
+    // toHaveText collapses a run of spaces, so it cannot see a space the
+    // markup adds beside one the content already has; the raw text can.
+    expect(closing).toBeDefined();
+    expect(await sentence.textContent()).toBe(
+      `${closing?.before ?? ''}${basics.email}${closing?.after ?? ''}`,
+    );
+  });
+
   // covers: spec 0009 AC-9
   test('the email link and ← home show the accent ring on keyboard focus', async ({
     page,
