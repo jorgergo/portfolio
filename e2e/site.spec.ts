@@ -13,6 +13,7 @@ import {
   spanOf,
   type Group,
 } from '@/lib/cv-format';
+import { splitAtEmail } from '@/lib/cv-schema';
 import {
   formatPageTitle,
   OG_TYPE,
@@ -21,6 +22,7 @@ import {
   SHARE_PAGES,
   TWITTER_CARD,
 } from '@/lib/site-meta';
+import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 import {
   axeViolations,
   basics,
@@ -106,7 +108,13 @@ const CV_STOPS: readonly string[] = [
 // Spec 0006 AC-3, AC-4: titles and descriptions come from cv.json through
 // site-meta.ts, as the pages get them.
 const homeMeta = pageMeta('home', cv, site);
+const aboutMeta = pageMeta('about', cv, site);
 const cvMeta = pageMeta('cv', cv, site);
+
+// The home menu rows as they read, `01 about`, from SITE_NAV (spec 0009 AC-8).
+const MENU_ROWS = SITE_NAV.map(
+  ({ label }, index) => `${formatRowNumber(index)} ${label}`,
+);
 
 const PAGES: readonly PageCase[] = [
   {
@@ -117,11 +125,19 @@ const PAGES: readonly PageCase[] = [
     // Spec 0004 AC-7: the menu rows, then the social rows, and nothing after.
     stops: [
       'a "Skip to content"',
-      'a "01 cv"',
+      ...MENU_ROWS.map((row) => `a "${row}"`),
       'a "github @jorgergo"',
       'a "linkedin in/jorgergo"',
       'a "email jorgergo@icloud.com"',
     ],
+  },
+  {
+    path: '/about',
+    title: aboutMeta.title,
+    description: aboutMeta.description,
+    h1: 'about',
+    // Spec 0009 AC-9: the closing's email is the page's one link.
+    stops: ['a "Skip to content"', `a "${basics.email}"`, 'a "← home"'],
   },
   {
     path: '/cv',
@@ -522,8 +538,8 @@ test.describe('type and layout', () => {
     await expect(h1).toHaveCSS('font-weight', '500');
   });
 
-  for (const path of ['/cv', '/missing']) {
-    // covers: AC-4
+  for (const path of ['/about', '/cv', '/missing']) {
+    // covers: AC-4, spec 0009 AC-5
     test(`the ${path} h1 is text-lg at weight 500`, async ({ page }) => {
       await page.goto(path);
       const h1 = page.getByRole('heading', { level: 1 });
@@ -785,8 +801,8 @@ test.describe('response headers', () => {
   const stylesheet = (): string =>
     /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
 
-  // covers: spec 0007 AC-3
-  for (const path of ['/', '/cv']) {
+  // covers: spec 0007 AC-3, spec 0009 AC-12
+  for (const path of ['/', '/about', '/cv']) {
     test(`${path} carries every /* header and no immutable cache`, async ({
       request,
     }) => {
@@ -1276,19 +1292,21 @@ test.describe('home page', () => {
     await expect(page.locator('main img, main video')).toHaveCount(0);
   });
 
-  // covers: AC-2
+  // covers: AC-2, spec 0009 AC-8
   test('the Pages nav is an ordered list of the site pages, numbered from 01', async ({
     page,
   }) => {
     await page.goto('/');
     const nav = pagesNav(page);
-    const cv = nav.getByRole('link', { name: 'cv', exact: true });
 
     await expect(nav.locator('ol')).toHaveCount(1);
-    await expect(nav.getByRole('listitem')).toHaveText(['01 cv']);
-    await expect(cv).toHaveAttribute('href', '/cv');
-    await expect(spans(cv).first()).toHaveText('01');
-    await expect(spans(cv).first()).toHaveAttribute('aria-hidden', 'true');
+    await expect(nav.getByRole('listitem')).toHaveText(MENU_ROWS);
+    for (const [index, { label, href }] of SITE_NAV.entries()) {
+      const row = nav.getByRole('link', { name: label, exact: true });
+      await expect(row).toHaveAttribute('href', href);
+      await expect(spans(row).first()).toHaveText(formatRowNumber(index));
+      await expect(spans(row).first()).toHaveAttribute('aria-hidden', 'true');
+    }
     await expect(page.locator('body [role]')).toHaveCount(0);
   });
 
@@ -1397,7 +1415,7 @@ test.describe('home page', () => {
   }) => {
     await page.goto('/');
     const names = [
-      'cv',
+      ...SITE_NAV.map(({ label }) => label),
       'github @jorgergo',
       'linkedin in/jorgergo',
       `email ${basics.email}`,
@@ -1435,6 +1453,337 @@ test.describe('home page', () => {
       const response = await page.request.get(href ?? '', { maxRedirects: 0 });
       expect(response.status(), href ?? 'missing href').toBe(200);
     }
+  });
+});
+
+// Spec 0009: /about as a heading, an intro, the marker list, and one closing
+// sentence. Every expectation is read from cv.json through the site's helpers,
+// so a valid content edit needs no test edit.
+test.describe('about page', () => {
+  const { about } = cv;
+  const MARKER = '›';
+  const main = (page: Page): Locator => page.locator('main#main');
+  const block = (page: Page): Locator => main(page).locator(':scope > div');
+  const list = (page: Page): Locator => block(page).locator(':scope > ul');
+  const markers = (page: Page): Locator =>
+    list(page).locator(':scope > li > span[aria-hidden="true"]');
+  const texts = (page: Page): Locator =>
+    list(page).locator(':scope > li > span:not([aria-hidden])');
+  const colours = (locator: Locator): Promise<readonly string[]> =>
+    locator.evaluateAll((els) => els.map((el) => getComputedStyle(el).color));
+
+  // Every file an @font-face rule points at, as `family weight` with the
+  // Fonts API hash dropped from the family (`IBM Plex Mono 500`).
+  const fontFiles = (page: Page): Promise<Readonly<Record<string, string>>> =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        [...document.styleSheets]
+          .flatMap((sheet) => [...sheet.cssRules])
+          .filter((rule) => rule instanceof CSSFontFaceRule)
+          .flatMap(({ style }) => {
+            const family = style
+              .getPropertyValue('font-family')
+              .replaceAll('"', '')
+              .replace(/-\w+$/, '');
+            const face = `${family} ${style.getPropertyValue('font-weight')}`;
+            return [
+              ...style.getPropertyValue('src').matchAll(/url\("?([^")]+)"?\)/g),
+            ].map(([, url]) => [
+              new URL(url ?? '', document.baseURI).pathname,
+              face,
+            ]);
+          }),
+      ),
+    );
+
+  // covers: spec 0009 AC-5
+  test('main holds one block: the h1, the intro, the list, and the closing, 24px apart', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const children = block(page).locator(':scope > *');
+
+    await expect(main(page).locator(':scope > *')).toHaveCount(1);
+    await expect(block(page)).toHaveJSProperty('tagName', 'DIV');
+    await expect(block(page)).toHaveCSS('row-gap', '24px');
+    await expect(block(page)).toHaveCSS('text-wrap-style', 'pretty');
+    expect(
+      await children.evaluateAll((els) => els.map((el) => el.tagName)),
+    ).toEqual(['H1', 'P', 'UL', 'P']);
+    await expect(children.nth(0)).toHaveText('about');
+    await expect(children.nth(1)).toHaveText(about.intro);
+    await expect(list(page).locator(':scope > li')).toHaveCount(
+      about.items.length,
+    );
+    await expect(texts(page)).toHaveText(about.items);
+    await expect(list(page)).toHaveCSS('row-gap', '8px');
+    await expect(
+      main(page).locator('nav, img, video, h2, h3, dl, section'),
+    ).toHaveCount(0);
+    expect(distFile('about.html')).not.toMatch(/<script/i);
+  });
+
+  for (const scheme of SCHEMES) {
+    // covers: spec 0009 AC-5
+    test(`every text is fg and every marker muted in ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/about');
+      const words = block(page).locator(
+        ':scope > h1, :scope > p, :scope > ul > li > span:not([aria-hidden]), a',
+      );
+
+      await expect(words).toHaveCount(about.items.length + 4);
+      expect(new Set(await colours(words))).toEqual(
+        new Set([rgb(scheme, 'fg')]),
+      );
+      expect(new Set(await colours(markers(page)))).toEqual(
+        new Set([rgb(scheme, 'muted')]),
+      );
+    });
+  }
+
+  // covers: spec 0009 AC-5
+  test('names no employer on the page or in its description', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const words = `${await main(page).innerText()} ${aboutMeta.description}`;
+    // Each full name, and its first word when that is a name on its own (Ford).
+    const employers = cv.work.flatMap(({ name }) => [
+      name,
+      ...name
+        .split(' ')
+        .filter((word, index) => index === 0 && word.length > 3),
+    ]);
+
+    expect(employers.length).toBeGreaterThan(0);
+    for (const employer of employers) {
+      expect(words).not.toMatch(new RegExp(`\\b${employer}\\b`));
+    }
+  });
+
+  // covers: spec 0009 AC-6
+  test('each line is a flex row: one hidden marker in a 20px column, then the text', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+
+    for (const row of await list(page).locator(':scope > li').all()) {
+      await expect(row).toHaveCSS('display', 'flex');
+      await expect(row.locator(':scope > span')).toHaveCount(2);
+      await expect(row.locator('span[aria-hidden="true"]')).toHaveCount(1);
+      await expect(row.locator(':scope > span').first()).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+    }
+    await expect(markers(page)).toHaveText(about.items.map(() => MARKER));
+    for (const marker of await markers(page).all()) {
+      await expect(marker).toHaveCSS('width', '20px');
+      await expect(marker).toHaveCSS('flex-shrink', '0');
+    }
+  });
+
+  // covers: spec 0009 AC-6
+  test('the list reads each item alone, without the marker', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+
+    await expect(list(page)).toMatchAriaSnapshot(
+      [
+        '- list:',
+        '  - /children: equal',
+        ...about.items.map((item) => `  - listitem: ${JSON.stringify(item)}`),
+      ].join('\n'),
+    );
+  });
+
+  // covers: spec 0009 AC-6
+  test('at 320px every line of the longest item starts 20px in, under the text', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/about');
+    const longest = about.items.reduce((a, b) => (b.length > a.length ? b : a));
+    const text = texts(page).nth(about.items.indexOf(longest));
+    const lefts = await text.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].map(({ left }) => left);
+    });
+    const span = await text.boundingBox();
+    const ul = await list(page).boundingBox();
+
+    expect(lefts.length).toBeGreaterThan(0);
+    for (const left of lefts) expect(left).toBeCloseTo(span?.x ?? -1, 1);
+    expect((span?.x ?? 0) - (ul?.x ?? 0)).toBeCloseTo(20, 1);
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  // covers: spec 0009 AC-6
+  test('draws the marker in IBM Plex Mono, never a fallback face', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument');
+    const { nodeId } = await cdp.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector: 'main li > span[aria-hidden="true"]',
+    });
+    const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', {
+      nodeId,
+    });
+
+    expect(fonts).toEqual([
+      expect.objectContaining({
+        familyName: expect.stringMatching(/^IBM Plex Mono/),
+        isCustomFont: true,
+      }),
+    ]);
+  });
+
+  // covers: spec 0009 AC-7
+  test('the closing is one sentence whose only link is the email', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const closing = splitAtEmail(about.closing);
+    const sentence = block(page).locator(':scope > p').last();
+    const link = main(page).getByRole('link');
+
+    expect(closing).toBeDefined();
+    await expect(sentence).toHaveText(
+      `${closing?.before ?? ''}${basics.email}${closing?.after ?? ''}`,
+    );
+    await expect(link).toHaveCount(1);
+    await expect(sentence.getByRole('link')).toHaveCount(1);
+    await expect(link).toHaveAttribute('href', `mailto:${basics.email}`);
+    expect(await link.textContent()).toBe(basics.email);
+  });
+
+  // covers: spec 0009 AC-9
+  test('the email link and ← home show the accent ring on keyboard focus', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const links = [
+      main(page).getByRole('link'),
+      page.getByRole('contentinfo').getByRole('link'),
+    ];
+
+    await page.keyboard.press('Tab');
+    for (const link of links) {
+      await page.keyboard.press('Tab');
+      await expect(link).toBeFocused();
+      await expect(link).toHaveCSS('outline-style', 'solid');
+      await expect(link).toHaveCSS('outline-width', '2px');
+      await expect(link).toHaveCSS('outline-offset', '3px');
+      await expect(link).toHaveCSS('outline-color', rgb('light', 'accent'));
+    }
+  });
+
+  // covers: spec 0009 AC-9
+  test('has one h1, no role under body, and no style attribute', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('body [role]')).toHaveCount(0);
+    await expect(page.locator('[style]')).toHaveCount(0);
+  });
+
+  // covers: spec 0009 AC-9
+  test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
+    page,
+  }) => {
+    const paths: string[] = [];
+    page.on('request', (request) =>
+      paths.push(new URL(request.url()).pathname),
+    );
+
+    await page.goto('/about', { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const files = await fontFiles(page);
+    const fonts = paths
+      .filter((path) => path.endsWith('.woff2'))
+      .map((path) => files[path] ?? path);
+
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
+    expect(fonts.toSorted()).toEqual([
+      'IBM Plex Mono 400',
+      'IBM Plex Mono 500',
+    ]);
+    // Headless Chromium skips the favicon, so it is allowed, not required.
+    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
+      '/about',
+    ]);
+  });
+
+  test.describe('in print', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+      await page.goto('/about');
+    });
+
+    // covers: spec 0009 AC-10
+    test('prints every line on paper, the markers in paper muted', async ({
+      page,
+    }) => {
+      await expect(page.locator('html')).toHaveCSS(
+        'background-color',
+        rgb('print', 'bg'),
+      );
+      for (const child of await block(page).locator(':scope > *').all()) {
+        await expect(child).toBeVisible();
+      }
+      await expect(texts(page)).toHaveText(about.items);
+      for (const marker of await markers(page).all()) {
+        await expect(marker).toBeVisible();
+      }
+      expect(new Set(await colours(markers(page)))).toEqual(
+        new Set([rgb('print', 'muted')]),
+      );
+    });
+
+    // covers: spec 0009 AC-10
+    test('prints the email as plain ink with no underline', async ({
+      page,
+    }) => {
+      const link = main(page).getByRole('link');
+
+      await expect(link).toBeVisible();
+      await expect(link).toHaveCSS('text-decoration-line', 'none');
+      await expect(link).toHaveCSS('color', rgb('print', 'fg'));
+    });
+
+    // covers: spec 0009 AC-10
+    test('keeps the footer city line and hides the skip link and ← home', async ({
+      page,
+    }) => {
+      const { city, countryCode } = basics.location;
+      const year = new Date().getUTCFullYear();
+
+      await expect(page.getByRole('contentinfo')).toBeVisible();
+      await expect(page.getByRole('contentinfo')).toContainText(
+        `${city}, ${countryCode} · ${year}`,
+      );
+      await expect(page.locator('a[href="#main"]')).toHaveCSS(
+        'display',
+        'none',
+      );
+      await expect(
+        page.getByRole('contentinfo').locator('a[href="/"]'),
+      ).toBeHidden();
+    });
   });
 });
 
