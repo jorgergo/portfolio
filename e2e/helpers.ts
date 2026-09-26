@@ -1,5 +1,18 @@
 /// <reference types="node" />
-import { readdirSync, readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { createServer, request } from 'node:http';
+import { join } from 'node:path';
+import { text } from 'node:stream/consumers';
+import { fileURLToPath } from 'node:url';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { z } from 'astro/zod';
@@ -183,4 +196,169 @@ export const axeViolations = async (
     ({ id, nodes }) =>
       `${id}: ${nodes.map(({ target }) => target.join(' ')).join(', ')}`,
   );
+};
+
+// Spec 0007 AC-9: smoke.sh, run as the deploy job runs it, but against the
+// local wrangler server. The script reads these four files from dist/.
+const SMOKE = fileURLToPath(
+  new URL('../.github/scripts/smoke.sh', import.meta.url),
+);
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const SMOKE_FILES = ['index.html', 'cv.html', '404.html', '_headers'] as const;
+type SmokeFile = (typeof SMOKE_FILES)[number];
+
+export type SmokeRun = {
+  readonly code: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+  // The seconds of each pause between attempts, in order.
+  readonly pauses: readonly string[];
+};
+
+// Runs smoke.sh from `cwd` (the folder whose dist/ it reads, the repo root by
+// default). SMOKE_ORIGIN is set only when `origin` is given, so a value in your
+// shell never leaks in. `sleep` is a stub in `dir` that records each pause, so
+// ten failed attempts take no time.
+export const runSmoke = async ({
+  args,
+  dir,
+  cwd = ROOT,
+  origin,
+}: {
+  readonly args: readonly string[];
+  readonly dir: string;
+  readonly cwd?: string;
+  readonly origin?: string;
+}): Promise<SmokeRun> => {
+  const bin = join(dir, 'bin');
+  const log = join(dir, 'pauses.log');
+  mkdirSync(bin, { recursive: true });
+  rmSync(log, { force: true });
+  writeFileSync(
+    join(bin, 'sleep'),
+    '#!/bin/sh\necho "$1" >>"$SMOKE_PAUSES"\n',
+    {
+      mode: 0o755,
+    },
+  );
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name !== 'SMOKE_ORIGIN'),
+  );
+  const child = spawn('bash', [SMOKE, ...args], {
+    cwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...env,
+      PATH: `${bin}:${process.env.PATH ?? ''}`,
+      SMOKE_PAUSES: log,
+      ...(origin === undefined ? {} : { SMOKE_ORIGIN: origin }),
+    },
+  });
+  const [stdout, stderr, code] = await Promise.all([
+    text(child.stdout),
+    text(child.stderr),
+    new Promise<number | null>((resolve, reject) => {
+      child.on('error', reject);
+      child.on('close', resolve);
+    }),
+  ]);
+  const pauses = existsSync(log)
+    ? readFileSync(log, 'utf8').split('\n').filter(Boolean)
+    : [];
+  return { code, stdout, stderr, pauses };
+};
+
+// A copy of the files smoke.sh reads, at `dir`/dist, with `edits` applied (a
+// verify.md break step). Returns `dir`, the folder to run the script from.
+export const scratchDist = (
+  dir: string,
+  edits: Readonly<Partial<Record<SmokeFile, (text: string) => string>>>,
+): string => {
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  for (const name of SMOKE_FILES) {
+    const from = join(ROOT, 'dist', name);
+    const to = join(dir, 'dist', name);
+    const edit = edits[name];
+    if (edit === undefined) copyFileSync(from, to);
+    else writeFileSync(to, edit(readFileSync(from, 'utf8')));
+  }
+  return dir;
+};
+
+// What smoke.sh prints when the same check fails on all ten attempts.
+export const failedEveryAttempt = (
+  mode: string,
+  origin: string,
+  problem: string,
+): string =>
+  [
+    `smoke ${mode}: ${origin}`,
+    ...Array.from(
+      { length: 10 },
+      (_, index) => `attempt ${index + 1}/10: ${problem}`,
+    ),
+    '',
+  ].join('\n');
+
+const listen = async (
+  server: ReturnType<typeof createServer>,
+): Promise<number> => {
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  return typeof address === 'object' && address !== null ? address.port : 0;
+};
+
+const close = (server: ReturnType<typeof createServer>): Promise<void> =>
+  new Promise((resolve, reject) => {
+    server.closeAllConnections();
+    server.close((error) => (error === undefined ? resolve() : reject(error)));
+  });
+
+// A port nothing listens on: the system hands out a free one and the server
+// closes at once, so every request to it is refused, like a site that is down.
+export const closedPort = async (): Promise<number> => {
+  const server = createServer();
+  const port = await listen(server);
+  await close(server);
+  return port;
+};
+
+// One response changed the way a bad deploy might serve it.
+export type Tamper = {
+  readonly path: string;
+  readonly status?: number;
+  // Lowercase names; each replaces the upstream header of that name.
+  readonly headers?: Readonly<Record<string, string>>;
+};
+
+// Runs `use` with the origin of a proxy that forwards every request to
+// `upstream` unchanged, except the response for `tamper.path`, then closes it.
+export const withTamperingProxy = async <T>(
+  upstream: string,
+  tamper: Tamper,
+  use: (origin: string) => Promise<T>,
+): Promise<T> => {
+  const { host } = new URL(upstream);
+  const server = createServer((incoming, outgoing) => {
+    const hit = incoming.url === tamper.path;
+    const forward = request(
+      new URL(incoming.url ?? '/', upstream),
+      { method: incoming.method, headers: { ...incoming.headers, host } },
+      (answer) => {
+        outgoing.writeHead(
+          (hit ? tamper.status : undefined) ?? answer.statusCode ?? 502,
+          { ...answer.headers, ...(hit ? tamper.headers : {}) },
+        );
+        answer.pipe(outgoing);
+      },
+    );
+    forward.on('error', () => outgoing.writeHead(502).end());
+    incoming.pipe(forward);
+  });
+  const port = await listen(server);
+  try {
+    return await use(`http://127.0.0.1:${port}`);
+  } finally {
+    await close(server);
+  }
 };
