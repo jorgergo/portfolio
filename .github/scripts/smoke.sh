@@ -112,11 +112,16 @@ check_bytes() {
   cmp -s "$tmp/body" "$2" || miss "$1 body" "the bytes of $2" 'different bytes'
 }
 
-# One `Name: value` line: the name in any case, the value exactly. A value
-# merged with commas or sent twice fails, on purpose.
+# One `Name: value` line: the name in any case, the value exactly (trimmed, as
+# in dist/_headers). A value merged with commas or sent twice fails, on purpose.
 check_header() {
-  grep -i -x -F -q -- "$2" "$tmp/headers" ||
-    miss "$1 header" "$2" "$(got_header "${2%%:*}")"
+  local name=${2%%:*} values
+  values=$({ grep -i -- "^$name:" "$tmp/headers" || true; } |
+    sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//')
+  grep -x -F -q -- "$(trim "${2#*:}")" <<EOF ||
+$values
+EOF
+    miss "$1 header" "$2" "$(got_header "$name")"
 }
 
 check_headers() {

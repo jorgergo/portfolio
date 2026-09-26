@@ -24,18 +24,25 @@ import {
 import {
   axeViolations,
   basics,
+  closedPort,
   cv,
   distFile,
   distFiles,
+  failedEveryAttempt,
   headerBlocks,
   missingHeaders,
   pngSize,
   rgb,
+  runSmoke,
+  scratchDist,
   scrollsSideways,
   site,
   tabOrder,
   toLocal,
   tokens,
+  withServer,
+  withTamperingProxy,
+  type Tamper,
 } from './helpers';
 
 // Spec 0003 on the built site (dist/ through wrangler): the shell every page
@@ -814,6 +821,399 @@ test.describe('response headers', () => {
     expect(missingHeaders(response.headersArray(), [...all, ...cache])).toEqual(
       [],
     );
+  });
+});
+
+// Spec 0007 AC-9: smoke.sh decides whether a deploy stays live, so it must
+// pass on a good build and name the first check a bad one breaks. It runs
+// against the build wrangler serves here. A failure case either breaks a
+// scratch copy of dist/ (the verify.md break steps), so the script expects
+// something the server does not send, or puts a proxy in front of the server
+// that changes one response the way a bad deploy would. The redirects cases
+// send curl to a local server that plays the zone's redirect rules.
+test.describe('smoke check', () => {
+  const dir = (): string => test.info().outputPath();
+  // The wrangler server, from the project's baseURL.
+  const served = (): string => test.info().project.use.baseURL ?? '';
+  const stylesheet = (): string =>
+    /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
+  const smokeThrough = (upstream: string, tamper: Tamper) =>
+    withTamperingProxy(upstream, tamper, async (origin) => ({
+      origin,
+      run: await runSmoke({ args: ['pages'], dir: dir(), origin }),
+    }));
+
+  type Answer = { readonly status: number; readonly location?: string };
+  // The zone's www rule and Always Use HTTPS (spec 0007 AC-2) as one local
+  // server: a 301 to https on the bare host, path and query kept. The curl stub
+  // drops TLS, so the Host header tells the two probes apart; `change` may
+  // replace the zone's answer, the way a broken rule would.
+  const smokeRedirects = (
+    change: (zone: Answer, www: boolean) => Answer = (zone) => zone,
+  ) =>
+    withServer(
+      (incoming, outgoing) => {
+        const host = incoming.headers.host ?? '';
+        const bare = host.replace(/^www\./, '');
+        const { status, location } = change(
+          { status: 301, location: `https://${bare}${incoming.url ?? '/'}` },
+          host !== bare,
+        );
+        outgoing
+          .writeHead(status, location === undefined ? {} : { location })
+          .end();
+      },
+      async (port) => {
+        const origin = `http://localhost:${port}`;
+        const run = await runSmoke({
+          args: ['redirects'],
+          dir: dir(),
+          origin,
+          connectTo: port,
+        });
+        return { origin, port, run };
+      },
+    );
+
+  // covers: spec 0007 AC-1, AC-3, AC-9
+  test('pages passes on its first attempt against the served build', async () => {
+    const run = await runSmoke({
+      args: ['pages'],
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run).toEqual({
+      code: 0,
+      stdout: `smoke pages: ${served()}\nattempt 1/10: every check passed\n`,
+      stderr: '',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0007 AC-9
+  for (const args of [[], ['deploy']]) {
+    test(`exits 1 with its usage when the mode is ${args[0] ?? 'missing'}`, async () => {
+      const run = await runSmoke({ args, dir: dir() });
+
+      expect(run).toEqual({
+        code: 1,
+        stdout: '',
+        stderr: 'usage: bash .github/scripts/smoke.sh pages|redirects\n',
+        pauses: [],
+      });
+    });
+  }
+
+  // covers: spec 0007 AC-9 (smoke origin)
+  test('reads its origin from the canonical link when SMOKE_ORIGIN is unset', async () => {
+    const origin = `http://127.0.0.1:${await closedPort()}`;
+    const cwd = scratchDist(dir(), {
+      'index.html': (html) =>
+        html.replace(
+          /(<link rel="canonical" href=")[^"]*/,
+          (_, open: string) => `${open}${origin}/`,
+        ),
+    });
+
+    const run = await runSmoke({ args: ['pages'], cwd, dir: dir() });
+
+    expect(run.stdout.split('\n')[0]).toBe(`smoke pages: ${origin}`);
+  });
+
+  // covers: spec 0007 AC-9
+  test('retries a server that is down 10 times, 15 seconds apart, then exits 1', async () => {
+    const origin = `http://127.0.0.1:${await closedPort()}`;
+
+    const run = await runSmoke({ args: ['pages'], dir: dir(), origin });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt('pages', origin, '/ status expected 200 got 000'),
+    );
+    expect(run.pauses).toEqual(Array.from({ length: 9 }, () => '15'));
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-9 (smoke origin)
+  test('exits at once with no canonical link and no SMOKE_ORIGIN', async () => {
+    const cwd = scratchDist(dir(), {
+      'index.html': (html) => html.replace(/<link rel="canonical"[^>]*>/, ''),
+    });
+
+    const run = await runSmoke({ args: ['pages'], cwd, dir: dir() });
+
+    expect(run).toEqual({
+      code: 1,
+      stdout: '',
+      stderr: 'no canonical link or /_astro/ stylesheet in dist/index.html\n',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0007 AC-9 (expected cache header)
+  test('exits at once when dist/_headers has no /_astro/* block', async () => {
+    const cwd = scratchDist(dir(), {
+      _headers: (headers) =>
+        headers.replace(/^\/_astro\/\*\n(?:[ \t]+.*\n?)*/m, ''),
+    });
+
+    const run = await runSmoke({
+      args: ['pages'],
+      cwd,
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run).toEqual({
+      code: 1,
+      stdout: '',
+      stderr: 'no /* or /_astro/* block in dist/_headers\n',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0007 AC-3, AC-9 (expected headers)
+  test('demands every line of the /* block in dist/_headers', async () => {
+    const cwd = scratchDist(dir(), {
+      _headers: (headers) => headers.replace(/^\/\*\n/m, '/*\n  X-Test: 1\n'),
+    });
+
+    const run = await runSmoke({
+      args: ['pages'],
+      cwd,
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        served(),
+        '/ header expected X-Test: 1 got none',
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-3, AC-9 (expected cache header and file)
+  test('demands the /_astro/* cache value from dist/_headers on the stylesheet', async ({
+    request,
+  }) => {
+    const cwd = scratchDist(dir(), {
+      _headers: (headers) =>
+        headers.replace(
+          /^(\/_astro\/\*\n\s+Cache-Control:).*$/m,
+          '$1 public, max-age=60',
+        ),
+    });
+    const sent = (await request.get(stylesheet()))
+      .headersArray()
+      .filter(({ name }) => name.toLowerCase() === 'cache-control')
+      .map(({ name, value }) => `${name}: ${value}`)
+      .join(' | ');
+
+    const run = await runSmoke({
+      args: ['pages'],
+      cwd,
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        served(),
+        `${stylesheet()} header expected Cache-Control: public, max-age=60 got ${sent}`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-1, AC-9 (expected page bytes)
+  for (const [path, file] of [
+    ['/', 'index.html'],
+    ['/cv', 'cv.html'],
+    ['/missing', '404.html'],
+  ] as const) {
+    test(`fails when ${path} differs from dist/${file} by one byte`, async () => {
+      const cwd = scratchDist(dir(), { [file]: (html: string) => `${html}\n` });
+
+      const run = await runSmoke({
+        args: ['pages'],
+        cwd,
+        dir: dir(),
+        origin: served(),
+      });
+
+      expect(run.stdout).toBe(
+        failedEveryAttempt(
+          'pages',
+          served(),
+          `${path} body expected the bytes of dist/${file} got different bytes`,
+        ),
+      );
+      expect(run.code).toBe(1);
+    });
+  }
+
+  // covers: spec 0007 AC-3, AC-9
+  for (const path of ['/', '/cv']) {
+    test(`fails when ${path} is served with an immutable cache`, async () => {
+      const cache = 'public, max-age=31536000, immutable';
+
+      const { origin, run } = await smokeThrough(served(), {
+        path,
+        headers: { 'cache-control': cache },
+      });
+
+      expect(run.stdout).toBe(
+        failedEveryAttempt(
+          'pages',
+          origin,
+          `${path} cache-control expected no immutable got cache-control: ${cache}`,
+        ),
+      );
+      expect(run.code).toBe(1);
+    });
+  }
+
+  // covers: spec 0007 AC-3, AC-9 (header match)
+  test('fails when a /* header value arrives merged with commas', async () => {
+    const [first] = headerBlocks(distFile('_headers'))['/*'] ?? [];
+    const { name, value } = first ?? { name: '', value: '' };
+    const merged = `${name.toLowerCase()}: ${value}, ${value}`;
+
+    const { origin, run } = await smokeThrough(served(), {
+      path: '/',
+      headers: { [name.toLowerCase()]: `${value}, ${value}` },
+    });
+
+    expect(name).not.toBe('');
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        origin,
+        `/ header expected ${name}: ${value} got ${merged}`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-3, AC-9 (header match)
+  test('fails when a /* header value arrives in another case', async () => {
+    const [first] = headerBlocks(distFile('_headers'))['/*'] ?? [];
+    const { name, value } = first ?? { name: '', value: '' };
+    const shouted = value.toUpperCase();
+
+    const { origin, run } = await smokeThrough(served(), {
+      path: '/',
+      headers: { [name.toLowerCase()]: shouted },
+    });
+
+    expect(shouted).not.toBe(value);
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        origin,
+        `/ header expected ${name}: ${value} got ${name.toLowerCase()}: ${shouted}`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-9 (share image)
+  test('fails when /og/cv.png is not served as image/png', async () => {
+    const { origin, run } = await smokeThrough(served(), {
+      path: '/og/cv.png',
+      headers: { 'content-type': 'image/jpeg' },
+    });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        origin,
+        '/og/cv.png header expected content-type: image/png got content-type: image/jpeg',
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-1, AC-9
+  test('fails when /missing answers 200 instead of 404', async () => {
+    const { origin, run } = await smokeThrough(served(), {
+      path: '/missing',
+      status: 200,
+    });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        origin,
+        '/missing status expected 404 got 200',
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects asks the www host of the origin for a 301', async () => {
+    const port = await closedPort();
+    const origin = `http://localhost:${port}`;
+
+    const run = await runSmoke({ args: ['redirects'], dir: dir(), origin });
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'redirects',
+        origin,
+        `https://www.localhost:${port}/cv?ref=smoke status expected 301 got 000`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects passes when www and http both answer 301 to the bare https URL', async () => {
+    const { origin, run } = await smokeRedirects();
+
+    expect(run).toEqual({
+      code: 0,
+      stdout: `smoke redirects: ${origin}\nattempt 1/10: every check passed\n`,
+      stderr: '',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects fails when the www redirect drops the query string', async () => {
+    const { origin, port, run } = await smokeRedirects((zone, www) =>
+      www ? { ...zone, location: zone.location?.replace(/\?.*/, '') } : zone,
+    );
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'redirects',
+        origin,
+        `https://www.localhost:${port}/cv?ref=smoke header expected location: https://localhost:${port}/cv?ref=smoke got location: https://localhost:${port}/cv`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects fails when http serves the page instead of a 301', async () => {
+    const { origin, port, run } = await smokeRedirects((zone, www) =>
+      www ? zone : { status: 200 },
+    );
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'redirects',
+        origin,
+        `http://localhost:${port}/cv?ref=smoke status expected 301 got 200`,
+      ),
+    );
+    expect(run.code).toBe(1);
   });
 });
 

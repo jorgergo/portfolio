@@ -21,6 +21,8 @@ A push to `main` deploys on its own once CI passes: the `deploy` job in `.github
 
 To roll back by hand, run `pnpm exec wrangler rollback`, or use Rollback on the Worker's Deployments tab in the Cloudflare dashboard.
 
+If the `deploy` step itself goes red, nothing checks or rolls back the new version, and it may already be live (wrangler can fail after it switches versions). Open the Deployments tab: if the newest version's message is that commit's SHA, build that commit and run `bash .github/scripts/smoke.sh pages`, or roll back.
+
 The one time Cloudflare and GitHub setup (zone settings, the www redirect, the API token, the `production` environment, mail records) is recorded in [spec 0007](docs/specs/0007-go-live/index.md).
 
 ## License
