@@ -155,7 +155,7 @@ spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro
 - [x] Verify it: `/check verify about page`
 - [x] Test it: `/test about page`
 - [x] Review it (fresh model): `/check review about page`
-- [ ] Document it: `/document about page`
+- [x] Document it: `/document about page`
 
 ### 13. Contact page · needs a decision · from spec 0004
 A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
