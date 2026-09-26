@@ -1,7 +1,7 @@
 # 0008. Home page as a centred name, tagline, and menu
 
 **Date**: 2026-09-26
-**Status**: Proposed
+**Status**: In Progress
 **Supersedes**: [0004](../0004-home-page/index.md)
 
 ## Summary

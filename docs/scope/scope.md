@@ -22,7 +22,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Portfolio page | Release 3 | planned |
-| 12 | About page | Release 1 | in-progress |
+| 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | planned |
 | 14 | Home page redesign | Release 1 | in-progress |
 
@@ -142,7 +142,7 @@ spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml
 - [x] Review it (fresh model): `/check review go live`
 - [x] Document it: `/document go live`
 
-### 12. About page · in-progress · from spec 0004
+### 12. About page · done · from spec 0004
 A short `/about` page in the same shell: your longer `basics.summary` as a paragraph or two, and a photo if you add one to `src/assets/`. It adds the `about` row to the home menu (`SITE_NAV`, spec 0004) as its first entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/about` renders your summary from the content model through `BaseLayout` with its own title and description; the home menu shows `01 about` linking to it; it reads well on phone and desktop in light and dark.
 spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro`, `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/lib/site-meta.ts`, `src/lib/site-nav.ts`
