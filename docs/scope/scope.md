@@ -152,9 +152,9 @@ spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro
   - [x] Metadata and card: `givenName`, the `about` row in `SHARE_PAGES`, its description, and the Vitest cases (AC-1, AC-2)
   - [x] Page and menu: `src/pages/about.astro` with the `›` list and the inline email, `about` first in `SITE_NAV`, and the home menu test updates if spec 0008's task 1 has not landed (AC-5 to AC-8)
   - [x] Tests, deploy gate, and the gate: the page tests, the About card in the style guide, `/about` in `smoke.sh`, `design.md`, then build, lint, format, tests, and the steps in `verify.md` (AC-9 to AC-12)
-- [ ] Verify it: `/check verify about page`
-- [ ] Test it: `/test about page`
-- [ ] Review it (fresh model): `/check review about page`
+- [x] Verify it: `/check verify about page`
+- [x] Test it: `/test about page`
+- [x] Review it (fresh model): `/check review about page`
 - [ ] Document it: `/document about page`
 
 ### 13. Contact page · needs a decision · from spec 0004
