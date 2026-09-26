@@ -121,6 +121,15 @@ describe('givenName', () => {
   ])('reads the given name of %j as %j', (name, expected) => {
     expect(givenName(name)).toBe(expected);
   });
+
+  // covers: spec 0009 AC-2
+  it.each([
+    ['Ana\tRuiz', 'Ana'],
+    ['\nAna\nRuiz\n', 'Ana'],
+    [' \t\n', ''],
+  ])('splits %j at any whitespace, giving %j', (name, expected) => {
+    expect(givenName(name)).toBe(expected);
+  });
 });
 
 describe('formatSectionList', () => {

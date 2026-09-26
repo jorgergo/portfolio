@@ -1253,6 +1253,22 @@ test.describe('build output', () => {
     expect(files).toContain('apple-touch-icon.png');
   });
 
+  // covers: AC-7, AC-8, spec 0009 AC-7
+  test('no page prints a run of whitespace before a link', () => {
+    // compressHTML leaves at most one space where a template breaks a line, so
+    // two in a row before a link mean a component printed one of its own: the
+    // space SkipLink and TextLink added before their <a> while a comment sat on
+    // its own line at their root. Inside a sentence that space shows.
+    const pages = distFiles().filter((file) => file.endsWith('.html'));
+
+    expect(pages.length).toBeGreaterThan(0);
+    for (const file of pages) {
+      expect(distFile(file).match(/.{0,30}\s{2,}<a\b/g) ?? [], file).toEqual(
+        [],
+      );
+    }
+  });
+
   // covers: AC-13
   test('leaves the style guide out of the build', async ({ page }) => {
     const response = await page.goto('/styleguide');
@@ -1548,23 +1564,43 @@ test.describe('about page', () => {
   }
 
   // covers: spec 0009 AC-5
-  test('names no employer on the page or in its description', async ({
+  test('names no employer on the page, in its title, or in its meta tags', async ({
     page,
   }) => {
     await page.goto('/about');
-    const words = `${await main(page).innerText()} ${aboutMeta.description}`;
-    // Each full name, and its first word when that is a name on its own (Ford).
-    const employers = cv.work.flatMap(({ name }) => [
-      name,
-      ...name
-        .split(' ')
-        .filter((word, index) => index === 0 && word.length > 3),
-    ]);
+    const words = await page.evaluate(() =>
+      [
+        document.title,
+        ...[...document.querySelectorAll('meta[content]')].map(
+          (meta) => meta.getAttribute('content') ?? '',
+        ),
+        document.body.innerText,
+      ].join('\n'),
+    );
+    // Each full name and every word of four or more letters in it (today Ford,
+    // Motor, Puerto, Liverpool, Daimler, Truck), in any case. A word that names
+    // a kind of business or a place rather than the employer stays out, so a
+    // line may still say it; add one here when a new employer brings one.
+    const GENERIC = new Set(['company', 'mexico']);
+    const employers = [
+      ...new Set(
+        cv.work.flatMap(({ name }) => [
+          name,
+          ...(name.match(/[\p{L}\p{N}]{4,}/gu) ?? []).filter(
+            (word) => !GENERIC.has(word.toLowerCase()),
+          ),
+        ]),
+      ),
+    ];
+    const named = employers.filter((employer) =>
+      new RegExp(
+        `(?<![\\p{L}\\p{N}])${RegExp.escape(employer)}(?![\\p{L}\\p{N}])`,
+        'iu',
+      ).test(words),
+    );
 
     expect(employers.length).toBeGreaterThan(0);
-    for (const employer of employers) {
-      expect(words).not.toMatch(new RegExp(`\\b${employer}\\b`));
-    }
+    expect(named).toEqual([]);
   });
 
   // covers: spec 0009 AC-6

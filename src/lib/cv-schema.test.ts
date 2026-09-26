@@ -832,4 +832,17 @@ describe('splitAtEmail', () => {
   ])('returns undefined for %j, which holds no marker or two', (closing) => {
     expect(splitAtEmail(closing)).toBeUndefined();
   });
+
+  // covers: spec 0009 AC-3
+  it.each([
+    'Write to {Email} any time.',
+    'Write to { email } any time.',
+    'Write to {email any time.',
+    'Write to email any time.',
+  ])(
+    'returns undefined for %j, since only {email} exactly is the marker',
+    (closing) => {
+      expect(splitAtEmail(closing)).toBeUndefined();
+    },
+  );
 });
