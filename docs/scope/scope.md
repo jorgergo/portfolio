@@ -138,8 +138,8 @@ spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml
   - [x] Grow: mail records, the `main` ruleset, Search Console and Bing, and the share checks (AC-12 to AC-15)
 - [x] Verify it: `/check verify go live`
 - [x] Test it: `/test go live`
-- [ ] Review it (fresh model): `/check review go live`
-- [ ] Document it: `/document go live`
+- [x] Review it (fresh model): `/check review go live`
+- [x] Document it: `/document go live`
 
 ### 12. About page · needs a decision · from spec 0004
 A short `/about` page in the same shell: your longer `basics.summary` as a paragraph or two, and a photo if you add one to `src/assets/`. It adds the `about` row to the home menu (`SITE_NAV`, spec 0004) as its first entry. Small enough to go straight to `/develop` if you already know the build.
