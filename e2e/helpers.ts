@@ -9,7 +9,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { createServer, request } from 'node:http';
+import { createServer, request, type RequestListener } from 'node:http';
 import { join } from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath } from 'node:url';
@@ -215,25 +215,43 @@ export type SmokeRun = {
   readonly pauses: readonly string[];
 };
 
+// Stands in for curl when a test passes `connectTo`: it drops TLS from every
+// https URL and connects each request to SMOKE_PORT on this machine, so a local
+// server can answer the https probes of `redirects` (TLS is the zone's job).
+const CURL_STUB = [
+  '#!/bin/sh',
+  'for arg do',
+  '  shift',
+  '  case $arg in https://*) arg="http://${arg#https://}" ;; esac',
+  '  set -- "$@" "$arg"',
+  'done',
+  'PATH=$SMOKE_PATH exec curl --connect-to "::127.0.0.1:$SMOKE_PORT" "$@"',
+  '',
+].join('\n');
+
 // Runs smoke.sh from `cwd` (the folder whose dist/ it reads, the repo root by
 // default). SMOKE_ORIGIN is set only when `origin` is given, so a value in your
 // shell never leaks in. `sleep` is a stub in `dir` that records each pause, so
-// ten failed attempts take no time.
+// ten failed attempts take no time. With `connectTo`, `curl` is a stub too
+// (CURL_STUB) that sends every request to that local port.
 export const runSmoke = async ({
   args,
   dir,
   cwd = ROOT,
   origin,
+  connectTo,
 }: {
   readonly args: readonly string[];
   readonly dir: string;
   readonly cwd?: string;
   readonly origin?: string;
+  readonly connectTo?: number;
 }): Promise<SmokeRun> => {
   const bin = join(dir, 'bin');
   const log = join(dir, 'pauses.log');
   mkdirSync(bin, { recursive: true });
   rmSync(log, { force: true });
+  rmSync(join(bin, 'curl'), { force: true });
   writeFileSync(
     join(bin, 'sleep'),
     '#!/bin/sh\necho "$1" >>"$SMOKE_PAUSES"\n',
@@ -241,6 +259,9 @@ export const runSmoke = async ({
       mode: 0o755,
     },
   );
+  if (connectTo !== undefined) {
+    writeFileSync(join(bin, 'curl'), CURL_STUB, { mode: 0o755 });
+  }
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => name !== 'SMOKE_ORIGIN'),
   );
@@ -252,6 +273,12 @@ export const runSmoke = async ({
       PATH: `${bin}:${process.env.PATH ?? ''}`,
       SMOKE_PAUSES: log,
       ...(origin === undefined ? {} : { SMOKE_ORIGIN: origin }),
+      ...(connectTo === undefined
+        ? {}
+        : {
+            SMOKE_PATH: process.env.PATH ?? '',
+            SMOKE_PORT: String(connectTo),
+          }),
     },
   });
   const [stdout, stderr, code] = await Promise.all([
@@ -321,6 +348,21 @@ export const closedPort = async (): Promise<number> => {
   const port = await listen(server);
   await close(server);
   return port;
+};
+
+// Runs `use` with the port of a local server that answers every request with
+// `answer`, then closes it.
+export const withServer = async <T>(
+  answer: RequestListener,
+  use: (port: number) => Promise<T>,
+): Promise<T> => {
+  const server = createServer(answer);
+  const port = await listen(server);
+  try {
+    return await use(port);
+  } finally {
+    await close(server);
+  }
 };
 
 // One response changed the way a bad deploy might serve it.

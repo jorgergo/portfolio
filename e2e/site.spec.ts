@@ -40,6 +40,7 @@ import {
   tabOrder,
   toLocal,
   tokens,
+  withServer,
   withTamperingProxy,
   type Tamper,
 } from './helpers';
@@ -828,7 +829,8 @@ test.describe('response headers', () => {
 // against the build wrangler serves here. A failure case either breaks a
 // scratch copy of dist/ (the verify.md break steps), so the script expects
 // something the server does not send, or puts a proxy in front of the server
-// that changes one response the way a bad deploy would.
+// that changes one response the way a bad deploy would. The redirects cases
+// send curl to a local server that plays the zone's redirect rules.
 test.describe('smoke check', () => {
   const dir = (): string => test.info().outputPath();
   // The wrangler server, from the project's baseURL.
@@ -840,6 +842,38 @@ test.describe('smoke check', () => {
       origin,
       run: await runSmoke({ args: ['pages'], dir: dir(), origin }),
     }));
+
+  type Answer = { readonly status: number; readonly location?: string };
+  // The zone's www rule and Always Use HTTPS (spec 0007 AC-2) as one local
+  // server: a 301 to https on the bare host, path and query kept. The curl stub
+  // drops TLS, so the Host header tells the two probes apart; `change` may
+  // replace the zone's answer, the way a broken rule would.
+  const smokeRedirects = (
+    change: (zone: Answer, www: boolean) => Answer = (zone) => zone,
+  ) =>
+    withServer(
+      (incoming, outgoing) => {
+        const host = incoming.headers.host ?? '';
+        const bare = host.replace(/^www\./, '');
+        const { status, location } = change(
+          { status: 301, location: `https://${bare}${incoming.url ?? '/'}` },
+          host !== bare,
+        );
+        outgoing
+          .writeHead(status, location === undefined ? {} : { location })
+          .end();
+      },
+      async (port) => {
+        const origin = `http://localhost:${port}`;
+        const run = await runSmoke({
+          args: ['redirects'],
+          dir: dir(),
+          origin,
+          connectTo: port,
+        });
+        return { origin, port, run };
+      },
+    );
 
   // covers: spec 0007 AC-1, AC-3, AC-9
   test('pages passes on its first attempt against the served build', async () => {
@@ -1065,6 +1099,28 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
+  // covers: spec 0007 AC-3, AC-9 (header match)
+  test('fails when a /* header value arrives in another case', async () => {
+    const [first] = headerBlocks(distFile('_headers'))['/*'] ?? [];
+    const { name, value } = first ?? { name: '', value: '' };
+    const shouted = value.toUpperCase();
+
+    const { origin, run } = await smokeThrough(served(), {
+      path: '/',
+      headers: { [name.toLowerCase()]: shouted },
+    });
+
+    expect(shouted).not.toBe(value);
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        origin,
+        `/ header expected ${name}: ${value} got ${name.toLowerCase()}: ${shouted}`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
   // covers: spec 0007 AC-9 (share image)
   test('fails when /og/cv.png is not served as image/png', async () => {
     const { origin, run } = await smokeThrough(served(), {
@@ -1111,6 +1167,50 @@ test.describe('smoke check', () => {
         'redirects',
         origin,
         `https://www.localhost:${port}/cv?ref=smoke status expected 301 got 000`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects passes when www and http both answer 301 to the bare https URL', async () => {
+    const { origin, run } = await smokeRedirects();
+
+    expect(run).toEqual({
+      code: 0,
+      stdout: `smoke redirects: ${origin}\nattempt 1/10: every check passed\n`,
+      stderr: '',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects fails when the www redirect drops the query string', async () => {
+    const { origin, port, run } = await smokeRedirects((zone, www) =>
+      www ? { ...zone, location: zone.location?.replace(/\?.*/, '') } : zone,
+    );
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'redirects',
+        origin,
+        `https://www.localhost:${port}/cv?ref=smoke header expected location: https://localhost:${port}/cv?ref=smoke got location: https://localhost:${port}/cv`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0007 AC-2, AC-9
+  test('redirects fails when http serves the page instead of a 301', async () => {
+    const { origin, port, run } = await smokeRedirects((zone, www) =>
+      www ? zone : { status: 200 },
+    );
+
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'redirects',
+        origin,
+        `http://localhost:${port}/cv?ref=smoke status expected 301 got 200`,
       ),
     );
     expect(run.code).toBe(1);

@@ -52,6 +52,10 @@ jobs:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # The two smoke steps take 28 minutes at worst (every request timing out on
+    # every attempt), so only a hung step reaches this, and the production
+    # queue moves on.
+    timeout-minutes: 40
     environment: production
     concurrency:
       group: production
