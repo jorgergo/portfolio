@@ -22,8 +22,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Portfolio page | Release 3 | planned |
-| 12 | About page | Release 1 | planned |
+| 12 | About page | Release 1 | in-progress |
 | 13 | Contact page | Release 1 | planned |
+| 14 | Home page redesign | Release 1 | in-progress |
 
 ## Foundations
 
@@ -141,15 +142,40 @@ spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml
 - [x] Review it (fresh model): `/check review go live`
 - [x] Document it: `/document go live`
 
-### 12. About page · needs a decision · from spec 0004
+### 12. About page · in-progress · from spec 0004
 A short `/about` page in the same shell: your longer `basics.summary` as a paragraph or two, and a photo if you add one to `src/assets/`. It adds the `about` row to the home menu (`SITE_NAV`, spec 0004) as its first entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/about` renders your summary from the content model through `BaseLayout` with its own title and description; the home menu shows `01 about` linking to it; it reads well on phone and desktop in light and dark.
-- [ ] Design it (spec): `/architect about page`
+spec [0009](../specs/0009-about-page/index.md)
+- [x] Design it (spec): `/architect about page`
+- [ ] Build it: `/develop about page`
+  - [ ] Content and schema: the `about` block in `cv.json` (intro, three to seven lines, the closing with `{email}`), its caps, `splitAtEmail`, and the Vitest cases (AC-3, AC-4)
+  - [ ] Metadata and card: `givenName`, the `about` row in `SHARE_PAGES`, its description, and the Vitest cases (AC-1, AC-2)
+  - [ ] Page and menu: `src/pages/about.astro` with the `›` list and the inline email, `about` first in `SITE_NAV`, and the home menu test updates if spec 0008's task 1 has not landed (AC-5 to AC-8)
+  - [ ] Tests, deploy gate, and the gate: the page tests, the About card in the style guide, `/about` in `smoke.sh`, `design.md`, then build, lint, format, tests, and the steps in `verify.md` (AC-9 to AC-12)
+- [ ] Verify it: `/check verify about page`
+- [ ] Test it: `/test about page`
+- [ ] Review it (fresh model): `/check review about page`
+- [ ] Document it: `/document about page`
 
 ### 13. Contact page · needs a decision · from spec 0004
 A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/contact` renders every profile and the email from the content model through `BaseLayout` with its own title and description; the home menu shows `contact` as its last row linking to it; it reads well on phone and desktop in light and dark.
 - [ ] Design it (spec): `/architect contact page`
+
+### 14. Home page redesign · in-progress
+Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.
+**Done when:** `/` shows only the name, the tagline, and `01 about`, `02 cv`, `03 contact`, centred with left aligned text, in light and dark, on phone and desktop; no employer appears on the page or in its description; `/contact` holds your links.
+spec [0008](../specs/0008-home-page-centered-menu/index.md)
+- [x] Design it (spec): `/architect home page redesign`
+- [ ] Build it: `/develop home page redesign`
+  - [ ] Bio now: the rewritten bio, and the home menu tests derived from `SITE_NAV`, merged on its own (AC-1, AC-6, AC-10)
+  - [ ] Tagline: `basics.tagline` with its 27 character cap and Vitest cases (AC-2, AC-10)
+  - [ ] Page, once About and Contact are live: the `centered` prop, the recomposed home, `projects` in the planned order (AC-3 to AC-5, AC-7, AC-8)
+  - [ ] Page tests, `design.md`, and the gate: the home page block in `e2e/site.spec.ts`, the manual steps in `verify.md` (AC-3 to AC-7, AC-9, AC-10)
+- [ ] Verify it: `/check verify home page redesign`
+- [ ] Test it: `/test home page redesign`
+- [ ] Review it (fresh model): `/check review home page redesign`
+- [ ] Document it: `/document home page redesign`
 
 ## Release 2: CV extras
 
@@ -178,6 +204,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - **Sitemap and structured data**: a sitemap once the portfolio page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
 - **PR previews**: a Workers Preview URL per pull request, if visual reviews ever need a shared link · needs a decision · from spec 0007
 - **Email at the domain**: an address such as hello@jorgergo.dev through Cloudflare Email Routing, if you want one on the CV · needs a decision · from spec 0007
+- **Footer arrow glyph**: Plex Mono's shipped `latin` file has no `←` or `→`, so the footer's `← home` arrow draws in the system fallback face; pick a glyph the font ships, or accept the fallback on record (spec 0003) · needs a decision · from spec 0009
 
 ## Legend
 

@@ -1,7 +1,7 @@
 # 0004. Home page composed as a numbered menu
 
 **Date**: 2026-09-24
-**Status**: Accepted
+**Status**: Superseded by [0008](../0008-home-page-centered-menu/index.md)
 
 ## Summary
 
