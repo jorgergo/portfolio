@@ -38,8 +38,8 @@ Reasoning and options: see [rationale.md](rationale.md).
 | URLs | `build.format: 'file'`, `trailingSlash: 'never'` → `/cv` | Short, single canonical links for a résumé or LinkedIn. |
 | Security | `public/_headers` baseline (including HSTS) + Astro's hashed CSP (top level `security.csp`, stable), enabled in the scaffold | Header scanners pass; CSP hashes cover bundled scripts. See *CSP rules* below. |
 | Hosting | Cloudflare Workers static assets (`wrangler.jsonc`, `assets.directory: "./dist"`, `not_found_handling: "404-page"`, `html_handling: "drop-trailing-slash"`, no `main`), free plan | Free, unlimited static bandwidth, and the domain, DNS, and TLS all in one place. |
-| Domain | Buy from Cloudflare Registrar (at cost) | DNS lives in the same account as the host (the Go live spec executes this). |
-| Repo | Public GitHub repo, default branch `main`; MIT license for the code, README states the CV content is all rights reserved | The source is part of the portfolio; the host deploys from it; your personal content stays yours. |
+| Domain | Buy from Cloudflare Registrar (at cost) | DNS lives in the same account as the host (bought before spec 0007, which attached it to the Worker). |
+| Repo | Public GitHub repo, default branch `main`; MIT license for the code, README states the CV content is all rights reserved | The source is part of the portfolio; CI deploys from it (spec 0007); your personal content stays yours. |
 | Runtime | Node 26 (`.nvmrc` = `26`, `engines.node: ">=26"`; no `engine-strict`, so pnpm warns on a wrong Node instead of failing) | Tracks the line that becomes LTS around October 2026, so no major upgrade right after launch. `engine-strict` is left off because pnpm applies it to every package, and a dependency that caps its engines below 26 would block the install. |
 | Package manager | pnpm, latest stable at scaffold time, exact `x.y.z` in `packageManager`; build approvals in `pnpm-workspace.yaml` as `allowBuilds: { esbuild: true, workerd: true }` (pnpm 12 reads them there, not from `package.json`; sharp 0.35 ships prebuilt binaries and has no install script; workerd, used by wrangler, does); `pnpm-lock.yaml` committed | Strict dependency resolution; pnpm switches itself to the pinned version, so Corepack isn't needed. |
 | Build gate | `"build": "astro check && astro build"` (`@astrojs/check`, `typescript` `^6.0.3`, `wrangler` as devDependencies) | A type or content schema error can never reach a deploy. |
@@ -183,12 +183,12 @@ The scaffold is structure only; real content and design come from later specs. W
 
 | Value | Source |
 |---|---|
-| `site` (absolute URL, used by canonical links, OG, and later the sitemap) | Not set in the scaffold (nothing needs it yet). The Metadata and share cards spec sets it; Go live switches it to the purchased domain. |
-| Worker `name` in `wrangler.jsonc` | `portfolio` (it becomes part of the `workers.dev` URL). |
+| `site` (absolute URL, used by canonical links, OG, and later the sitemap) | Not set in the scaffold (nothing needs it yet). Spec 0006 set it to `https://jorgergo.dev`; Go live (spec 0007) confirmed it. |
+| Worker `name` in `wrangler.jsonc` | `portfolio` (its `workers.dev` URL is off since spec 0007). |
 | `compatibility_date` | The newest date the installed `wrangler` supports (it's tied to the bundled `workerd` build and `wrangler` reports it; 2026-09-21 for wrangler 4.137.0). Not the calendar date, which can be newer and fail. |
 | `package.json` `name` | `portfolio` (matches the Worker). |
 | `LICENSE` copyright holder and year | Holder from `git config user.name` on the scaffolding machine; year is the scaffold year. |
-| Node version | `.nvmrc`, which Cloudflare's build image reads. |
+| Node version | `.nvmrc`, which `fnm` reads on your machine and `actions/setup-node` reads in CI. Since spec 0007, CI builds and Cloudflare only serves `dist/`, so no Cloudflare build image reads it. |
 | Secrets / env vars | None. |
 
 ## Consequences
@@ -200,7 +200,7 @@ The scaffold is structure only; real content and design come from later specs. W
 - A server route can be added later on the same Worker without migrating hosts.
 
 **Negative / tradeoffs**:
-- Node 26 is on the "Current" line until about October 2026. If Cloudflare's build image lags, set `NODE_VERSION` in the build settings, or fall back to 24 temporarily.
+- Node 26 is on the "Current" line until about October 2026, so a breaking Node change is possible before then. CI installs it from `.nvmrc` (spec 0007), so no host build image has to support it.
 - Corepack isn't bundled with Node 26, so install pnpm directly (`npm i -g pnpm` or the standalone installer). `corepack enable` won't work.
 - `astro check` adds a few seconds to every build.
 - TypeScript is held one major behind (6, while 7 is `latest`). You give up TypeScript 7's faster native checker until `@astrojs/check` supports it, and a plain `pnpm add -D typescript` would pull the wrong major, so always add it with the range.
@@ -208,23 +208,23 @@ The scaffold is structure only; real content and design come from later specs. W
 - Any Vite plugin must support Vite 8. `@tailwindcss/vite` does (it peers on `^8`); check a new plugin before adding it.
 - `compressHTML: true` differs from Astro 7's default, so Astro examples that rely on `'jsx'` whitespace may render with an extra space here.
 - Anything that needs a live server (the deferred contact form, request time OG images) needs its own spec.
-- The CV PDF (Release 2) has to be generated at build time without a server; whether Cloudflare's build image can run a headless browser is unverified, and the CV PDF spec must decide.
+- The CV PDF (Release 2) has to be generated at build time without a server. Since spec 0007 the site builds in GitHub Actions, not in Cloudflare's build image, and the CV PDF spec must decide how (Chromium is installed in the `check` job for the page tests, but after `pnpm build`, so the job order would have to change).
 - `.astro` is one more component syntax to learn.
 - The hashed CSP blocks the inline styles Shiki (Astro's default markdown highlighter) writes, so code blocks would render unstyled, and the build already warns about it. The Content model spec must pick `markdown.syntaxHighlight: false` or `'prism'` with a stylesheet before any markdown with code fences ships.
-- Cloudflare zone features that inject scripts (Email Address Obfuscation, on by default, and Rocket Loader) are blocked by the hashed CSP; a `mailto:` link would render broken. Go live must turn both off.
+- Cloudflare zone features that inject scripts (Email Address Obfuscation, on by default, and Rocket Loader) are blocked by the hashed CSP; a `mailto:` link would render broken. Go live turned both off (spec 0007 AC-11), and the smoke check rolls back a deploy whose bytes they change.
 
 **Neutral**:
 - Every later feature builds on this layout, the `@/` alias, and Tailwind tokens in `global.css`.
 - Lint, format, and pre commit hooks belong to Coding standards & tooling (feature 2), not this spec.
-- The deploy pipeline (Workers Builds git integration vs a GitHub Action) belongs to the Go live spec; the scaffold only needs `wrangler.jsonc` to be valid.
+- The deploy pipeline (Workers Builds git integration vs a GitHub Action) belongs to the Go live spec; the scaffold only needs `wrangler.jsonc` to be valid. Spec 0007 chose a GitHub Actions deploy job gated on CI.
 
 ## Follow-up
 
 - [ ] Run `/audit` (feature 2) after scaffolding so root `AGENTS.md` records this stack; it is currently missing.
 - [ ] `astro`, `cloudflare`, `wrangler`, and `accessibility` skill conventions aren't in root `AGENTS.md` `## Agent skills` yet. They apply project wide, so they belong at the root (`/audit` or `/sync` writes them). Record `MCP servers: Astro Docs (https://mcp.docs.astro.build/mcp)` and `Declined: antfu pnpm skill, Cloudflare MCP, Tailwind MCP` on the same section's compact lines.
-- [ ] Go live spec: buy the domain on Cloudflare Registrar, attach it to the Worker, switch `site` to it, turn off Email Address Obfuscation and Rocket Loader, and confirm how Cloudflare's build image picks the pnpm version.
+- [x] Go live spec: buy the domain on Cloudflare Registrar, attach it to the Worker, switch `site` to it, turn off Email Address Obfuscation and Rocket Loader, and confirm how Cloudflare's build image picks the pnpm version. Done in spec 0007: `jorgergo.dev` was already on Cloudflare Registrar, `routes` in `wrangler.jsonc` names it and the bootstrap deploy attached it, `site` already pointed at it (spec 0006), AC-11 turns both features off, and the pnpm question went away because CI builds and Cloudflare only serves.
 - [ ] Content model spec: evaluate a single JSON file for the CV (JSON Resume style), as in midudev's `minimalist-portfolio-json` Astro template (github.com/midudev/minimalist-portfolio-json).
 - [ ] Command menu spec: evaluate `hotkeypad` (the framework free palette that template uses) against a hand built `<dialog>`.
 - [ ] Design system spec: when fonts are added, confirm Astro's CSP hashes the inline style the Fonts API emits.
-- [ ] CV PDF spec: confirm how the PDF is generated at build time (a headless browser in Cloudflare's build image vs a GitHub Action vs a JS PDF renderer).
+- [ ] CV PDF spec: confirm how the PDF is generated at build time (a headless browser in the build, which since spec 0007 runs in GitHub Actions and on your machine, never in Cloudflare, vs a JS PDF renderer).
 - [ ] When `@astrojs/check` adds TypeScript 7 to its peer range, update this spec to move `typescript` to `^7` (a small in place update).
