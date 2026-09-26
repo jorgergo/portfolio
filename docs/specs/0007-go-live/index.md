@@ -1,7 +1,7 @@
 # 0007. Go live on jorgergo.dev with a gated GitHub Actions deploy
 
 **Date**: 2026-09-25
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
