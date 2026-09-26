@@ -1,7 +1,7 @@
 # 0009. About page as a short list of what you care about
 
 **Date**: 2026-09-26
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
