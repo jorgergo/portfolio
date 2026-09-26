@@ -20,7 +20,7 @@ You are a senior product designer shipping a small, finished site. Every page sh
 
 ## Source
 
-Spec 0003 is the source of truth: its token table, its component table, and its acceptance criteria. The Claude Design draft "Minimalist Developer Portfolio" (`Portfolio.dc.html`) set the starting point (warm paper, olive and terracotta, a mono interface, a 640px column, uppercase labels) and nothing more. Its header, theme toggle, typing animation, and inline styles were dropped, and its light colours were corrected to pass contrast. Later pages take their composition from their own spec (home, CV, metadata, portfolio).
+Spec 0003 is the source of truth: its token table, its component table, and its acceptance criteria. The Claude Design draft "Minimalist Developer Portfolio" (`Portfolio.dc.html`) set the starting point (warm paper, olive and terracotta, a mono interface, a 640px column, uppercase labels) and nothing more. Its header, theme toggle, typing animation, and inline styles were dropped, and its light colours were corrected to pass contrast. Later pages take their composition from their own spec (home, about, CV, metadata, portfolio).
 
 ## Two surfaces
 
@@ -30,14 +30,14 @@ Mono is the default face on every page: headings, body text, meta text, labels, 
 
 Six colour roles, each written once as `light-dark(light, dark)` in the `@theme` block of `src/styles/global.css`, with a paper value in the `@media print` block of the same file. Use them through Tailwind utilities (`bg-bg`, `text-fg`, `text-muted`, `border-line`, `text-accent`, `hover:text-accent-warm`), never through a literal.
 
-| Token         | Role                                                                                    |
-| ------------- | --------------------------------------------------------------------------------------- |
-| `bg`          | the page ground                                                                         |
-| `fg`          | body text, headings, link text                                                          |
-| `muted`       | meta text (dates, contact line, footer, chips), the underline colour, the button border |
-| `line`        | hairlines: the footer rule, the chip border (decorative, no contrast requirement)       |
-| `accent`      | structure: section labels, selected text ground, the focus ring                         |
-| `accent-warm` | interaction: hover and active text, hover border                                        |
+| Token         | Role                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| `bg`          | the page ground                                                                                       |
+| `fg`          | body text, headings, link text                                                                        |
+| `muted`       | meta text (dates, contact line, footer, chips), list markers, the underline colour, the button border |
+| `line`        | hairlines: the footer rule, the chip border (decorative, no contrast requirement)                     |
+| `accent`      | structure: section labels, selected text ground, the focus ring                                       |
+| `accent-warm` | interaction: hover and active text, hover border                                                      |
 
 Other tokens in the same file: the `text-title` size and line height, the body line height, `tracking-label`, `underline-offset-link`, `max-w-content` (the column), the `xs` breakpoint, the transition defaults, and the `--motion-*` variables on `:root`. Fonts come from Astro's Fonts API (`astro.config.mjs`) and reach Tailwind through `@theme inline` as `font-mono` and `font-sans`.
 
@@ -55,7 +55,7 @@ Tailwind's default steps plus one custom size, all rem based:
 | `text-lg font-medium`    | inner page h1 and the CV name                   |
 | `text-title font-medium` | the home page h1                                |
 
-Weights: 400 for everything, 500 for h1, entry titles, `b`, and `strong` (an `h4` role title and a position line are 400, so each entry has one medium line). Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size. A short standalone paragraph such as the home page bio takes `text-pretty`, so its last line never holds a lone word; running prose in `Prose` does not.
+Weights: 400 for everything, 500 for h1, entry titles, `b`, and `strong` (an `h4` role title and a position line are 400, so each entry has one medium line). Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size. Short standalone text, such as the home page bio and the about page's lines, takes `text-pretty`, so its last line never holds a lone word; `Prose` sets it too.
 
 ## Colour and contrast bar
 
@@ -65,20 +65,21 @@ WCAG 2.2 AA is the requirement of record, checked in light, dark, and print: eve
 
 Tailwind's numeric scale with fixed meanings:
 
-| Spacing            | Meaning                                                                                                                                       |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gap-14`           | between sections, and between main and the footer (`print:gap-6` on the CV page wrapper)                                                      |
-| `gap-6`            | between blocks inside a section (`print:gap-4` on a CV section)                                                                               |
-| `gap-4`            | between a row's prefix and its label (`NavRow`), and between roles in a group (`CvEntry`)                                                     |
-| `gap-x-4`          | a pair's left text to its right meta (`CvEntry` lines, `KeyedList` rows)                                                                      |
-| `gap-2`            | between an icon and its label, between a heading and its subtitle (the home h1 and the bio), between an entry's lines, and between keyed rows |
-| `gap-1`            | between rows in a list (`NavRow` rows), and between bullets                                                                                   |
-| `pl-5`             | the bullet indent inside `Prose`                                                                                                              |
-| `pb-2`             | a heading over its hairline rule (a `SectionHeading` on a document page)                                                                      |
-| `mx-2`             | a contact separator (the middle dot between contact links)                                                                                    |
-| `min-h-6`          | a contact link, like the footer link: a text link inside a text line                                                                          |
-| `xs:w-40`          | a keyed row's key column: 160px fits 19 characters of Plex Mono at `text-sm`                                                                  |
-| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`                                                                                                    |
+| Spacing            | Meaning                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gap-14`           | between sections, and between main and the footer (`print:gap-6` on the CV page wrapper)                                                                                |
+| `gap-6`            | between blocks inside a section (`print:gap-4` on a CV section)                                                                                                         |
+| `gap-4`            | between a row's prefix and its label (`NavRow`), and between roles in a group (`CvEntry`)                                                                               |
+| `gap-x-4`          | a pair's left text to its right meta (`CvEntry` lines, `KeyedList` rows)                                                                                                |
+| `gap-2`            | between an icon and its label, between a heading and its subtitle (the home h1 and the bio), between an entry's lines, between keyed rows, and between marker list rows |
+| `gap-1`            | between rows in a list (`NavRow` rows), and between bullets                                                                                                             |
+| `pl-5`             | the bullet indent inside `Prose`                                                                                                                                        |
+| `w-5`              | a marker column: the 20px indent the CV's bullets use                                                                                                                   |
+| `pb-2`             | a heading over its hairline rule (a `SectionHeading` on a document page)                                                                                                |
+| `mx-2`             | a contact separator (the middle dot between contact links)                                                                                                              |
+| `min-h-6`          | a contact link, like the footer link: a text link inside a text line                                                                                                    |
+| `xs:w-40`          | a keyed row's key column: 160px fits 19 characters of Plex Mono at `text-sm`                                                                                            |
+| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`                                                                                                                              |
 
 A `NavRow` prefix is a fixed column on the same scale: `w-6` (24px) for a two digit number, `w-20` (80px) for a key of up to eight characters in Plex Mono (`linkedin` is the longest); a longer key needs a wider column and a spec line. The content column is `max-w-content`, centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
 
@@ -99,6 +100,8 @@ All in `src/components/`, all semantic HTML, no UI library. Each takes a `class`
 - `CvEntry`: one dated entry of the CV (a role, a company with grouped roles, a degree, an award, a certificate) as two Harvard pairs and an optional body. The pair rule: left text, right meta; a date on line 1 (`meta`, `shrink-0`, never wraps, at most 19 characters) and a location on line 2 (`aside`), in every section, so the right edge reads the same everywhere; below `xs` (480px) each right value drops under its left text, left aligned, and from 480px the pair shares one baseline, the right value at the column's right edge beside the first line of its left text. On line 2 the subtitle grows from zero width (`xs:flex-1`) and wraps, so the location stays whole beside it and wraps only when it alone is wider than the line; if both could shrink, flexbox would split the overflow by width and break even `Toluca, Mexico`. The title is the entry's one medium line (`h3 font-medium`, wrapped in `TextLink` when `href` is given); an `h4` role and a position stay at 400. `summary` and `highlights` render inside `Prose`; the slot takes nested roles or a coursework line. Every entry carries `break-inside-avoid` except a `splittable` group, whose first line carries `break-after-avoid` instead so a company name never ends a page alone while its roles stay whole.
 - `KeyedList`: keyed rows for skills, technologies, languages, and interests: a `dl` whose rows pair a muted `text-sm` key in a fixed `xs:w-40` column with its values joined by `·`. A row with no values is skipped. Rows are `gap-2` apart, `break-inside-avoid`, and stack below `xs` like a pair.
 - Icons (`src/components/icons/`): five outline icons on a 24 unit grid, stroke 2, `currentColor`, hidden from assistive tech. Sized with `size-5` (or `size-4` for the trailing arrow). A sixth icon is a decision.
+
+The about page's marker list is page markup, not a component (spec 0009): a `ul` of `flex` rows `gap-2` apart, each a muted `›` in an `aria-hidden` `w-5` column, then the text in its own span, so a wrapped line starts under the text. The marker is `›` because Plex Mono's `latin` file has it and lacks `←` and `→`. Safari's VoiceOver reads the rows in order but does not announce a list, as for any list with no CSS marker.
 
 Links open in the same tab everywhere. Icons sit next to visible text. No ARIA roles on generic elements.
 

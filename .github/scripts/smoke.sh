@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Spec 0007 smoke check: asks the live site whether it serves the build in
-# dist/. `pages` checks the bytes, headers, share image, and 404 (a failure
+# dist/. `pages` checks the bytes, headers, share images, and 404 (a failure
 # rolls the deploy back); `redirects` checks the www and http 301s. Every
 # expectation comes from dist/, so run it from the repo root after building the
 # commit that is live. SMOKE_ORIGIN points it at another server, such as
@@ -150,6 +150,7 @@ check_page() {
 check_pages() {
   check_page / index.html || return 1
   check_page /cv cv.html || return 1
+  check_page /about about.html || return 1
 
   fetch "$origin$stylesheet"
   check_status "$stylesheet" 200 || return 1
@@ -158,6 +159,10 @@ check_pages() {
   fetch "$origin/og/cv.png"
   check_status /og/cv.png 200 || return 1
   check_header /og/cv.png 'content-type: image/png' || return 1
+
+  fetch "$origin/og/about.png"
+  check_status /og/about.png 200 || return 1
+  check_header /og/about.png 'content-type: image/png' || return 1
 
   fetch "$origin/missing"
   check_status /missing 404 || return 1

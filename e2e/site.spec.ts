@@ -1045,10 +1045,11 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
-  // covers: spec 0007 AC-1, AC-9 (expected page bytes)
+  // covers: spec 0007 AC-1, AC-9 (expected page bytes), spec 0009 AC-12
   for (const [path, file] of [
     ['/', 'index.html'],
     ['/cv', 'cv.html'],
+    ['/about', 'about.html'],
     ['/missing', '404.html'],
   ] as const) {
     test(`fails when ${path} differs from dist/${file} by one byte`, async () => {
@@ -1072,8 +1073,8 @@ test.describe('smoke check', () => {
     });
   }
 
-  // covers: spec 0007 AC-3, AC-9
-  for (const path of ['/', '/cv']) {
+  // covers: spec 0007 AC-3, AC-9, spec 0009 AC-12
+  for (const path of ['/', '/cv', '/about']) {
     test(`fails when ${path} is served with an immutable cache`, async () => {
       const cache = 'public, max-age=31536000, immutable';
 
@@ -1137,22 +1138,24 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
-  // covers: spec 0007 AC-9 (share image)
-  test('fails when /og/cv.png is not served as image/png', async () => {
-    const { origin, run } = await smokeThrough(served(), {
-      path: '/og/cv.png',
-      headers: { 'content-type': 'image/jpeg' },
-    });
+  // covers: spec 0007 AC-9 (share image), spec 0009 AC-12
+  for (const path of ['/og/cv.png', '/og/about.png']) {
+    test(`fails when ${path} is not served as image/png`, async () => {
+      const { origin, run } = await smokeThrough(served(), {
+        path,
+        headers: { 'content-type': 'image/jpeg' },
+      });
 
-    expect(run.stdout).toBe(
-      failedEveryAttempt(
-        'pages',
-        origin,
-        '/og/cv.png header expected content-type: image/png got content-type: image/jpeg',
-      ),
-    );
-    expect(run.code).toBe(1);
-  });
+      expect(run.stdout).toBe(
+        failedEveryAttempt(
+          'pages',
+          origin,
+          `${path} header expected content-type: image/png got content-type: image/jpeg`,
+        ),
+      );
+      expect(run.code).toBe(1);
+    });
+  }
 
   // covers: spec 0007 AC-1, AC-9
   test('fails when /missing answers 200 instead of 404', async () => {
