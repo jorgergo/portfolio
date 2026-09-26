@@ -24,6 +24,7 @@ pnpm lint      # eslint, zero warnings allowed (lint:fix to autofix)
 pnpm format    # prettier --write (format:check in CI)
 pnpm test      # vitest run (test:watch to watch)
 pnpm exec playwright test   # page tests in e2e/ (first run: pnpm exec playwright install chromium)
+bash .github/scripts/smoke.sh pages   # after pnpm build: does the live site serve dist/? (SMOKE_ORIGIN=http://localhost:8787 tests pnpm preview; redirects mode checks the 301s)
 ```
 Pass Vitest flags with `pnpm exec vitest run <flags>`: pnpm 12 claims flags such as `--reporter` given to `pnpm test`.
 
@@ -49,6 +50,7 @@ Stored in `docs/specs/`, one folder per decision: `docs/specs/NNNN-title/index.m
 - Colours come only from the six tokens: never a `dark:` variant, a literal colour, or a Tailwind palette class such as `text-stone-500`. No arbitrary Tailwind values in components.
 - Links open in the same tab: no `target` on any link, internal or external.
 - `src/pages/_dev/` is dev only: Astro never routes it, `astro.config.mjs` injects its `/styleguide` page under `pnpm dev`, and nothing in it reaches `dist/`.
+- Deploying: a merge to `main` publishes to jorgergo.dev once the CI gate passes. Keep the `routes` host in `wrangler.jsonc` equal to `site` and the Worker assets only (no `main` script). `smoke.sh` compares the live pages and every `public/_headers` value with `dist/` exactly and rolls a mismatch back, so no Cloudflare feature may rewrite page bytes, and only `/_astro/*` gets the immutable cache. `headerBlocks` in `e2e/helpers.ts` reads `_headers` the way `smoke.sh` does, so change both together. Dashboard settings (zone, www redirect, mail records) are recorded only in spec 0007, so a change there updates it. See [spec 0007](docs/specs/0007-go-live/index.md).
 - Naming: PascalCase `.astro` components, camelCase functions and variables, kebab-case other files. Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`).
 
 ## Tooling
@@ -59,9 +61,9 @@ Chosen by /audit; `/develop tooling` installs exactly this.
 - **Pre commit**: `simple-git-hooks` (config in `package.json`, installed by `prepare`) runs lint-staged (ESLint + Prettier on staged files), then `astro check`. The hook uses the `pnpm`/Node on git's PATH, so Node 26 must be active there.
 - **Tests** (runner set up by `/test`): Vitest for `src/lib` helpers and content schemas; Playwright for built pages (links, keyboard, print, axe checks).
 - **Unit tests**: Vitest 5, `vitest.config.ts` resolves `@/*` from tsconfig and runs `src/**/*.test.ts`. Tests sit beside the source, tagged with the spec `AC-N` they cover; schema tests pass `() => z.string()` as the `image` stub. Only `cv-schema.test.ts` reads the live `cv.json`; other unit tests hold today's words in inline fixtures, so a valid content edit needs no test edit (spec 0006 AC-18).
-- **Page tests**: Playwright with `@axe-core/playwright`, config in `playwright.config.ts`, specs in `e2e/`. The `site` project builds and serves `dist/` through wrangler on port 8788 (real headers and CSP); the `styleguide` project runs against `astro dev` on 4321 and reuses one you have open, since Astro allows one dev server per project. Not in CI yet.
+- **Page tests**: Playwright with `@axe-core/playwright`, config in `playwright.config.ts`, specs in `e2e/`. The `site` project builds and serves `dist/` through wrangler on port 8788 (real headers and CSP); the `styleguide` project runs against `astro dev` on 4321 and reuses one you have open, since Astro allows one dev server per project. CI runs every project on each push and PR.
 - **Page test conventions**: the `/cv` cases derive every expectation from `cv.json` through the site's own helpers and count an optional part before reading it, so a valid content edit needs no test edit (spec 0005 AC-16). An AI agent's shell makes `astro dev` detach into the background, so the config sets `ASTRO_DEV_BACKGROUND=0`; do the same for any `astro dev` you start from one, and clear a leftover server with `pnpm exec astro dev stop`.
-- **CI**: GitHub Actions on push and PR: frozen lockfile install, lint, format check, `pnpm build`, tests. Node from `.nvmrc`. Deploying belongs to the Go live spec.
+- **CI**: GitHub Actions on push and PR (`.github/workflows/ci.yml`): frozen lockfile install, lint, format check, `pnpm build`, `wrangler deploy --dry-run`, `pnpm test`, then the Playwright page tests. Node from `.nvmrc`. A push to `main` then runs `deploy`: it ships the `dist/` the page tests passed, runs `.github/scripts/smoke.sh`, and rolls back on its own when the pages fail (spec 0007).
 
 ## Git
 

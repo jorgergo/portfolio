@@ -18,7 +18,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Home page | Release 1 | done |
 | 6 | CV page | Release 1 | done |
 | 7 | Metadata & share cards | Release 1 | done |
-| 8 | Go live | Release 1 | in-progress |
+| 8 | Go live | Release 1 | done |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Portfolio page | Release 3 | planned |
@@ -126,7 +126,7 @@ spec [0006](../specs/0006-metadata-share-cards/index.md) · code in `src/lib/sit
 - [x] Review it (fresh model): `/check review metadata & share cards`
 - [x] Document it: `/document metadata & share cards`
 
-### 8. Go live · in-progress
+### 8. Go live · done
 Put the site on the internet at your address, with every change deploying automatically.
 **Done when:** the site is reachable at your chosen domain over HTTPS, and pushing a change publishes it without manual steps.
 spec [0007](../specs/0007-go-live/index.md) · code in `.github/workflows/ci.yml`, `.github/scripts/smoke.sh`, `wrangler.jsonc`
