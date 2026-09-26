@@ -149,7 +149,7 @@ spec [0009](../specs/0009-about-page/index.md)
 - [x] Design it (spec): `/architect about page`
 - [ ] Build it: `/develop about page`
   - [x] Content and schema: the `about` block in `cv.json` (intro, three to seven lines, the closing with `{email}`), its caps, `splitAtEmail`, and the Vitest cases (AC-3, AC-4)
-  - [ ] Metadata and card: `givenName`, the `about` row in `SHARE_PAGES`, its description, and the Vitest cases (AC-1, AC-2)
+  - [x] Metadata and card: `givenName`, the `about` row in `SHARE_PAGES`, its description, and the Vitest cases (AC-1, AC-2)
   - [ ] Page and menu: `src/pages/about.astro` with the `›` list and the inline email, `about` first in `SITE_NAV`, and the home menu test updates if spec 0008's task 1 has not landed (AC-5 to AC-8)
   - [ ] Tests, deploy gate, and the gate: the page tests, the About card in the style guide, `/about` in `smoke.sh`, `design.md`, then build, lint, format, tests, and the steps in `verify.md` (AC-9 to AC-12)
 - [ ] Verify it: `/check verify about page`

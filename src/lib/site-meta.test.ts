@@ -7,6 +7,7 @@ import {
   footerLength,
   formatPageTitle,
   formatSectionList,
+  givenName,
   pageMeta,
   SHARE_IMAGE,
   SHARE_PAGES,
@@ -57,10 +58,11 @@ describe('SHARE_PAGES', () => {
     for (const path of paths) expect(path).toMatch(/^\/([a-z-]+)?$/);
   });
 
-  // covers: AC-5
-  it('holds the home and CV rows, the CV row with its label', () => {
+  // covers: AC-5, spec 0009 AC-2
+  it('holds the home, About, and CV rows in menu order, each but home labelled', () => {
     expect(SHARE_PAGES).toEqual([
       { key: 'home', path: '/' },
+      { key: 'about', path: '/about', label: 'About' },
       { key: 'cv', path: '/cv', label: 'CV' },
     ]);
   });
@@ -73,7 +75,7 @@ describe('sharePage', () => {
   });
 
   // covers: AC-6, AC-10
-  it.each(['about', '', undefined])(
+  it.each(['missing', '', undefined])(
     'returns undefined for the unknown key %j',
     (key) => {
       expect(sharePage(key)).toBeUndefined();
@@ -92,6 +94,7 @@ describe('formatPageTitle', () => {
   // covers: AC-3
   it.each([
     ['CV', 'CV · Jorge González Ozorno'],
+    ['About', 'About · Jorge González Ozorno'],
     ['Not found', 'Not found · Jorge González Ozorno'],
   ])('reads page · name for the page label %j', (page, expected) => {
     expect(formatPageTitle(cv.basics, page)).toBe(expected);
@@ -105,6 +108,18 @@ describe('formatPageTitle', () => {
 
     expect(formatPageTitle(basics).length).toBeLessThanOrEqual(60);
     expect(formatPageTitle(basics, 'CV').length).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('givenName', () => {
+  // covers: spec 0009 AC-2
+  it.each([
+    ['Jorge González Ozorno', 'Jorge'],
+    ['Ana', 'Ana'],
+    ['  Ana  Ruiz ', 'Ana'],
+    ['', ''],
+  ])('reads the given name of %j as %j', (name, expected) => {
+    expect(givenName(name)).toBe(expected);
   });
 });
 
@@ -155,6 +170,16 @@ describe('DESCRIPTIONS', () => {
     );
     expect(DESCRIPTIONS.cv(fixture)).toBe(
       'The CV of Ada Lovelace, Analyst: experience and education.',
+    );
+  });
+
+  // covers: spec 0009 AC-2
+  it('describes the about page with the given name', () => {
+    expect(DESCRIPTIONS.about(cv)).toBe(
+      'What Jorge cares about, at work and away from it.',
+    );
+    expect(DESCRIPTIONS.about(fixture)).toBe(
+      'What Ada cares about, at work and away from it.',
     );
   });
 
@@ -214,6 +239,24 @@ describe('pageMeta', () => {
     expect(share?.image.alt).toBe(
       'CV, Jorge González Ozorno, Full Stack Developer',
     );
+  });
+
+  // covers: spec 0009 AC-1, AC-2
+  it('gives the about page its title, description, canonical, image, and alt text', () => {
+    expect(pageMeta('about', cv, site)).toEqual({
+      title: 'About · Jorge González Ozorno',
+      description: 'What Jorge cares about, at work and away from it.',
+      share: {
+        url: 'https://jorgergo.dev/about',
+        siteName: 'Jorge González Ozorno',
+        image: {
+          url: 'https://jorgergo.dev/og/about.png',
+          alt: 'About, Jorge González Ozorno, Full Stack Developer',
+          width: 1200,
+          height: 630,
+        },
+      },
+    });
   });
 
   // covers: AC-1, AC-5
@@ -295,9 +338,10 @@ describe('footerLength', () => {
     return footerLength(content);
   };
 
-  // covers: AC-17
+  // covers: AC-17, spec 0009 AC-2
   it.each([
     ['home', 22],
+    ['about', 28],
     ['cv', 25],
   ] as const)(
     'counts today’s %s card footer as %i characters',
