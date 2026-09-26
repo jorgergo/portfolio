@@ -8,7 +8,8 @@ import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 // name, label, and city are sized to the share card (spec 0006): a 30
 // character name wraps to at most three lines and a 27 character role still
 // clears the footer rule; a name part fills one card line at most; the city
-// keeps the footer on one row.
+// keeps the footer on one row. The about caps (spec 0009) keep the page to a
+// few seconds of reading.
 export const CV_LIMITS = {
   name: 30,
   namePart: 24,
@@ -20,6 +21,11 @@ export const CV_LIMITS = {
   highlight: 220,
   highlights: 5,
   courses: 8,
+  aboutIntro: 40,
+  aboutItem: 100,
+  aboutItemsMin: 3,
+  aboutItems: 7,
+  aboutClosing: 160,
 } as const;
 
 export const NETWORKS = ['GitHub', 'LinkedIn'] as const;
@@ -49,6 +55,25 @@ const regionNames = new Intl.DisplayNames(['en'], {
 // rejects ZZ because of() names it "Unknown Region".
 export const regionName = (code: string): string | undefined =>
   REGION_PATTERN.test(code) && code !== 'ZZ' ? regionNames.of(code) : undefined;
+
+// Where basics.email goes in about.closing (spec 0009), so the sentence stays
+// in cv.json while the address keeps its one source.
+export const EMAIL_TOKEN = '{email}';
+
+// The text on each side of the one email marker, or undefined when the
+// marker is missing or repeated. The schema refines with it, so the page's
+// fallback is unreachable for valid content.
+export const splitAtEmail = (
+  closing: string,
+): { readonly before: string; readonly after: string } | undefined => {
+  const at = closing.indexOf(EMAIL_TOKEN);
+  return at !== -1 && at === closing.lastIndexOf(EMAIL_TOKEN)
+    ? {
+        before: closing.slice(0, at),
+        after: closing.slice(at + EMAIL_TOKEN.length),
+      }
+    : undefined;
+};
 
 // Trimmed first, so caps count the visible text.
 const text = (max?: number) =>
@@ -211,6 +236,22 @@ const interest = z.strictObject({
   keywords: z.array(text()).optional(),
 });
 
+// The /about page's words (spec 0009). Required, because the page exists. Not
+// card text, so the glyph rule does not apply.
+const about = z.strictObject({
+  intro: text(CV_LIMITS.aboutIntro),
+  items: z
+    .array(text(CV_LIMITS.aboutItem))
+    .min(CV_LIMITS.aboutItemsMin)
+    .max(CV_LIMITS.aboutItems),
+  closing: text(CV_LIMITS.aboutClosing).refine(
+    (value) => splitAtEmail(value) !== undefined,
+    {
+      message: `closing must hold ${EMAIL_TOKEN} exactly once, where basics.email goes; see spec 0009`,
+    },
+  ),
+});
+
 // The strict `main` entry schema. `image` is Astro's image() helper in
 // content.config.ts and a plain stub such as () => z.string() in tests.
 // Never call .readonly() here: Astro rewrites image references in the data.
@@ -229,6 +270,7 @@ export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
       image: image().optional(),
       profiles: profiles.optional(),
     }),
+    about,
     work: z.array(work).min(1),
     volunteer: z.array(volunteer).optional(),
     education: z.array(education).min(1),

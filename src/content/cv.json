@@ -24,6 +24,19 @@
         }
       ]
     },
+    "about": {
+      "intro": "Hi, I'm Jorge, I care about...",
+      "items": [
+        "Making websites. From the interface to the cloud it runs on.",
+        "Automating boring work. Releases, versions, and repetitive processes.",
+        "Teaching and docs. Helping teammates get unstuck.",
+        "Sport. Five years as basketball captain, plus boxing, tennis, weightlifting, and CrossFit.",
+        "Music. I play the guitar.",
+        "Superheroes and anime. They give me hope.",
+        "Finance and markets. A newer interest; the market keeps me curious."
+      ],
+      "closing": "If you would like to work with me, send me an email at {email}."
+    },
     "work": [
       {
         "name": "Ford Motor Company",

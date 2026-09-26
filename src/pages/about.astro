@@ -1,0 +1,38 @@
+---
+import TextLink from '@/components/TextLink.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCv } from '@/lib/cv';
+import { splitAtEmail } from '@/lib/cv-schema';
+import { pageMeta } from '@/lib/site-meta';
+
+// Spec 0009: the heading, the intro, what you care about as lines behind a
+// muted `›`, and one closing sentence with the email as its only link. No
+// photo, no script. The head comes from the `about` row (spec 0006).
+const cv = await getCv();
+const { basics, about } = cv;
+const mailto = `mailto:${basics.email}`;
+// The schema requires the {email} marker once, so undefined is unreachable;
+// the sentence would then print as plain text rather than throw. Its markup
+// stays on one line (Prettier is told to leave it): whitespace around an
+// expression survives compressHTML and would print a space before the period.
+const closing = splitAtEmail(about.closing);
+---
+
+<BaseLayout {...pageMeta('about', cv, Astro.site)}>
+  <div class="flex flex-col gap-6 text-pretty">
+    <h1 class="text-lg font-medium">about</h1>
+    <p>{about.intro}</p>
+    <ul class="flex flex-col gap-2">
+      {about.items.map((item) => (
+        <li class="flex">
+          <span aria-hidden="true" class="w-5 shrink-0 text-muted">
+            ›
+          </span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+    {/* prettier-ignore */}
+    <p>{closing === undefined ? about.closing : <>{closing.before}<TextLink href={mailto}>{basics.email}</TextLink>{closing.after}</>}</p>
+  </div>
+</BaseLayout>

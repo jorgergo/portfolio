@@ -5,7 +5,10 @@
 export const SITE_NAV: readonly {
   readonly label: string;
   readonly href: string;
-}[] = [{ label: 'cv', href: '/cv' }];
+}[] = [
+  { label: 'about', href: '/about' },
+  { label: 'cv', href: '/cv' },
+];
 
 // A row's number comes from its position, never stored: 0 gives `01`, 9 gives
 // `10`, so the menu renumbers itself as pages ship.

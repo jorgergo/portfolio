@@ -13,6 +13,7 @@ export type SharePage = {
 
 export const SHARE_PAGES = [
   { key: 'home', path: '/' },
+  { key: 'about', path: '/about', label: 'About' },
   { key: 'cv', path: '/cv', label: 'CV' },
 ] as const satisfies readonly SharePage[];
 
@@ -83,6 +84,11 @@ export const formatPageTitle = (
     ? `${basics.name} · ${basics.label}`
     : `${page} · ${basics.name}`;
 
+// The first whitespace separated part of the name, or '' when there is none.
+// It assumes the given name comes first (spec 0009).
+export const givenName = (name: string): string =>
+  name.trim().split(/\s+/)[0] ?? '';
+
 // English, with a serial comma: `a and b`, `a, b, and c`.
 const LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
@@ -103,6 +109,8 @@ export const formatSectionList = ({
 // SHARE_PAGES without a rule fail `astro check`.
 export const DESCRIPTIONS = {
   home: ({ basics }) => basics.bio,
+  about: ({ basics }) =>
+    `What ${givenName(basics.name)} cares about, at work and away from it.`,
   cv: (cv) =>
     `The CV of ${cv.basics.name}, ${cv.basics.label}: ${formatSectionList(cv)}.`,
 } as const satisfies Record<SharePageKey, (cv: MetaCv) => string>;
