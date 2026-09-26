@@ -1,7 +1,13 @@
 import { z } from 'astro/zod';
 import { describe, expect, it } from 'vitest';
 import cvFile from '@/content/cv.json';
-import { CV_LIMITS, makeCvSchema, regionName } from '@/lib/cv-schema';
+import {
+  CV_LIMITS,
+  EMAIL_TOKEN,
+  makeCvSchema,
+  regionName,
+  splitAtEmail,
+} from '@/lib/cv-schema';
 
 // Spec 0002: tests pass a plain string stub for Astro's image() helper.
 const schema = makeCvSchema(() => z.string());
@@ -54,11 +60,28 @@ const school = {
   endDate: '2022-06',
 } as const;
 
-const minimalCv = { basics, work: [role], education: [school] } as const;
+// Three items, the fewest the schema accepts (spec 0009).
+const about = {
+  intro: 'Hi, I care about...',
+  items: ['Code. Small tools.', 'Music. The piano.', 'Sport. Running.'],
+  closing: 'Write to me at {email}.',
+} as const;
+
+const minimalCv = {
+  basics,
+  about,
+  work: [role],
+  education: [school],
+} as const;
 
 const withBasics = (patch: Data): Data => ({
   ...minimalCv,
   basics: { ...basics, ...patch },
+});
+
+const withAbout = (patch: Data): Data => ({
+  ...minimalCv,
+  about: { ...about, ...patch },
 });
 
 const withRole = (patch: Data): Data => ({
@@ -152,7 +175,7 @@ describe('makeCvSchema: required fields', () => {
   );
 
   // covers: AC-3
-  it.each(['work', 'education', 'basics'])(
+  it.each(['work', 'education', 'basics', 'about'])(
     'fails at %s when the section is left out',
     (section) => {
       expect(issues(omit(minimalCv, section))).toEqual([
@@ -386,6 +409,11 @@ describe('makeCvSchema: caps', () => {
       highlight: 220,
       highlights: 5,
       courses: 8,
+      aboutIntro: 40,
+      aboutItem: 100,
+      aboutItemsMin: 3,
+      aboutItems: 7,
+      aboutClosing: 160,
     });
   });
 
@@ -667,5 +695,141 @@ describe('makeCvSchema: card text (spec 0006)', () => {
     expect(issues(withBasics({ name: `Ada ${chars(23)}e\u0308` }))).toEqual([
       'basics.name: a name part holds 25 characters, over 24 (one card line); see spec 0006',
     ]);
+  });
+});
+
+describe('makeCvSchema: about (spec 0009)', () => {
+  const tokenMissing =
+    'about.closing: closing must hold {email} exactly once, where basics.email goes; see spec 0009';
+
+  const lines = (count: number): readonly string[] =>
+    Array.from({ length: count }, (_, i) => `Line ${i}.`);
+
+  // covers: spec 0009 AC-3
+  it.each(['intro', 'items', 'closing'])(
+    'fails at about.%s when it is missing',
+    (field) => {
+      expect(issues({ ...minimalCv, about: omit(about, field) })).toEqual([
+        expect.stringMatching(`^about.${field}:`),
+      ]);
+    },
+  );
+
+  // covers: spec 0009 AC-3
+  it('rejects an unknown key inside about, such as a photo', () => {
+    expect(issues(withAbout({ photo: 'me.jpg' }))).toEqual([
+      'about: Unrecognized key: "photo"',
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it.each(['', '   '])('fails an intro of %j as too small', (intro) => {
+    expect(issues(withAbout({ intro }))).toEqual([
+      expect.stringMatching(/^about\.intro: Too small/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it.each(['', '   '])('fails an item of %j at its index', (item) => {
+    expect(issues(withAbout({ items: ['Code.', item, 'Sport.'] }))).toEqual([
+      expect.stringMatching(/^about\.items\.1: Too small/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it.each(['', '   '])(
+    'fails a closing of %j as too small and as missing the marker',
+    (closing) => {
+      expect(issues(withAbout({ closing }))).toEqual([
+        expect.stringMatching(/^about\.closing: Too small/),
+        tokenMissing,
+      ]);
+    },
+  );
+
+  // covers: spec 0009 AC-3
+  it('accepts 3 and 7 items, and fails at 2 and at 8', () => {
+    const withItems = (count: number): Data =>
+      withAbout({ items: lines(count) });
+
+    expect(issues(withItems(CV_LIMITS.aboutItemsMin))).toEqual([]);
+    expect(issues(withItems(CV_LIMITS.aboutItems))).toEqual([]);
+    expect(issues(withItems(CV_LIMITS.aboutItemsMin - 1))).toEqual([
+      expect.stringMatching(/^about\.items: Too small/),
+    ]);
+    expect(issues(withItems(CV_LIMITS.aboutItems + 1))).toEqual([
+      expect.stringMatching(/^about\.items: Too big/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it('accepts a 40 character intro and fails at 41', () => {
+    const cap = CV_LIMITS.aboutIntro;
+
+    expect(issues(withAbout({ intro: chars(cap) }))).toEqual([]);
+    expect(issues(withAbout({ intro: chars(cap + 1) }))).toEqual([
+      expect.stringMatching(/^about\.intro: Too big/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it('accepts a 100 character item and fails at 101', () => {
+    const cap = CV_LIMITS.aboutItem;
+    const withFirst = (item: string): Data =>
+      withAbout({ items: [item, ...lines(2)] });
+
+    expect(issues(withFirst(chars(cap)))).toEqual([]);
+    expect(issues(withFirst(chars(cap + 1)))).toEqual([
+      expect.stringMatching(/^about\.items\.0: Too big/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it('accepts a 160 character closing and fails at 161 with the cap alone', () => {
+    // The marker counts its own 7 characters. Every fixture holds it, since
+    // zod runs the marker rule even after a failed cap.
+    const cap = CV_LIMITS.aboutClosing;
+    const closingOf = (count: number): string =>
+      `${EMAIL_TOKEN}${chars(count - EMAIL_TOKEN.length)}`;
+
+    expect(closingOf(cap)).toHaveLength(cap);
+    expect(issues(withAbout({ closing: closingOf(cap) }))).toEqual([]);
+    expect(issues(withAbout({ closing: closingOf(cap + 1) }))).toEqual([
+      expect.stringMatching(/^about\.closing: Too big/),
+    ]);
+  });
+
+  // covers: spec 0009 AC-3
+  it.each([
+    ['no marker', 'Write to me any time.'],
+    ['two markers', 'Write to {email} or {email}.'],
+    ['a misspelt marker', 'Write to {Email}.'],
+  ])('fails a closing with %s, naming spec 0009', (_, closing) => {
+    expect(issues(withAbout({ closing }))).toEqual([tokenMissing]);
+  });
+});
+
+describe('splitAtEmail', () => {
+  // covers: spec 0009 AC-3
+  it.each([
+    ['{email} is where I read.', '', ' is where I read.'],
+    ['Write to {email} any time.', 'Write to ', ' any time.'],
+    ['Write to {email}', 'Write to ', ''],
+  ])('splits %j at its one marker', (closing, before, after) => {
+    expect(splitAtEmail(closing)).toEqual({ before, after });
+  });
+
+  // covers: spec 0009 AC-3
+  it('returns two empty sides for the marker alone', () => {
+    expect(splitAtEmail(EMAIL_TOKEN)).toEqual({ before: '', after: '' });
+  });
+
+  // covers: spec 0009 AC-3
+  it.each([
+    'Write to me any time.',
+    'Write to {email} or {email}.',
+    '{email}{email}',
+  ])('returns undefined for %j, which holds no marker or two', (closing) => {
+    expect(splitAtEmail(closing)).toBeUndefined();
   });
 });
