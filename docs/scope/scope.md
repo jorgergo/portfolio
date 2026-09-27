@@ -175,13 +175,13 @@ spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.a
 ### 14. Home page redesign · in-progress
 Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.
 **Done when:** `/` shows only the name, the tagline, and `01 about`, `02 cv`, `03 projects`, `04 contact`, centred with left aligned text, in light and dark, on phone and desktop; no employer appears on the page or in its description; `/contact` holds your links.
-spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/content/cv.json`
+spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/layouts/BaseLayout.astro`, `src/pages/index.astro`, `e2e/site.spec.ts`
 - [x] Design it (spec): `/architect home page redesign`
-- [ ] Build it: `/develop home page redesign`
+- [x] Build it: `/develop home page redesign`
   - [x] Bio now: the rewritten bio, and the home menu tests derived from `SITE_NAV`, merged on its own (AC-1, AC-6, AC-10)
-  - [ ] Tagline: `basics.tagline` with its 27 character cap and Vitest cases (AC-2, AC-10)
-  - [ ] Page, once About and Contact are live: the `centered` prop, the recomposed home, `projects` in the planned order (AC-3 to AC-5, AC-7, AC-8)
-  - [ ] Page tests, `design.md`, and the gate: the home page block in `e2e/site.spec.ts`, the manual steps in `verify.md` (AC-3 to AC-7, AC-9, AC-10)
+  - [x] Tagline: `basics.tagline` with its 27 character cap and Vitest cases (AC-2, AC-10)
+  - [x] Page, once About and Contact are live: the `centered` prop, the recomposed home, `projects` in the planned order (AC-3 to AC-5, AC-7, AC-8)
+  - [x] Page tests, `design.md`, and the gate: the home page block in `e2e/site.spec.ts`, the manual steps in `verify.md` (AC-3 to AC-7, AC-9, AC-10)
 - [ ] Verify it: `/check verify home page redesign`
 - [ ] Test it: `/test home page redesign`
 - [ ] Review it (fresh model): `/check review home page redesign`
