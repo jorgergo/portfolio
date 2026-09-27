@@ -2598,6 +2598,43 @@ test.describe('contact page', () => {
     expect(await scrollsSideways(page)).toBe(false);
   });
 
+  // covers: spec 0011 AC-5, AC-6 (a wrapped address stays in its own tap
+  // target, never spilling toward the next row)
+  test('at 320px every row is at least 40px tall, holds its whole label, and sits 4px from the next', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/contact');
+    const boxes = await Promise.all(
+      CONTACT_ROWS.map(async (row) => {
+        const link = rowLink(page, row);
+        return {
+          key: row.key,
+          link: await link.boundingBox(),
+          label: await spans(link).nth(1).boundingBox(),
+        };
+      }),
+    );
+
+    for (const { key, link, label } of boxes) {
+      const top = link?.y ?? 0;
+
+      expect(link?.height ?? 0, key).toBeGreaterThanOrEqual(40);
+      expect(label?.y ?? -1, key).toBeGreaterThanOrEqual(top);
+      expect(
+        (label?.y ?? 0) + (label?.height ?? Infinity),
+        key,
+      ).toBeLessThanOrEqual(top + (link?.height ?? 0));
+    }
+    for (const [index, { key, link }] of boxes.slice(1).entries()) {
+      const above = boxes[index]?.link;
+      expect(
+        (link?.y ?? 0) - (above?.y ?? 0) - (above?.height ?? 0),
+        key,
+      ).toBeCloseTo(4, 1);
+    }
+  });
+
   // covers: spec 0011 AC-4
   test('names no employer on the page, in its title, or in its meta tags', async ({
     page,

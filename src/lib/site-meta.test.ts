@@ -177,6 +177,15 @@ describe('formatChannelList', () => {
   ])('names the channels with %s', (_, profiles, expected) => {
     expect(formatChannelList({ profiles })).toBe(expected);
   });
+
+  // covers: spec 0011 AC-2 (the description names the channels in row order)
+  it('keeps the cv.json order of the profiles after email', () => {
+    expect(
+      formatChannelList({
+        profiles: [{ network: 'LinkedIn' }, { network: 'GitHub' }],
+      }),
+    ).toBe('email, LinkedIn, or GitHub');
+  });
 });
 
 describe('DESCRIPTIONS', () => {

@@ -168,7 +168,7 @@ spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.a
   - [x] Page tests: the `/contact` `PAGES` entry, the `contact page` block (composition, rows, the 320px email wrap, keyboard, requests, print), and `/contact` in the five path loops (AC-4 to AC-7, AC-9, AC-11)
   - [x] Deploy gate and docs: `smoke.sh`, `SMOKE_FILES`, the style guide's Contact card, `design.md`, then the gate and the steps in `verify.md` (AC-10, AC-11)
 - [x] Verify it: `/check verify contact page`
-- [ ] Test it: `/test contact page`
+- [x] Test it: `/test contact page`
 - [ ] Review it (fresh model): `/check review contact page`
 - [ ] Document it: `/document contact page`
 
