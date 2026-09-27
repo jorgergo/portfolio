@@ -201,8 +201,8 @@ spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects
   - [x] Metadata, page, and menu: the `projects` share row and description, `/projects` as hairline rows, `03 projects` in `SITE_NAV` (AC-4 to AC-8)
   - [x] CV section: Projects after Experience from the two flagged projects (AC-9)
   - [x] Tests, deploy gate, and docs: the page tests, the style guide card, `smoke.sh`, `design.md`, then the gate and the steps in `verify.md` (AC-8 to AC-11)
-- [ ] Verify it: `/check verify projects page`
-- [ ] Test it: `/test projects page`
+- [x] Verify it: `/check verify projects page`
+- [x] Test it: `/test projects page`
 - [ ] Review it (fresh model): `/check review projects page`
 - [ ] Document it: `/document projects page`
 

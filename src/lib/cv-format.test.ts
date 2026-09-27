@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cvProjects,
   firstUrl,
@@ -665,6 +665,21 @@ describe('formatYearSpan', () => {
     expect(formatYearSpan(start, end)).toBe('2024');
   });
 
+  describe('on a build in a later year', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // covers: spec 0010 AC-3 (key invariant: a rebuild on January 1 changes nothing)
+    it('still reads an ongoing span as its start year to now', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2031-01-01T00:00:00Z'));
+
+      expect(formatYearSpan('2026-09')).toBe('2026 – now');
+      expect(formatYearSpan('2026-09', '2026-11')).toBe('2026');
+    });
+  });
+
   // covers: spec 0010 AC-3
   it('reads a span across years as both years with the CV range separator', () => {
     expect(formatYearSpan('2022-11', '2023-02')).toBe('2022 – 2023');
@@ -770,5 +785,16 @@ describe('cvProjects', () => {
     ];
 
     expect(ids(cvProjects(projects))).toEqual(['finished', 'older']);
+  });
+
+  // covers: spec 0010 AC-3, AC-9 (on ship both flagged projects start 2026-09)
+  it('keeps file order for two flagged projects that start the same month', () => {
+    const projects: readonly Project[] = [
+      { id: 'first', startDate: '2026-09', cv: true },
+      { id: 'older', startDate: '2026-05' },
+      { id: 'second', startDate: '2026-09', cv: true },
+    ];
+
+    expect(ids(cvProjects(projects))).toEqual(['first', 'second']);
   });
 });

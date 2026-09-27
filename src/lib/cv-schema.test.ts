@@ -1060,6 +1060,51 @@ describe('makeCvSchema: projects (spec 0010)', () => {
 
     expect(issues(withProjects(list))).toEqual([]);
   });
+
+  // covers: spec 0010 AC-1
+  it('names the four status words and the private source word', () => {
+    expect(PROJECT_STATUSES).toEqual(['live', 'building', 'done', 'archived']);
+    expect(PRIVATE_SOURCE).toBe('private');
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(['2024-13', '2024-3', '24-09'])(
+    'rejects the end month %j with the YYYY-MM message',
+    (endDate) => {
+      expect(issues(withProject({ endDate }))).toEqual([
+        'projects.0.endDate: expected a month as YYYY-MM (01 to 12)',
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it.each(['yes', 'true', 1])(
+    'rejects a cv flag of %j, not a boolean',
+    (cv) => {
+      expect(issues(withProject({ cv }))).toEqual([
+        expect.stringMatching(/^projects\.0\.cv:/),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it('fails every later repeat of a name, never the first', () => {
+    expect(issues(withProjects([project, project, project]))).toEqual([
+      'projects.1.name: duplicate project name',
+      'projects.2.name: duplicate project name',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('accepts a live project whose url is public while its code stays private', () => {
+    const data = withProject({
+      status: 'live',
+      url: 'https://ledger.example',
+      source: PRIVATE_SOURCE,
+    });
+
+    expect(issues(data)).toEqual([]);
+  });
 });
 
 describe('splitAtEmail', () => {

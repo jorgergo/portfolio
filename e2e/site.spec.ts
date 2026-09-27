@@ -2003,6 +2003,75 @@ test.describe('projects page', () => {
     }
   });
 
+  // covers: spec 0010 AC-6
+  test('only a name with a url is underlined, and no code link is', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+
+    for (const [index, project] of projects.entries()) {
+      const row = rows(page).nth(index);
+      const code = codeLine(row).getByRole('link');
+
+      await expect(name(row)).toHaveCSS('text-decoration-line', 'none');
+      if (project.url !== undefined) {
+        await expect(name(row).getByRole('link')).toHaveCSS(
+          'text-decoration-line',
+          'underline',
+        );
+      }
+      if (project.source !== PRIVATE_SOURCE) {
+        await expect(code).toHaveCSS('text-decoration-line', 'none');
+      }
+    }
+  });
+
+  // covers: spec 0010 AC-6, AC-8
+  test('every code link turns accent-warm on hover', async ({ page }) => {
+    const withCode = projects.filter(({ source }) => source !== PRIVATE_SOURCE);
+    test.skip(
+      withCode.length === 0,
+      'no project in the fixture has public code',
+    );
+    await page.goto('/projects');
+
+    for (const project of withCode) {
+      const code = main(page).getByRole('link', {
+        name: `code for ${project.name}`,
+        exact: true,
+      });
+
+      await code.hover();
+      await expect(code).toHaveCSS('color', rgb('light', 'accent-warm'));
+    }
+  });
+
+  // covers: spec 0010 AC-6, AC-8
+  test('every code link turns accent-warm on keyboard focus alone, with no hover', async ({
+    page,
+  }) => {
+    const codeStops = PROJECT_STOPS.filter((stop) =>
+      stop.startsWith('a "code for '),
+    );
+    test.skip(
+      codeStops.length === 0,
+      'no project in the fixture has public code',
+    );
+    await page.goto('/projects');
+
+    for (const label of PROJECT_STOPS) {
+      await page.keyboard.press('Tab');
+      if (!codeStops.includes(label)) continue;
+      const focused = page.locator(':focus');
+
+      await expect(focused, label).toHaveAttribute('href', /^https:\/\//);
+      await expect(focused, label).toHaveCSS(
+        'color',
+        rgb('light', 'accent-warm'),
+      );
+    }
+  });
+
   for (const scheme of SCHEMES) {
     // covers: spec 0010 AC-6
     test(`rows sit between 1px line hairlines with 16px padding and 8px gaps in ${scheme}`, async ({
