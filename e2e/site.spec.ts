@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   cvProjects,
   firstUrl,
+  formatContactRows,
   formatDateRange,
   formatLocation,
   formatMonth,
@@ -15,6 +16,7 @@ import {
   sortByStart,
   sortNewestFirst,
   spanOf,
+  type ContactRow,
   type Group,
 } from '@/lib/cv-format';
 import { PRIVATE_SOURCE, splitAtEmail } from '@/lib/cv-schema';
@@ -116,6 +118,7 @@ const homeMeta = pageMeta('home', cv, site);
 const aboutMeta = pageMeta('about', cv, site);
 const cvMeta = pageMeta('cv', cv, site);
 const projectsMeta = pageMeta('projects', cv, site);
+const contactMeta = pageMeta('contact', cv, site);
 
 // Spec 0010 AC-8: each row's name link when it has a url, then its code link
 // when its source is public, in the page's order.
@@ -125,6 +128,15 @@ const PROJECT_STOPS: readonly string[] = [
     ...(url === undefined ? [] : [`a "${name}"`]),
     ...(source === PRIVATE_SOURCE ? [] : [`a "code for ${name}"`]),
   ]),
+  'a "← home"',
+];
+
+// Spec 0011 AC-7: each contact row, named by its key and its label, in the
+// formatContactRows order.
+const CONTACT_ROWS = formatContactRows(basics);
+const CONTACT_STOPS: readonly string[] = [
+  'a "Skip to content"',
+  ...CONTACT_ROWS.map(({ key, label }) => `a "${key} ${label}"`),
   'a "← home"',
 ];
 
@@ -169,6 +181,13 @@ const PAGES: readonly PageCase[] = [
     description: projectsMeta.description,
     h1: 'projects',
     stops: PROJECT_STOPS,
+  },
+  {
+    path: '/contact',
+    title: contactMeta.title,
+    description: contactMeta.description,
+    h1: 'contact',
+    stops: CONTACT_STOPS,
   },
   {
     path: '/missing',
@@ -623,8 +642,8 @@ test.describe('type and layout', () => {
     await expect(h1).toHaveCSS('font-weight', '500');
   });
 
-  for (const path of ['/about', '/cv', '/projects', '/missing']) {
-    // covers: AC-4, spec 0009 AC-5, spec 0010 AC-5
+  for (const path of ['/about', '/cv', '/projects', '/contact', '/missing']) {
+    // covers: AC-4, spec 0009 AC-5, spec 0010 AC-5, spec 0011 AC-4
     test(`the ${path} h1 is text-lg at weight 500`, async ({ page }) => {
       await page.goto(path);
       const h1 = page.getByRole('heading', { level: 1 });
@@ -886,8 +905,8 @@ test.describe('response headers', () => {
   const stylesheet = (): string =>
     /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
 
-  // covers: spec 0007 AC-3, spec 0009 AC-12, spec 0010 AC-10
-  for (const path of ['/', '/about', '/cv', '/projects']) {
+  // covers: spec 0007 AC-3, spec 0009 AC-12, spec 0010 AC-10, spec 0011 AC-11
+  for (const path of ['/', '/about', '/cv', '/projects', '/contact']) {
     test(`${path} carries every /* header and no immutable cache`, async ({
       request,
     }) => {
@@ -1131,12 +1150,13 @@ test.describe('smoke check', () => {
   });
 
   // covers: spec 0007 AC-1, AC-9 (expected page bytes), spec 0009 AC-12,
-  // spec 0010 AC-10
+  // spec 0010 AC-10, spec 0011 AC-11
   for (const [path, file] of [
     ['/', 'index.html'],
     ['/cv', 'cv.html'],
     ['/about', 'about.html'],
     ['/projects', 'projects.html'],
+    ['/contact', 'contact.html'],
     ['/missing', '404.html'],
   ] as const) {
     test(`fails when ${path} differs from dist/${file} by one byte`, async () => {
@@ -1160,8 +1180,9 @@ test.describe('smoke check', () => {
     });
   }
 
-  // covers: spec 0007 AC-3, AC-9, spec 0009 AC-12, spec 0010 AC-10
-  for (const path of ['/', '/cv', '/about', '/projects']) {
+  // covers: spec 0007 AC-3, AC-9, spec 0009 AC-12, spec 0010 AC-10,
+  // spec 0011 AC-11
+  for (const path of ['/', '/cv', '/about', '/projects', '/contact']) {
     test(`fails when ${path} is served with an immutable cache`, async () => {
       const cache = 'public, max-age=31536000, immutable';
 
@@ -1225,8 +1246,14 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
-  // covers: spec 0007 AC-9 (share image), spec 0009 AC-12, spec 0010 AC-10
-  for (const path of ['/og/cv.png', '/og/about.png', '/og/projects.png']) {
+  // covers: spec 0007 AC-9 (share image), spec 0009 AC-12, spec 0010 AC-10,
+  // spec 0011 AC-11
+  for (const path of [
+    '/og/cv.png',
+    '/og/about.png',
+    '/og/projects.png',
+    '/og/contact.png',
+  ]) {
     test(`fails when ${path} is not served as image/png`, async () => {
       const { origin, run } = await smokeThrough(served(), {
         path,
@@ -2295,6 +2322,355 @@ test.describe('projects page', () => {
     });
 
     // covers: spec 0010 AC-8
+    test('keeps the footer city line and hides the skip link and ← home', async ({
+      page,
+    }) => {
+      const { city, countryCode } = basics.location;
+      const year = new Date().getUTCFullYear();
+
+      await expect(page.getByRole('contentinfo')).toBeVisible();
+      await expect(page.getByRole('contentinfo')).toContainText(
+        `${city}, ${countryCode} · ${year}`,
+      );
+      await expect(page.locator('a[href="#main"]')).toHaveCSS(
+        'display',
+        'none',
+      );
+      await expect(
+        page.getByRole('contentinfo').locator('a[href="/"]'),
+      ).toBeHidden();
+    });
+  });
+});
+
+// Spec 0011: /contact as a heading and one keyed row per channel inside an
+// <address>, email first. Every expectation is read from cv.json through
+// formatContactRows, so adding or removing a profile needs no test edit.
+test.describe('contact page', () => {
+  const main = (page: Page): Locator => page.locator('main#main');
+  const block = (page: Page): Locator => main(page).locator(':scope > div');
+  const address = (page: Page): Locator =>
+    block(page).locator(':scope > address');
+  const list = (page: Page): Locator => address(page).locator(':scope > ul');
+  const items = (page: Page): Locator => list(page).locator(':scope > li');
+  const rowLink = (page: Page, row: ContactRow): Locator =>
+    list(page).getByRole('link', {
+      name: `${row.key} ${row.label}`,
+      exact: true,
+    });
+  // A row's two spans: the key, then the label (with the arrow inside).
+  const spans = (link: Locator): Locator => link.locator(':scope > span');
+  const isExternal = ({ href }: ContactRow): boolean =>
+    /^https?:\/\//.test(href);
+  const emailRow = CONTACT_ROWS.find(({ key }) => key === 'email');
+  const profileRows = CONTACT_ROWS.filter(({ key }) => key !== 'email');
+
+  // covers: spec 0011 AC-4
+  test('main holds one block: the h1, then the address with one list, 24px apart', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+    const children = block(page).locator(':scope > *');
+
+    await expect(main(page).locator(':scope > *')).toHaveCount(1);
+    await expect(block(page)).toHaveJSProperty('tagName', 'DIV');
+    await expect(block(page)).toHaveCSS('row-gap', '24px');
+    expect(
+      await children.evaluateAll((els) => els.map((el) => el.tagName)),
+    ).toEqual(['H1', 'ADDRESS']);
+    await expect(children.nth(0)).toHaveText('contact');
+    await expect(address(page)).toHaveCSS('font-style', 'normal');
+    await expect(address(page).locator(':scope > *')).toHaveCount(1);
+    await expect(list(page)).toHaveCount(1);
+    await expect(items(page)).toHaveCount(CONTACT_ROWS.length);
+    expect((await main(page).textContent())?.replace(/\s+/g, ' ').trim()).toBe(
+      [
+        'contact',
+        ...CONTACT_ROWS.map(({ key, label }) => `${key} ${label}`),
+      ].join(' '),
+    );
+    await expect(
+      main(page).locator('nav, p, img, video, picture, button, form, input'),
+    ).toHaveCount(0);
+    expect(distFile('contact.html')).not.toMatch(/<script/i);
+  });
+
+  // covers: spec 0011 AC-3, AC-5
+  test('lists the email, then each profile, as keyed links in formatContactRows order', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+    const links = list(page).getByRole('link');
+
+    expect(CONTACT_ROWS[0]?.key).toBe('email');
+    await expect(links).toHaveCount(CONTACT_ROWS.length);
+    for (const [index, row] of CONTACT_ROWS.entries()) {
+      const link = links.nth(index);
+
+      await expect(link).toHaveAccessibleName(`${row.key} ${row.label}`);
+      await expect(link).toHaveAttribute('href', row.href);
+      await expect(spans(link).nth(0)).toHaveText(row.key);
+      await expect(spans(link).nth(1)).toHaveText(row.label);
+      await expect(link.locator('svg')).toHaveCount(isExternal(row) ? 1 : 0);
+    }
+  });
+
+  // covers: spec 0011 AC-5
+  test('its only aria-hidden elements are the arrows, one per https row', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+    const hidden = list(page).locator('[aria-hidden]');
+
+    await expect(list(page).locator('span[aria-hidden]')).toHaveCount(0);
+    await expect(hidden).toHaveCount(CONTACT_ROWS.filter(isExternal).length);
+    for (const element of await hidden.all()) {
+      await expect(element).toHaveJSProperty('tagName', 'svg');
+      await expect(element).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  for (const scheme of SCHEMES) {
+    // covers: spec 0011 AC-5
+    test(`each row is an 80px muted key, 16px, then the label in fg, at least 40px tall and 4px apart in ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto('/contact');
+      const boxes = await items(page).evaluateAll((els) =>
+        els.map((el) => {
+          const { y, height } = el.getBoundingClientRect();
+          return { y, height };
+        }),
+      );
+
+      await expect(list(page)).toHaveCSS('row-gap', '4px');
+      for (const row of CONTACT_ROWS) {
+        const link = rowLink(page, row);
+        const key = await spans(link).nth(0).boundingBox();
+        const label = await spans(link).nth(1).boundingBox();
+
+        await expect(link).toHaveCSS('column-gap', '16px');
+        expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+          40,
+        );
+        expect(key?.width).toBe(80);
+        expect((label?.x ?? 0) - (key?.x ?? 0) - (key?.width ?? 0)).toBe(16);
+        await expect(spans(link).nth(0)).toHaveCSS(
+          'color',
+          rgb(scheme, 'muted'),
+        );
+        await expect(spans(link).nth(1)).toHaveCSS('color', rgb(scheme, 'fg'));
+      }
+      for (const [index, box] of boxes.slice(1).entries()) {
+        const above = boxes[index];
+        expect(box.y - (above?.y ?? 0) - (above?.height ?? 0)).toBeCloseTo(
+          4,
+          1,
+        );
+      }
+    });
+  }
+
+  // covers: spec 0011 AC-5
+  test('every row turns its label accent-warm on hover', async ({ page }) => {
+    await page.goto('/contact');
+
+    for (const row of CONTACT_ROWS) {
+      const link = rowLink(page, row);
+
+      await link.hover();
+      await expect(spans(link).nth(1)).toHaveCSS(
+        'color',
+        rgb('light', 'accent-warm'),
+      );
+      await expect(spans(link).nth(0)).toHaveCSS(
+        'color',
+        rgb('light', 'muted'),
+      );
+    }
+  });
+
+  // covers: spec 0011 AC-5, AC-7
+  test('every Tab stop shows the 2px accent ring offset 3px, and each row turns its label accent-warm', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+
+    for (const label of CONTACT_STOPS) {
+      await page.keyboard.press('Tab');
+      const focused = page.locator(':focus');
+
+      await expect(focused, label).toHaveCSS('outline-style', 'solid');
+      await expect(focused, label).toHaveCSS('outline-width', '2px');
+      await expect(focused, label).toHaveCSS('outline-offset', '3px');
+      await expect(focused, label).toHaveCSS(
+        'outline-color',
+        rgb('light', 'accent'),
+      );
+      const row = CONTACT_ROWS.find(
+        ({ key, label: text }) => label === `a "${key} ${text}"`,
+      );
+      if (row === undefined) continue;
+      await expect(spans(focused).nth(1), label).toHaveCSS(
+        'color',
+        rgb('light', 'accent-warm'),
+      );
+    }
+  });
+
+  // covers: spec 0011 AC-6
+  test('at 320px the email address moves whole under its key, and back beside it once the row fits', async ({
+    page,
+  }) => {
+    expect(emailRow).toBeDefined();
+    const row = rowLink(page, emailRow ?? CONTACT_ROWS[0]);
+    const boxes = async () => ({
+      row: await row.boundingBox(),
+      key: await spans(row).nth(0).boundingBox(),
+      value: await spans(row).nth(1).boundingBox(),
+    });
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/contact');
+    const narrow = await boxes();
+    expect(narrow.value?.x).toBe(narrow.key?.x);
+    expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
+      (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
+    );
+    expect(narrow.value?.height ?? Infinity).toBeLessThan(40);
+    expect(
+      (narrow.value?.x ?? 0) + (narrow.value?.width ?? Infinity),
+    ).toBeLessThanOrEqual(320);
+    expect(await scrollsSideways(page)).toBe(false);
+
+    // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
+    // Chromium, so the width where the row fits again (327px or 334px today)
+    // is measured, not hard coded.
+    const gap = await row.evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).columnGap),
+    );
+    const fits = Math.ceil(
+      320 -
+        (narrow.row?.width ?? 0) +
+        (narrow.key?.width ?? 0) +
+        gap +
+        (narrow.value?.width ?? 0),
+    );
+    await page.setViewportSize({ width: fits, height: 640 });
+    const wide = await boxes();
+    expect(wide.value?.y).toBe(wide.key?.y);
+    expect(wide.value?.x ?? 0).toBeGreaterThan(
+      (wide.key?.x ?? 0) + (wide.key?.width ?? 0),
+    );
+  });
+
+  // covers: spec 0011 AC-6
+  test('at 320px each profile row keeps its label on the key line, inside the viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/contact');
+
+    for (const row of profileRows) {
+      const link = rowLink(page, row);
+      const key = await spans(link).nth(0).boundingBox();
+      const label = await spans(link).nth(1).boundingBox();
+
+      expect(label?.x ?? 0, row.key).toBeGreaterThan(
+        (key?.x ?? 0) + (key?.width ?? 0),
+      );
+      expect(label?.y ?? Infinity, row.key).toBeLessThan(
+        (key?.y ?? 0) + (key?.height ?? 0),
+      );
+      expect(
+        (label?.x ?? 0) + (label?.width ?? Infinity),
+        row.key,
+      ).toBeLessThanOrEqual(320);
+    }
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  // covers: spec 0011 AC-4
+  test('names no employer on the page, in its title, or in its meta tags', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+
+    expect(EMPLOYERS.length).toBeGreaterThan(0);
+    expect(await employersNamed(page)).toEqual([]);
+  });
+
+  // covers: spec 0011 AC-7
+  test('has one h1, no role, no target, and no style attribute', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('body [role]')).toHaveCount(0);
+    await expect(page.locator('a[target]')).toHaveCount(0);
+    await expect(page.locator('[style]')).toHaveCount(0);
+  });
+
+  // covers: spec 0011 AC-7
+  test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
+    page,
+  }) => {
+    const paths: string[] = [];
+    page.on('request', (request) =>
+      paths.push(new URL(request.url()).pathname),
+    );
+
+    await page.goto('/contact', { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const files = await fontFiles(page);
+    const fonts = paths
+      .filter((path) => path.endsWith('.woff2'))
+      .map((path) => files[path] ?? path);
+
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
+    expect(fonts.toSorted()).toEqual([
+      'IBM Plex Mono 400',
+      'IBM Plex Mono 500',
+    ]);
+    // Headless Chromium skips the favicon, so it is allowed, not required.
+    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
+      '/contact',
+    ]);
+  });
+
+  test.describe('in print', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+      await page.goto('/contact');
+    });
+
+    // covers: spec 0011 AC-9
+    test('prints the heading and every row on paper, keys muted, links plain ink', async ({
+      page,
+    }) => {
+      await expect(page.locator('html')).toHaveCSS(
+        'background-color',
+        rgb('print', 'bg'),
+      );
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      for (const row of CONTACT_ROWS) {
+        const link = rowLink(page, row);
+
+        await expect(link).toBeVisible();
+        await expect(link).toHaveCSS('text-decoration-line', 'none');
+        await expect(link).toHaveCSS('color', rgb('print', 'fg'));
+        await expect(spans(link).nth(0)).toHaveCSS(
+          'color',
+          rgb('print', 'muted'),
+        );
+      }
+    });
+
+    // covers: spec 0011 AC-9
     test('keeps the footer city line and hides the skip link and ← home', async ({
       page,
     }) => {
