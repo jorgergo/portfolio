@@ -184,7 +184,7 @@ spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/cont
   - [x] Page tests, `design.md`, and the gate: the home page block in `e2e/site.spec.ts`, the manual steps in `verify.md` (AC-3 to AC-7, AC-9, AC-10)
 - [x] Verify it: `/check verify home page redesign`
 - [x] Test it: `/test home page redesign`
-- [ ] Review it (fresh model): `/check review home page redesign`
+- [x] Review it (fresh model): `/check review home page redesign`
 - [ ] Document it: `/document home page redesign`
 
 ## Release 2: CV extras
