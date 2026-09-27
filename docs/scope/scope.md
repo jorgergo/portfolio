@@ -21,7 +21,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 8 | Go live | Release 1 | done |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
-| 11 | Projects page | Release 3 | in-progress |
+| 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | planned |
 | 14 | Home page redesign | Release 1 | in-progress |
@@ -191,7 +191,7 @@ A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.ja
 
 ## Release 3: Projects
 
-### 11. Projects page · in-progress
+### 11. Projects page · done
 A simple list of your projects, each with a line of context, linked from the home page. Honest about older work (year and status shown).
 **Done when:** projects render from the content model with name, year, short description, and links; the home page links to it; it matches the rest of the site in light and dark.
 spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects.astro`, `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/lib/cv-format.ts`, `src/pages/cv.astro`
