@@ -9,7 +9,9 @@ import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 // character name wraps to at most three lines and a 27 character role still
 // clears the footer rule; a name part fills one card line at most; the city
 // keeps the footer on one row. The about caps (spec 0009) keep the page to a
-// few seconds of reading.
+// few seconds of reading. The project caps (spec 0010) come from the 640px
+// column: a name on one line beside the longest meta, a description in about
+// two desktop lines, a keyword chip inside the 272px phone column.
 export const CV_LIMITS = {
   name: 30,
   namePart: 24,
@@ -26,6 +28,12 @@ export const CV_LIMITS = {
   aboutItemsMin: 3,
   aboutItems: 7,
   aboutClosing: 160,
+  projectName: 30,
+  projectDescription: 120,
+  projectKeyword: 20,
+  projectKeywords: 6,
+  projects: 8,
+  cvProjectsMax: 2,
 } as const;
 
 export const NETWORKS = ['GitHub', 'LinkedIn'] as const;
@@ -59,6 +67,16 @@ export const regionName = (code: string): string | undefined =>
 // Where basics.email goes in about.closing (spec 0009), so the sentence stays
 // in cv.json while the address keeps its one source.
 export const EMAIL_TOKEN = '{email}';
+
+// A project's status words and the source word for code that is not public
+// (spec 0010).
+export const PROJECT_STATUSES = [
+  'live',
+  'building',
+  'done',
+  'archived',
+] as const;
+export const PRIVATE_SOURCE = 'private';
 
 // The text on each side of the one email marker, or undefined when the
 // marker is missing or repeated. The schema refines with it, so the page's
@@ -252,6 +270,70 @@ const about = z.strictObject({
   ),
 });
 
+// Where a project's code lives: an https URL or the word private. A refine
+// rather than a union, since a union reports only the URL's own error.
+const projectSource = z
+  .string()
+  .refine(
+    (value) => value === PRIVATE_SOURCE || httpsUrl.safeParse(value).success,
+    { message: `expected an https URL or "${PRIVATE_SOURCE}"; see spec 0010` },
+  );
+
+// The /projects list (spec 0010), also the CV's Projects section through the
+// cv flag. Not card text, so the glyph rule does not apply.
+const project = z
+  .strictObject({
+    name: text(CV_LIMITS.projectName),
+    description: text(CV_LIMITS.projectDescription),
+    startDate: month,
+    endDate: month.optional(),
+    status: z.enum(PROJECT_STATUSES),
+    url: httpsUrl.optional(),
+    source: projectSource,
+    keywords: z
+      .array(text(CV_LIMITS.projectKeyword))
+      .min(1)
+      .max(CV_LIMITS.projectKeywords),
+    cv: z.boolean().optional(),
+  })
+  .superRefine(endNotBeforeStart)
+  .superRefine((entry, ctx) => {
+    if (entry.status === 'live' && entry.url === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['url'],
+        message:
+          'a live project needs a url, the site a visitor can open; see spec 0010',
+      });
+    }
+  });
+
+const projects = z
+  .array(project)
+  .min(1)
+  .max(CV_LIMITS.projects)
+  .superRefine((list, ctx) => {
+    list.forEach((item, index) => {
+      if (list.findIndex((other) => other.name === item.name) < index) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [index, 'name'],
+          message: 'duplicate project name',
+        });
+      }
+    });
+    list
+      .flatMap((item, index) => (item.cv === true ? [index] : []))
+      .slice(CV_LIMITS.cvProjectsMax)
+      .forEach((index) => {
+        ctx.addIssue({
+          code: 'custom',
+          path: [index, 'cv'],
+          message: `at most ${CV_LIMITS.cvProjectsMax} projects may set cv; see spec 0010`,
+        });
+      });
+  });
+
 // The strict `main` entry schema. `image` is Astro's image() helper in
 // content.config.ts and a plain stub such as () => z.string() in tests.
 // Never call .readonly() here: Astro rewrites image references in the data.
@@ -271,6 +353,7 @@ export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
       profiles: profiles.optional(),
     }),
     about,
+    projects,
     work: z.array(work).min(1),
     volunteer: z.array(volunteer).optional(),
     education: z.array(education).min(1),

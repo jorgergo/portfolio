@@ -1,7 +1,7 @@
 # 0010. Projects page as hairline rows with status, stack, and code links
 
 **Date**: 2026-09-26
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -257,8 +257,8 @@ None. No environment variable, no secret, no new dependency.
 
 Skateboard: the page ships whole in one pull request, content first so every later step builds on a real, validated list, then the page, then the CV section, then the gates.
 
-1. [ ] In `src/lib/cv-schema.ts` add the six `CV_LIMITS` keys (`cvProjectsMax` among them), `PROJECT_STATUSES`, `PRIVATE_SOURCE`, the project object with its `endNotBeforeStart` and `live` rules, and the required `projects` array with its duplicate name and `cv` count rules, after `about` in `makeCvSchema`; export `CvProject` from `src/lib/cv.ts`; add the AC-2 list to `src/content/cv.json`. In `src/lib/cv-schema.test.ts` add a project to `minimalCv` (`building`, `private`, no `url`, no `cv`), `projects` to the missing section and empty array `it.each` cases, every AC-1 failure, the caps at and over their limits, and the six keys to the `CV_LIMITS` `toEqual`, satisfies **AC-1**, **AC-2**.
-2. [ ] In `src/lib/cv-format.ts` add `formatYearSpan`, `projectHref`, `sortByStart`, and `cvProjects`, and their Vitest cases in `src/lib/cv-format.test.ts` from inline fixtures, satisfies **AC-3**.
+1. [x] In `src/lib/cv-schema.ts` add the six `CV_LIMITS` keys (`cvProjectsMax` among them), `PROJECT_STATUSES`, `PRIVATE_SOURCE`, the project object with its `endNotBeforeStart` and `live` rules, and the required `projects` array with its duplicate name and `cv` count rules, after `about` in `makeCvSchema`; export `CvProject` from `src/lib/cv.ts`; add the AC-2 list to `src/content/cv.json`. In `src/lib/cv-schema.test.ts` add a project to `minimalCv` (`building`, `private`, no `url`, no `cv`), `projects` to the missing section and empty array `it.each` cases, every AC-1 failure, the caps at and over their limits, and the six keys to the `CV_LIMITS` `toEqual`, satisfies **AC-1**, **AC-2**.
+2. [x] In `src/lib/cv-format.ts` add `formatYearSpan`, `projectHref`, `sortByStart`, and `cvProjects`, and their Vitest cases in `src/lib/cv-format.test.ts` from inline fixtures, satisfies **AC-3**.
 3. [ ] In `src/lib/site-meta.ts` add the `projects` row to `SHARE_PAGES` and `DESCRIPTIONS.projects`; in `src/lib/site-meta.test.ts` add the description case and the whole object `pageMeta('projects')` case, list four rows in the `SHARE_PAGES` `toEqual` and retitle it, and add `['projects', 31]` to the `footerLength` table, satisfies **AC-4**.
 4. [ ] Write `src/pages/projects.astro` per the page composition and AC-6, add the `projects` row to `SITE_NAV` after `cv`, and change the planned order comment and the `planned` array in `site-nav.test.ts` (line 32) from `portfolio` to `projects` (skip that part only if spec 0008's task 3 lands first), satisfies **AC-5**, **AC-6**, **AC-7**, **AC-8**.
 5. [ ] In `src/pages/cv.astro` add the `projects` section kind to the `Section` union and the `entries.length > 0` group of `hasContent`, the section after Experience from `cvProjects(cv.projects)`, and its `CvEntry` rows with the technologies line in the slot, satisfies **AC-9**.

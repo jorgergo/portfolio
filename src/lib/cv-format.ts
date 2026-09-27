@@ -1,4 +1,4 @@
-import { regionName, type Network } from '@/lib/cv-schema';
+import { PRIVATE_SOURCE, regionName, type Network } from '@/lib/cv-schema';
 
 // Fixed English strings: no locale, time zone, or clock is ever read.
 const MONTHS = [
@@ -226,3 +226,45 @@ export const spanOf = <T extends Span>(items: readonly [T, ...T[]]): Span => {
 export const firstUrl = <T extends { readonly url?: string | undefined }>(
   items: readonly T[],
 ): string | undefined => items.find((item) => item.url !== undefined)?.url;
+
+// Spec 0010: the projects helpers. Pure, no clock.
+
+const NOW = 'now';
+
+// `month` is schema valid YYYY-MM.
+const yearOf = (month: string): string => month.slice(0, 4);
+
+// Years only: `2026 – now` while ongoing, whatever year the build runs in;
+// `2024` when both months share a year; `2022 – 2023` otherwise.
+export const formatYearSpan = (start: string, end?: string): string => {
+  if (end === undefined) return `${yearOf(start)}${RANGE_SEPARATOR}${NOW}`;
+  if (yearOf(end) === yearOf(start)) return yearOf(start);
+  return `${yearOf(start)}${RANGE_SEPARATOR}${yearOf(end)}`;
+};
+
+// Where a project links: its site, else its public code, else nowhere.
+export const projectHref = (project: {
+  readonly url?: string | undefined;
+  readonly source: string;
+}): string | undefined =>
+  project.url ??
+  (project.source === PRIVATE_SOURCE ? undefined : project.source);
+
+// startDate newest first with endDate ignored, so a project keeps its place
+// when it ends (sortNewestFirst would move it below every open entry);
+// toSorted is stable, so ties keep file order.
+export const sortByStart = <T extends { readonly startDate: string }>(
+  items: readonly T[],
+): readonly T[] =>
+  items.toSorted((a, b) => compareDesc(a.startDate, b.startDate));
+
+// The projects flagged for the CV, in the /projects order.
+export const cvProjects = <
+  T extends {
+    readonly cv?: boolean | undefined;
+    readonly startDate: string;
+  },
+>(
+  projects: readonly T[],
+): readonly T[] =>
+  sortByStart(projects.filter((project) => project.cv === true));

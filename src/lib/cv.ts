@@ -4,6 +4,7 @@ export type Cv = CollectionEntry<'cv'>['data'];
 export type CvBasics = Cv['basics'];
 export type CvLocation = CvBasics['location'];
 export type CvProfile = NonNullable<CvBasics['profiles']>[number];
+export type CvProject = Cv['projects'][number];
 export type CvWork = Cv['work'][number];
 export type CvVolunteer = NonNullable<Cv['volunteer']>[number];
 export type CvEducation = Cv['education'][number];

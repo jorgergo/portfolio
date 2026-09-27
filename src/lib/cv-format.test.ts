@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cvProjects,
   firstUrl,
   formatDateRange,
   formatLanguage,
@@ -9,12 +10,15 @@ import {
   formatProfilePath,
   formatSkillRows,
   groupConsecutive,
+  formatYearSpan,
   joinMeta,
+  projectHref,
   sortByDateDesc,
+  sortByStart,
   sortNewestFirst,
   spanOf,
 } from '@/lib/cv-format';
-import type { Network } from '@/lib/cv-schema';
+import { PRIVATE_SOURCE, type Network } from '@/lib/cv-schema';
 
 type Dated = {
   readonly id: string;
@@ -639,5 +643,132 @@ describe('firstUrl', () => {
 
     expect(firstUrl(roles)).toBeUndefined();
     expect(firstUrl([])).toBeUndefined();
+  });
+});
+
+describe('formatYearSpan', () => {
+  // covers: spec 0010 AC-3
+  it('reads an ongoing span as its start year to now', () => {
+    expect(formatYearSpan('2026-09')).toBe('2026 – now');
+  });
+
+  // covers: spec 0010 AC-3
+  it('never reads the clock, so an old ongoing span still ends in now', () => {
+    expect(formatYearSpan('2019-01')).toBe('2019 – now');
+  });
+
+  // covers: spec 0010 AC-3
+  it.each([
+    ['2024-01', '2024-12'],
+    ['2024-05', '2024-05'],
+  ])('reads %s to %s as one year', (start, end) => {
+    expect(formatYearSpan(start, end)).toBe('2024');
+  });
+
+  // covers: spec 0010 AC-3
+  it('reads a span across years as both years with the CV range separator', () => {
+    expect(formatYearSpan('2022-11', '2023-02')).toBe('2022 – 2023');
+    expect(formatYearSpan('2022-11', '2023-02')).toContain(' – ');
+  });
+});
+
+describe('projectHref', () => {
+  const site = 'https://ledger.example';
+  const code = 'https://github.com/ada/ledger';
+
+  // covers: spec 0010 AC-3
+  it('returns the url first, even when the code is public', () => {
+    expect(projectHref({ url: site, source: code })).toBe(site);
+    expect(projectHref({ url: site, source: PRIVATE_SOURCE })).toBe(site);
+  });
+
+  // covers: spec 0010 AC-3
+  it('falls back to a public source when there is no url', () => {
+    expect(projectHref({ source: code })).toBe(code);
+  });
+
+  // covers: spec 0010 AC-3
+  it('returns undefined for private code and no url', () => {
+    expect(projectHref({ source: PRIVATE_SOURCE })).toBeUndefined();
+  });
+});
+
+describe('sortByStart', () => {
+  // covers: spec 0010 AC-3
+  it('orders by startDate, newest first', () => {
+    const items: readonly Dated[] = [
+      { id: 'a', startDate: '2026-03' },
+      { id: 'b', startDate: '2026-09' },
+      { id: 'c', startDate: '2026-05' },
+    ];
+
+    expect(ids(sortByStart(items))).toEqual(['b', 'c', 'a']);
+  });
+
+  // covers: spec 0010 AC-3
+  it('keeps file order for a shared startDate', () => {
+    const items: readonly Dated[] = [
+      { id: 'first', startDate: '2026-09' },
+      { id: 'second', startDate: '2026-09' },
+      { id: 'older', startDate: '2026-05' },
+    ];
+
+    expect(ids(sortByStart(items))).toEqual(['first', 'second', 'older']);
+  });
+
+  // covers: spec 0010 AC-3
+  it('keeps a finished project above an older open one, unlike sortNewestFirst', () => {
+    const items: readonly Dated[] = [
+      { id: 'older open', startDate: '2026-03' },
+      { id: 'finished', startDate: '2026-09', endDate: '2026-11' },
+    ];
+
+    expect(ids(sortByStart(items))).toEqual(['finished', 'older open']);
+    expect(ids(sortNewestFirst(items))).toEqual(['older open', 'finished']);
+  });
+
+  it('returns a new list and leaves the input as it was', () => {
+    const items: readonly Dated[] = [
+      { id: 'old', startDate: '2020-01' },
+      { id: 'new', startDate: '2021-01' },
+    ];
+
+    expect(sortByStart(items)).not.toBe(items);
+    expect(ids(items)).toEqual(['old', 'new']);
+  });
+});
+
+describe('cvProjects', () => {
+  type Project = Dated & { readonly cv?: boolean };
+
+  // covers: spec 0010 AC-3
+  it('returns an empty list when no project is flagged', () => {
+    const projects: readonly Project[] = [
+      { id: 'a', startDate: '2026-03' },
+      { id: 'b', startDate: '2026-05', cv: false },
+    ];
+
+    expect(cvProjects(projects)).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-3
+  it('returns the one flagged project', () => {
+    const projects: readonly Project[] = [
+      { id: 'a', startDate: '2026-03' },
+      { id: 'b', startDate: '2026-05', cv: true },
+    ];
+
+    expect(ids(cvProjects(projects))).toEqual(['b']);
+  });
+
+  // covers: spec 0010 AC-3
+  it('returns two flagged projects in sortByStart order', () => {
+    const projects: readonly Project[] = [
+      { id: 'older', startDate: '2026-03', cv: true },
+      { id: 'skipped', startDate: '2026-07' },
+      { id: 'finished', startDate: '2026-09', endDate: '2026-11', cv: true },
+    ];
+
+    expect(ids(cvProjects(projects))).toEqual(['finished', 'older']);
   });
 });

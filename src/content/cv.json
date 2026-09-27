@@ -37,6 +37,43 @@
       ],
       "closing": "If you would like to work with me, send me an email at {email}."
     },
+    "projects": [
+      {
+        "name": "TRACSUR Tickets",
+        "description": "Ticket sales and gate check in for a trailer drag race, with signed QR tickets and an offline scanner.",
+        "startDate": "2026-09",
+        "status": "building",
+        "source": "private",
+        "keywords": ["Next.js", "PostgreSQL", "Cloud Run", "Mercado Pago"],
+        "cv": true
+      },
+      {
+        "name": "jorgergo.dev",
+        "description": "Personal site and CV, built from written specs, with a CI gate that rolls back a bad deploy.",
+        "startDate": "2026-09",
+        "status": "live",
+        "url": "https://jorgergo.dev",
+        "source": "https://github.com/jorgergo/portfolio",
+        "keywords": ["Astro", "TypeScript", "Tailwind CSS", "Cloudflare"],
+        "cv": true
+      },
+      {
+        "name": "FinTech AI",
+        "description": "A personal finance tool for a retirement portfolio, card utilization, and Mexican tax deductions.",
+        "startDate": "2026-05",
+        "status": "building",
+        "source": "https://github.com/jorgergo/fintech",
+        "keywords": ["Next.js", "Prisma", "SQLite", "Recharts"]
+      },
+      {
+        "name": "Medpal",
+        "description": "A medical concierge app that helps independent doctors run their agenda, notes, and prescriptions.",
+        "startDate": "2026-03",
+        "status": "building",
+        "source": "private",
+        "keywords": ["Flutter", "TypeScript", "Google Cloud"]
+      }
+    ],
     "work": [
       {
         "name": "Ford Motor Company",
