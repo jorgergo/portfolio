@@ -169,7 +169,7 @@ spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.a
   - [x] Deploy gate and docs: `smoke.sh`, `SMOKE_FILES`, the style guide's Contact card, `design.md`, then the gate and the steps in `verify.md` (AC-10, AC-11)
 - [x] Verify it: `/check verify contact page`
 - [x] Test it: `/test contact page`
-- [ ] Review it (fresh model): `/check review contact page`
+- [x] Review it (fresh model): `/check review contact page`
 - [ ] Document it: `/document contact page`
 
 ### 14. Home page redesign · in-progress

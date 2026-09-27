@@ -37,3 +37,4 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 ## Known gaps (not AC failures)
 - Safari's VoiceOver does not announce the rows as a list: Tailwind's reset removes the markers and the list sits outside a `<nav>` (spec 0011's Decision records the choice). The VoiceOver step is manual; axe does not test Safari's list heuristic.
 - The mail app step depends on your machine having a default mail handler; the `mailto:` href is what the page tests check.
+- The click step and the VoiceOver step above are still open: the page tests prove the `mailto:` and profile hrefs, the missing `target`, and the names Chromium computes, not what your mail app does or what VoiceOver speaks. Run both before the spec is accepted; until then `Verify it` in the scope rests on every other step.
