@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cvProjects,
   firstUrl,
+  formatContactRows,
   formatDateRange,
   formatLanguage,
   formatLocation,
@@ -18,7 +19,7 @@ import {
   sortNewestFirst,
   spanOf,
 } from '@/lib/cv-format';
-import { PRIVATE_SOURCE, type Network } from '@/lib/cv-schema';
+import { NETWORKS, PRIVATE_SOURCE, type Network } from '@/lib/cv-schema';
 
 type Dated = {
   readonly id: string;
@@ -797,4 +798,79 @@ describe('cvProjects', () => {
 
     expect(ids(cvProjects(projects))).toEqual(['first', 'second']);
   });
+});
+
+describe('formatContactRows', () => {
+  const github = {
+    network: 'GitHub',
+    username: 'jorgergo',
+    url: 'https://github.com/jorgergo',
+  } as const;
+  const linkedin = {
+    network: 'LinkedIn',
+    username: 'jorgergo',
+    url: 'https://www.linkedin.com/in/jorgergo/',
+  } as const;
+  const emailRow = {
+    key: 'email',
+    href: 'mailto:jorgergo@icloud.com',
+    label: 'jorgergo@icloud.com',
+  };
+
+  // covers: spec 0011 AC-3
+  it("gives today's email, GitHub, and LinkedIn rows", () => {
+    expect(
+      formatContactRows({
+        email: 'jorgergo@icloud.com',
+        profiles: [github, linkedin],
+      }),
+    ).toEqual([
+      emailRow,
+      {
+        key: 'github',
+        href: 'https://github.com/jorgergo',
+        label: '@jorgergo',
+      },
+      {
+        key: 'linkedin',
+        href: 'https://www.linkedin.com/in/jorgergo/',
+        label: 'in/jorgergo',
+      },
+    ]);
+  });
+
+  // covers: spec 0011 AC-3
+  it('gives the email row alone when profiles is missing', () => {
+    expect(formatContactRows({ email: 'jorgergo@icloud.com' })).toEqual([
+      emailRow,
+    ]);
+  });
+
+  // covers: spec 0011 AC-3
+  it('gives the email row alone when profiles is empty', () => {
+    expect(
+      formatContactRows({ email: 'jorgergo@icloud.com', profiles: [] }),
+    ).toEqual([emailRow]);
+  });
+
+  // covers: spec 0011 AC-3
+  it('keeps the cv.json order of the profiles after the email row', () => {
+    const rows = formatContactRows({
+      email: 'jorgergo@icloud.com',
+      profiles: [linkedin, github],
+    });
+
+    expect(rows.map(({ key }) => key)).toEqual(['email', 'linkedin', 'github']);
+  });
+
+  // covers: spec 0011 AC-3 (a longer key would overflow NavRow's w-20 key column)
+  it.each(NETWORKS)(
+    'keeps the %s key within the 8 character column',
+    (network) => {
+      const key = network.toLowerCase();
+
+      expect(key.length).toBeLessThanOrEqual(8);
+      expect(key).not.toMatch(/\s/);
+    },
+  );
 });

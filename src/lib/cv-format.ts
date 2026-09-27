@@ -268,3 +268,35 @@ export const cvProjects = <
   projects: readonly T[],
 ): readonly T[] =>
   sortByStart(projects.filter((project) => project.cv === true));
+
+// Spec 0011: the contact page rows. Pure.
+
+// One contact channel: a lower case key, where it links, and what it shows.
+export type ContactRow = {
+  readonly key: string;
+  readonly href: string;
+  readonly label: string;
+};
+
+// The email row first, so the page always offers a way to write, then one row
+// per profile in cv.json order; a missing or empty list gives the email alone.
+export const formatContactRows = ({
+  email,
+  profiles = [],
+}: {
+  readonly email: string;
+  readonly profiles?:
+    | readonly {
+        readonly network: Network;
+        readonly username: string;
+        readonly url: string;
+      }[]
+    | undefined;
+}): readonly ContactRow[] => [
+  { key: 'email', href: `mailto:${email}`, label: email },
+  ...profiles.map((profile) => ({
+    key: profile.network.toLowerCase(),
+    href: profile.url,
+    label: formatProfileHandle(profile),
+  })),
+];
