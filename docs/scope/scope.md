@@ -24,7 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | done |
-| 14 | Home page redesign | Release 1 | in-progress |
+| 14 | Home page redesign | Release 1 | done |
 
 ## Foundations
 
@@ -172,7 +172,7 @@ spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.a
 - [x] Review it (fresh model): `/check review contact page`
 - [x] Document it: `/document contact page`
 
-### 14. Home page redesign · in-progress
+### 14. Home page redesign · done
 Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.
 **Done when:** `/` shows only the name, the tagline, and `01 about`, `02 cv`, `03 projects`, `04 contact`, centred with left aligned text, in light and dark, on phone and desktop; no employer appears on the page or in its description; `/contact` holds your links.
 spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/layouts/BaseLayout.astro`, `src/pages/index.astro`, `e2e/site.spec.ts`
