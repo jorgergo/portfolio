@@ -19,7 +19,7 @@ import {
   type ContactRow,
   type Group,
 } from '@/lib/cv-format';
-import { PRIVATE_SOURCE, splitAtEmail } from '@/lib/cv-schema';
+import { CV_LIMITS, PRIVATE_SOURCE, splitAtEmail } from '@/lib/cv-schema';
 import {
   formatPageTitle,
   OG_TYPE,
@@ -2362,8 +2362,8 @@ test.describe('contact page', () => {
   const spans = (link: Locator): Locator => link.locator(':scope > span');
   const isExternal = ({ href }: ContactRow): boolean =>
     /^https?:\/\//.test(href);
-  const emailRow = CONTACT_ROWS.find(({ key }) => key === 'email');
-  const profileRows = CONTACT_ROWS.filter(({ key }) => key !== 'email');
+  // formatContactRows puts the email row first (cv-format.test.ts).
+  const [emailRow, ...profileRows] = CONTACT_ROWS;
 
   // covers: spec 0011 AC-4
   test('main holds one block: the h1, then the address with one list, 24px apart', async ({
@@ -2402,7 +2402,6 @@ test.describe('contact page', () => {
     await page.goto('/contact');
     const links = list(page).getByRole('link');
 
-    expect(CONTACT_ROWS[0]?.key).toBe('email');
     await expect(links).toHaveCount(CONTACT_ROWS.length);
     for (const [index, row] of CONTACT_ROWS.entries()) {
       const link = links.nth(index);
@@ -2520,12 +2519,11 @@ test.describe('contact page', () => {
     }
   });
 
-  // covers: spec 0011 AC-6, AC-10
+  // covers: spec 0011 AC-6, AC-10, AC-12
   test('at 320px the email address sits whole under its key while the row is too wide, and beside it once the row fits', async ({
     page,
   }) => {
-    expect(emailRow).toBeDefined();
-    const row = rowLink(page, emailRow ?? CONTACT_ROWS[0]);
+    const row = rowLink(page, emailRow);
     const boxes = async () => ({
       row: await row.boundingBox(),
       key: await spans(row).nth(0).boundingBox(),
@@ -2540,6 +2538,13 @@ test.describe('contact page', () => {
       (narrow.value?.x ?? 0) + (narrow.value?.width ?? Infinity),
     ).toBeLessThanOrEqual(320);
     expect(await scrollsSideways(page)).toBe(false);
+    // The longest address the schema allows (spec 0011 AC-12), at today's
+    // measured glyph width, still fits the row on its own line, so the cap
+    // and the column cannot drift apart.
+    expect(
+      CV_LIMITS.email *
+        ((narrow.value?.width ?? Infinity) / emailRow.label.length),
+    ).toBeLessThanOrEqual(narrow.row?.width ?? 0);
 
     // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
     // Chromium, so the width where the row fits again (327px or 334px today)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatContactRows } from '@/lib/cv-format';
 import { CV_LIMITS } from '@/lib/cv-schema';
 import {
   cardContent,
@@ -186,6 +187,37 @@ describe('formatChannelList', () => {
       }),
     ).toBe('email, LinkedIn, or GitHub');
   });
+
+  const github = {
+    network: 'GitHub',
+    username: 'ada',
+    url: 'https://github.com/ada',
+  } as const;
+  const linkedin = {
+    network: 'LinkedIn',
+    username: 'ada',
+    url: 'https://www.linkedin.com/in/ada/',
+  } as const;
+
+  // covers: spec 0011 AC-2, AC-3 (the description and the rows share one
+  // order, so changing it in one helper alone fails here)
+  it.each([
+    ['two profiles', [github, linkedin]],
+    ['the profiles reversed', [linkedin, github]],
+    ['no profiles', []],
+  ] as const)(
+    'names the channels in the contact row order with %s',
+    (_, profiles) => {
+      const keys = formatContactRows({
+        email: 'ada@example.com',
+        profiles,
+      }).map(({ key }) => key);
+
+      expect(formatChannelList({ profiles }).toLowerCase()).toBe(
+        new Intl.ListFormat('en', { type: 'disjunction' }).format(keys),
+      );
+    },
+  );
 });
 
 describe('DESCRIPTIONS', () => {
