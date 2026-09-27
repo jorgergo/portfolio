@@ -6,20 +6,16 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 import { formatYearSpan, joinMeta, sortByStart } from '@/lib/cv-format';
 import { PRIVATE_SOURCE } from '@/lib/cv-schema';
+import { PAIR } from '@/lib/pair';
 import { pageMeta } from '@/lib/site-meta';
 
 // Spec 0010: the heading and one list of rows between hairlines, newest start
 // first. A row holds the name (linked to the live site when there is one) with
-// its status and years, the description, the stack as chips, then a `code`
-// link or the muted `private` word. No intro, no image, no script. The head
-// comes from the `projects` row (spec 0006).
+// its status and years as `CvEntry`'s `PAIR`, the description, the stack as
+// chips, then a `code` link or the muted `private` word. No intro, no image, no
+// script. The head comes from the `projects` row (spec 0006).
 const cv = await getCv();
 const projects = sortByStart(cv.projects);
-
-// The CvEntry pair: below `xs` (480px) the meta drops under the name, from
-// 480px the two share one baseline and the meta ends at the right edge.
-const pair =
-  'flex flex-col gap-x-4 xs:flex-row xs:items-baseline xs:justify-between';
 ---
 
 <BaseLayout {...pageMeta('projects', cv, Astro.site)}>
@@ -28,7 +24,7 @@ const pair =
     <ul class="flex flex-col">
       {projects.map((project) => (
         <li class="flex flex-col gap-2 border-t border-line py-4 last:border-b">
-          <div class={pair}>
+          <div class={PAIR}>
             <h2 class="font-medium">
               {project.url !== undefined ? (
                 <TextLink href={project.url}>{project.name}</TextLink>
