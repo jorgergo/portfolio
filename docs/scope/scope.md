@@ -194,13 +194,13 @@ A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.ja
 ### 11. Projects page · in-progress
 A simple list of your projects, each with a line of context, linked from the home page. Honest about older work (year and status shown).
 **Done when:** projects render from the content model with name, year, short description, and links; the home page links to it; it matches the rest of the site in light and dark.
-spec [0010](../specs/0010-projects-page/index.md)
+spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects.astro`, `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/lib/cv-format.ts`, `src/pages/cv.astro`
 - [x] Design it (spec): `/architect projects page`
-- [ ] Build it: `/develop projects page`
-  - [ ] Content, schema, and helpers: the `projects` list in `cv.json` with its rules, `formatYearSpan`, `projectHref`, `sortByStart`, `cvProjects`, and their Vitest cases (AC-1 to AC-3)
-  - [ ] Metadata, page, and menu: the `projects` share row and description, `/projects` as hairline rows, `03 projects` in `SITE_NAV` (AC-4 to AC-8)
-  - [ ] CV section: Projects after Experience from the two flagged projects (AC-9)
-  - [ ] Tests, deploy gate, and docs: the page tests, the style guide card, `smoke.sh`, `design.md`, then the gate and the steps in `verify.md` (AC-8 to AC-11)
+- [x] Build it: `/develop projects page`
+  - [x] Content, schema, and helpers: the `projects` list in `cv.json` with its rules, `formatYearSpan`, `projectHref`, `sortByStart`, `cvProjects`, and their Vitest cases (AC-1 to AC-3)
+  - [x] Metadata, page, and menu: the `projects` share row and description, `/projects` as hairline rows, `03 projects` in `SITE_NAV` (AC-4 to AC-8)
+  - [x] CV section: Projects after Experience from the two flagged projects (AC-9)
+  - [x] Tests, deploy gate, and docs: the page tests, the style guide card, `smoke.sh`, `design.md`, then the gate and the steps in `verify.md` (AC-8 to AC-11)
 - [ ] Verify it: `/check verify projects page`
 - [ ] Test it: `/test projects page`
 - [ ] Review it (fresh model): `/check review projects page`

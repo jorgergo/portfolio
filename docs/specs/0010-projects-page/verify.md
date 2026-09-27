@@ -21,6 +21,8 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - [ ] Break step: flip TRACSUR to `live` with `url` `https://example.com`, reword two descriptions within the caps, and add a fifth project, run `pnpm test` and `pnpm exec playwright test --project site` → both pass with no test edit; restore → AC-11
 - [ ] Break step: give TRACSUR `status` `done` and `endDate` `2026-11`, run `pnpm build` → `/projects` still lists it first and the CV still lists it first; restore → AC-3, AC-5, AC-9
 - [ ] Break step: remove `"cv": true` from both projects, run `pnpm build` and `pnpm exec playwright test --project site` → `/cv` has no Projects section and the tests pass with no edit; restore → AC-9, AC-11
+- [ ] Break step (from the build, 2026-09-26): set Medpal's `source` to `Private` (capital P), run `pnpm build` → it fails on that project's `source` with `expected an https URL or "private"; see spec 0010` (a refine, since a union reported only `Invalid URL`); restore → AC-1
+- [ ] Break step (from the build, 2026-09-26, Value sourcing: the years): give Medpal `status` `done`, `startDate` `2025-11`, and `endDate` `2026-02`, run `pnpm build` → its meta on `/projects` reads `done · 2025 – 2026` and it stays the last row; restore → AC-3, AC-6
 
 ## Commands
 - [ ] `pnpm build` → passes (`astro check` then `astro build`), `dist/projects.html` and `dist/og/projects.png` exist → AC-1, AC-4
