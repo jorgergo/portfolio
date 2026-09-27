@@ -23,7 +23,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | Command menu | Release 2 | planned |
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
-| 13 | Contact page | Release 1 | planned |
+| 13 | Contact page | Release 1 | in-progress |
 | 14 | Home page redesign | Release 1 | in-progress |
 
 ## Foundations
@@ -157,14 +157,24 @@ spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro
 - [x] Review it (fresh model): `/check review about page`
 - [x] Document it: `/document about page`
 
-### 13. Contact page · needs a decision · from spec 0004
+### 13. Contact page · in-progress · from spec 0004
 A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/contact` renders every profile and the email from the content model through `BaseLayout` with its own title and description; the home menu shows `contact` as its last row linking to it; it reads well on phone and desktop in light and dark.
-- [ ] Design it (spec): `/architect contact page`
+spec [0011](../specs/0011-contact-page/index.md)
+- [x] Design it (spec): `/architect contact page`
+- [ ] Build it: `/develop contact page`
+  - [ ] Helpers and rules: `formatContactRows` with the `NETWORKS` key width check, `formatChannelList`, the `contact` share row and description, the 27 character email cap, and their Vitest cases (AC-2, AC-3, AC-12)
+  - [ ] Page and menu: `src/pages/contact.astro` with the email, GitHub, and LinkedIn rows in an `<address>`, and `contact` last in `SITE_NAV` (AC-1, AC-4, AC-5, AC-8)
+  - [ ] Page tests: the `/contact` `PAGES` entry, the `contact page` block (composition, rows, the 320px email wrap, keyboard, requests, print), and `/contact` in the five path loops (AC-4 to AC-7, AC-9, AC-11)
+  - [ ] Deploy gate and docs: `smoke.sh`, `SMOKE_FILES`, the style guide's Contact card, `design.md`, then the gate and the steps in `verify.md` (AC-10, AC-11)
+- [ ] Verify it: `/check verify contact page`
+- [ ] Test it: `/test contact page`
+- [ ] Review it (fresh model): `/check review contact page`
+- [ ] Document it: `/document contact page`
 
 ### 14. Home page redesign · in-progress
 Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.
-**Done when:** `/` shows only the name, the tagline, and `01 about`, `02 cv`, `03 contact`, centred with left aligned text, in light and dark, on phone and desktop; no employer appears on the page or in its description; `/contact` holds your links.
+**Done when:** `/` shows only the name, the tagline, and `01 about`, `02 cv`, `03 projects`, `04 contact`, centred with left aligned text, in light and dark, on phone and desktop; no employer appears on the page or in its description; `/contact` holds your links.
 spec [0008](../specs/0008-home-page-centered-menu/index.md)
 - [x] Design it (spec): `/architect home page redesign`
 - [ ] Build it: `/develop home page redesign`
