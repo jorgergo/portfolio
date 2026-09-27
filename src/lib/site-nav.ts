@@ -9,6 +9,7 @@ export const SITE_NAV: readonly {
   { label: 'about', href: '/about' },
   { label: 'cv', href: '/cv' },
   { label: 'projects', href: '/projects' },
+  { label: 'contact', href: '/contact' },
 ];
 
 // A row's number comes from its position, never stored: 0 gives `01`, 9 gives

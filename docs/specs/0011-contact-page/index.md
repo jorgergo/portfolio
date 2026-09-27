@@ -1,7 +1,7 @@
 # 0011. Contact page as keyed rows for email, GitHub, and LinkedIn
 
 **Date**: 2026-09-26
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -178,8 +178,8 @@ None. No environment variable, no secret, no new dependency.
 
 Skateboard: the page ships whole in one merge, the smallest complete `/contact` a visitor can use. It merges after spec 0008's task 1 (the bio, your chosen order) and before spec 0008's layout, which needs it live.
 
-1. [ ] Helpers: add `ContactRow` and `formatContactRows` to `src/lib/cv-format.ts` with the AC-3 Vitest cases in `src/lib/cv-format.test.ts`. In `src/lib/site-meta.ts`, add `profiles` to `MetaCv['basics']`, the `OR_LIST` formatter beside `LIST`, `formatChannelList`, the `contact` row last in `SHARE_PAGES`, and `DESCRIPTIONS.contact`; in `src/lib/site-meta.test.ts`, add the AC-2 cases and update the `SHARE_PAGES` `toEqual` and the `footerLength` table. In `src/lib/cv-schema.ts`, add `email: 27` to `CV_LIMITS` (with its basis in the comment) and `.max(CV_LIMITS.email)` to `basics.email`, with the AC-12 cases in `src/lib/cv-schema.test.ts`, satisfies **AC-2**, **AC-3**, **AC-12**.
-2. [ ] Page and menu: create `src/pages/contact.astro` (the AC-4 markup, `getCv()` once, a Spec 0011 comment in the style of `about.astro`), and add the `contact` row last in `SITE_NAV`, satisfies **AC-1**, **AC-4**, **AC-5**, **AC-8**.
+1. [x] Helpers: add `ContactRow` and `formatContactRows` to `src/lib/cv-format.ts` with the AC-3 Vitest cases in `src/lib/cv-format.test.ts`. In `src/lib/site-meta.ts`, add `profiles` to `MetaCv['basics']`, the `OR_LIST` formatter beside `LIST`, `formatChannelList`, the `contact` row last in `SHARE_PAGES`, and `DESCRIPTIONS.contact`; in `src/lib/site-meta.test.ts`, add the AC-2 cases and update the `SHARE_PAGES` `toEqual` and the `footerLength` table. In `src/lib/cv-schema.ts`, add `email: 27` to `CV_LIMITS` (with its basis in the comment) and `.max(CV_LIMITS.email)` to `basics.email`, with the AC-12 cases in `src/lib/cv-schema.test.ts`, satisfies **AC-2**, **AC-3**, **AC-12**.
+2. [x] Page and menu: create `src/pages/contact.astro` (the AC-4 markup, `getCv()` once, a Spec 0011 comment in the style of `about.astro`), and add the `contact` row last in `SITE_NAV`, satisfies **AC-1**, **AC-4**, **AC-5**, **AC-8**.
 3. [ ] Page tests: add the `/contact` entry to `PAGES` in `e2e/site.spec.ts` with stops derived from `formatContactRows`; add a `contact page` block covering composition, row anatomy, the 320px email wrap (modelled on the home test at line 1471), the ring, the requests, and print; add `/contact` to the five hand written path loops, satisfies **AC-4** to **AC-7**, **AC-9**, **AC-11**.
 4. [ ] Deploy gate and docs: in `.github/scripts/smoke.sh` add the `/contact` page check and the `/og/contact.png` fetch; add `contact.html` to `SMOKE_FILES` in `e2e/helpers.ts`; add the Contact card to the style guide's share card section and to `e2e/styleguide.spec.ts` (count 8, the alt list, icon indexes 5 to 7, card indexes 0 to 4); change the `SMOKE` comment in `e2e/helpers.ts` to seven files; update `design.md` (the AC-10 lines); then run the gate (`pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm exec playwright test`) and the steps in [verify.md](verify.md), satisfies **AC-10**, **AC-11**.
 
