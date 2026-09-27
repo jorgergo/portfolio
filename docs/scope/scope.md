@@ -189,7 +189,7 @@ A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.ja
 **Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
 - [ ] Design it (spec): `/architect command menu`
 
-## Release 3: Portfolio
+## Release 3: Projects
 
 ### 11. Projects page · in-progress
 A simple list of your projects, each with a line of context, linked from the home page. Honest about older work (year and status shown).
@@ -203,7 +203,7 @@ spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects
   - [x] Tests, deploy gate, and docs: the page tests, the style guide card, `smoke.sh`, `design.md`, then the gate and the steps in `verify.md` (AC-8 to AC-11)
 - [x] Verify it: `/check verify projects page`
 - [x] Test it: `/test projects page`
-- [ ] Review it (fresh model): `/check review projects page`
+- [x] Review it (fresh model): `/check review projects page`
 - [ ] Document it: `/document projects page`
 
 ## Deferred
@@ -211,7 +211,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - **Spanish version**: site and CV in Spanish as a second language · needs a decision
 - **Contact form**: message you from the site instead of just an email link · needs a decision
 - **Visitor analytics**: declined for now to stay light and banner free; if added later, pick a cookieless option so no consent banner is needed · needs a decision
-- **Sitemap and structured data**: a sitemap once the portfolio page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
+- **Sitemap and structured data**: a sitemap once the projects page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
 - **PR previews**: a Workers Preview URL per pull request, if visual reviews ever need a shared link · needs a decision · from spec 0007
 - **Email at the domain**: an address such as hello@jorgergo.dev through Cloudflare Email Routing, if you want one on the CV · needs a decision · from spec 0007
 - **Footer arrow glyph**: Plex Mono's shipped `latin` file has no `←` or `→`, so the footer's `← home` arrow draws in the system fallback face; pick a glyph the font ships, or accept the fallback on record (spec 0003) · needs a decision · from spec 0009
