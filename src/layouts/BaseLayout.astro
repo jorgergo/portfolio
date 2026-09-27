@@ -21,9 +21,19 @@ interface Props {
   // false hides the footer on paper (the CV page, spec 0005); every other page
   // keeps its city line in print (spec 0003).
   printFooter?: boolean;
+  // true grows <main> to the space above the footer and centres its content
+  // there, as wide as its widest line, with the text still left aligned. Only
+  // the home page passes it (spec 0008).
+  centered?: boolean;
 }
 
-const { title, description, share, printFooter = true } = Astro.props;
+const {
+  title,
+  description,
+  share,
+  printFooter = true,
+  centered = false,
+} = Astro.props;
 
 // The palette has one source: the theme-color metas are read from global.css,
 // never written by hand (spec 0003).
@@ -79,7 +89,10 @@ const { light, dark } = parseColorTokens(css);
       <main
         id="main"
         tabindex="-1"
-        class="flex flex-col gap-14 focus-visible:outline-none"
+        class:list={[
+          'flex flex-col gap-14 focus-visible:outline-none',
+          centered && 'flex-1 justify-center self-center',
+        ]}
       >
         <slot />
       </main>
