@@ -11,7 +11,10 @@ import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 // keeps the footer on one row. The about caps (spec 0009) keep the page to a
 // few seconds of reading. The project caps (spec 0010) come from the 640px
 // column: a name on one line beside the longest meta, a description in about
-// two desktop lines, a keyword chip inside the 272px phone column.
+// two desktop lines, a keyword chip inside the 272px phone column. The email
+// cap (spec 0011) keeps the /contact row's address on one line in that 272px
+// column, since the label never shrinks: Plex Mono is 10px per glyph in CI,
+// so 27 characters is the most that fits.
 export const CV_LIMITS = {
   name: 30,
   namePart: 24,
@@ -34,6 +37,7 @@ export const CV_LIMITS = {
   projectKeywords: 6,
   projects: 8,
   cvProjectsMax: 2,
+  email: 27,
 } as const;
 
 export const NETWORKS = ['GitHub', 'LinkedIn'] as const;
@@ -344,7 +348,7 @@ export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
       label: cardText(CV_LIMITS.label),
       bio: text(CV_LIMITS.bio),
       summary: text(CV_LIMITS.summary),
-      email: z.email(),
+      email: z.email().max(CV_LIMITS.email),
       location: z.strictObject({
         city: cardText(CV_LIMITS.city),
         countryCode,

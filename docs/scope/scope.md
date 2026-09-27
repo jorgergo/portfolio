@@ -160,17 +160,17 @@ spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro
 ### 13. Contact page · in-progress · from spec 0004
 A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/contact` renders every profile and the email from the content model through `BaseLayout` with its own title and description; the home menu shows `contact` as its last row linking to it; it reads well on phone and desktop in light and dark.
-spec [0011](../specs/0011-contact-page/index.md)
+spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.astro`, `src/lib/cv-format.ts`, `src/lib/site-meta.ts`, `src/lib/site-nav.ts`
 - [x] Design it (spec): `/architect contact page`
-- [ ] Build it: `/develop contact page`
-  - [ ] Helpers and rules: `formatContactRows` with the `NETWORKS` key width check, `formatChannelList`, the `contact` share row and description, the 27 character email cap, and their Vitest cases (AC-2, AC-3, AC-12)
-  - [ ] Page and menu: `src/pages/contact.astro` with the email, GitHub, and LinkedIn rows in an `<address>`, and `contact` last in `SITE_NAV` (AC-1, AC-4, AC-5, AC-8)
-  - [ ] Page tests: the `/contact` `PAGES` entry, the `contact page` block (composition, rows, the 320px email wrap, keyboard, requests, print), and `/contact` in the five path loops (AC-4 to AC-7, AC-9, AC-11)
-  - [ ] Deploy gate and docs: `smoke.sh`, `SMOKE_FILES`, the style guide's Contact card, `design.md`, then the gate and the steps in `verify.md` (AC-10, AC-11)
-- [ ] Verify it: `/check verify contact page`
-- [ ] Test it: `/test contact page`
-- [ ] Review it (fresh model): `/check review contact page`
-- [ ] Document it: `/document contact page`
+- [x] Build it: `/develop contact page`
+  - [x] Helpers and rules: `formatContactRows` with the `NETWORKS` key width check, `formatChannelList`, the `contact` share row and description, the 27 character email cap, and their Vitest cases (AC-2, AC-3, AC-12)
+  - [x] Page and menu: `src/pages/contact.astro` with the email, GitHub, and LinkedIn rows in an `<address>`, and `contact` last in `SITE_NAV` (AC-1, AC-4, AC-5, AC-8)
+  - [x] Page tests: the `/contact` `PAGES` entry, the `contact page` block (composition, rows, the 320px email wrap, keyboard, requests, print), and `/contact` in the five path loops (AC-4 to AC-7, AC-9, AC-11)
+  - [x] Deploy gate and docs: `smoke.sh`, `SMOKE_FILES`, the style guide's Contact card, `design.md`, then the gate and the steps in `verify.md` (AC-10, AC-11)
+- [x] Verify it: `/check verify contact page`
+- [x] Test it: `/test contact page`
+- [x] Review it (fresh model): `/check review contact page`
+- [x] Document it: `/document contact page`
 
 ### 14. Home page redesign · in-progress
 Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.

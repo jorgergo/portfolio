@@ -418,8 +418,8 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7, spec 0006 AC-2, spec 0010 AC-1
-  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0009, and 0010', () => {
+  // covers: AC-7, spec 0006 AC-2, spec 0010 AC-1, spec 0011 AC-12
+  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0009, 0010, and 0011', () => {
     expect(CV_LIMITS).toEqual({
       name: 30,
       namePart: 24,
@@ -442,6 +442,7 @@ describe('makeCvSchema: caps', () => {
       projectKeywords: 6,
       projects: 8,
       cvProjectsMax: 2,
+      email: 27,
     });
   });
 
@@ -475,6 +476,17 @@ describe('makeCvSchema: caps', () => {
     expect(issues(withCity(chars(CV_LIMITS.city)))).toEqual([]);
     expect(issues(withCity(chars(CV_LIMITS.city + 1)))).toEqual([
       expect.stringMatching(/^basics\.location\.city:/),
+    ]);
+  });
+
+  // covers: spec 0011 AC-12
+  it('accepts a 27 character basics.email and fails at 28', () => {
+    const valid = 'aaaaaaaaaaaaaaa@example.com';
+
+    expect(valid).toHaveLength(CV_LIMITS.email);
+    expect(issues(withBasics({ email: valid }))).toEqual([]);
+    expect(issues(withBasics({ email: `a${valid}` }))).toEqual([
+      expect.stringMatching(/^basics\.email:/),
     ]);
   });
 

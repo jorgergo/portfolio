@@ -16,6 +16,7 @@ export const SHARE_PAGES = [
   { key: 'about', path: '/about', label: 'About' },
   { key: 'cv', path: '/cv', label: 'CV' },
   { key: 'projects', path: '/projects', label: 'Projects' },
+  { key: 'contact', path: '/contact', label: 'Contact' },
 ] as const satisfies readonly SharePage[];
 
 export type SharePageKey = (typeof SHARE_PAGES)[number]['key'];
@@ -63,6 +64,7 @@ export type MetaCv = {
     readonly label: string;
     readonly bio: string;
     readonly location: { readonly city: string; readonly countryCode: string };
+    readonly profiles?: readonly { readonly network: string }[] | undefined;
   };
   readonly skills?: readonly unknown[] | undefined;
   readonly technologies?: readonly unknown[] | undefined;
@@ -93,6 +95,12 @@ export const givenName = (name: string): string =>
 // English, with a serial comma: `a and b`, `a, b, and c`.
 const LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
+// English, with a serial comma: `a or b`, `a, b, or c`.
+const OR_LIST = new Intl.ListFormat('en', {
+  style: 'long',
+  type: 'disjunction',
+});
+
 // The CV sections a description names: experience and education always (the
 // schema requires both), skills and technologies when they have an entry.
 export const formatSectionList = ({
@@ -106,6 +114,13 @@ export const formatSectionList = ({
     ...(technologies.length > 0 ? ['technologies'] : []),
   ]);
 
+// The channels the contact page offers, in its row order (spec 0011): email
+// always, then each profile's network in cv.json order.
+export const formatChannelList = ({
+  profiles = [],
+}: Pick<MetaCv['basics'], 'profiles'>): string =>
+  OR_LIST.format(['email', ...profiles.map(({ network }) => network)]);
+
 // One description rule per row. The `satisfies` clause makes a row added to
 // SHARE_PAGES without a rule fail `astro check`.
 export const DESCRIPTIONS = {
@@ -116,6 +131,8 @@ export const DESCRIPTIONS = {
     `The CV of ${cv.basics.name}, ${cv.basics.label}: ${formatSectionList(cv)}.`,
   projects: ({ basics }) =>
     `What ${givenName(basics.name)} has built, with the stack behind each project and where it stands.`,
+  contact: ({ basics }) =>
+    `How to reach ${givenName(basics.name)}: ${formatChannelList(basics)}.`,
 } as const satisfies Record<SharePageKey, (cv: MetaCv) => string>;
 
 // The card's words in reading order, which are also its alt text.

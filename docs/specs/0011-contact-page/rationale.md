@@ -82,7 +82,7 @@ The extras you declined (availability, time zone, copy button, hiding the addres
 | Heading to rows | 24px | `gap-6` (24px) |
 | Row order | email, github, linkedin | same |
 | Key column | 80px, muted | `w-20` (80px), `text-muted` |
-| Key to value | 16px | `gap-4` (16px) |
+| Key to value | 16px | `gap-x-4` (16px across; a wrapped value sits right under its key) |
 | Row height | at least 44px | at least 40px (`min-h-10`, spec 0008 kept `NavRow`'s height) |
 | Row spacing | 4px | `gap-1` (4px) |
 | Values | `jorgergo@icloud.com`, `@jorgergo`, `in/jorgergo` | same, from `formatContactRows` |

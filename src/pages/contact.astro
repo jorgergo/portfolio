@@ -1,0 +1,31 @@
+---
+import NavRow from '@/components/NavRow.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCv } from '@/lib/cv';
+import { formatContactRows } from '@/lib/cv-format';
+import { pageMeta } from '@/lib/site-meta';
+
+// Spec 0011: the heading, then one keyed row per channel inside an <address>,
+// email first, then each profile in cv.json order. No intro, no form, no
+// script. The head comes from the `contact` row (spec 0006).
+const cv = await getCv();
+const rows = formatContactRows(cv.basics);
+---
+
+<BaseLayout {...pageMeta('contact', cv, Astro.site)}>
+  <div class="flex flex-col gap-6">
+    <h1 class="text-lg font-medium">contact</h1>
+    <address class="not-italic">
+      <ul class="flex flex-col gap-1">
+        {rows.map((row) => (
+          <NavRow
+            kind="key"
+            href={row.href}
+            prefix={row.key}
+            label={row.label}
+          />
+        ))}
+      </ul>
+    </address>
+  </div>
+</BaseLayout>

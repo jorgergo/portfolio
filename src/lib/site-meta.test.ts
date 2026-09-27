@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { formatContactRows } from '@/lib/cv-format';
 import { CV_LIMITS } from '@/lib/cv-schema';
 import {
   cardContent,
   DESCRIPTIONS,
   FOOTER_BUDGET,
   footerLength,
+  formatChannelList,
   formatPageTitle,
   formatSectionList,
   givenName,
@@ -27,6 +29,7 @@ const cv: MetaCv = {
     label: 'Full Stack Developer',
     bio: 'Builds internal platforms.',
     location: { city: 'Toluca', countryCode: 'MX' },
+    profiles: [{ network: 'GitHub' }, { network: 'LinkedIn' }],
   },
   skills: [group],
   technologies: [group],
@@ -58,13 +61,14 @@ describe('SHARE_PAGES', () => {
     for (const path of paths) expect(path).toMatch(/^\/([a-z-]+)?$/);
   });
 
-  // covers: AC-5, spec 0009 AC-2, spec 0010 AC-4
-  it('holds the home, About, CV, and Projects rows in menu order, each but home labelled', () => {
+  // covers: AC-5, spec 0009 AC-2, spec 0010 AC-4, spec 0011 AC-2
+  it('holds the home, About, CV, Projects, and Contact rows in menu order, each but home labelled', () => {
     expect(SHARE_PAGES).toEqual([
       { key: 'home', path: '/' },
       { key: 'about', path: '/about', label: 'About' },
       { key: 'cv', path: '/cv', label: 'CV' },
       { key: 'projects', path: '/projects', label: 'Projects' },
+      { key: 'contact', path: '/contact', label: 'Contact' },
     ]);
   });
 });
@@ -160,6 +164,62 @@ describe('formatSectionList', () => {
   });
 });
 
+describe('formatChannelList', () => {
+  // covers: spec 0011 AC-2
+  it.each([
+    [
+      'two profiles',
+      [{ network: 'GitHub' }, { network: 'LinkedIn' }],
+      'email, GitHub, or LinkedIn',
+    ],
+    ['one profile', [{ network: 'GitHub' }], 'email or GitHub'],
+    ['no profiles', [], 'email'],
+    ['profiles missing', undefined, 'email'],
+  ])('names the channels with %s', (_, profiles, expected) => {
+    expect(formatChannelList({ profiles })).toBe(expected);
+  });
+
+  // covers: spec 0011 AC-2 (the description names the channels in row order)
+  it('keeps the cv.json order of the profiles after email', () => {
+    expect(
+      formatChannelList({
+        profiles: [{ network: 'LinkedIn' }, { network: 'GitHub' }],
+      }),
+    ).toBe('email, LinkedIn, or GitHub');
+  });
+
+  const github = {
+    network: 'GitHub',
+    username: 'ada',
+    url: 'https://github.com/ada',
+  } as const;
+  const linkedin = {
+    network: 'LinkedIn',
+    username: 'ada',
+    url: 'https://www.linkedin.com/in/ada/',
+  } as const;
+
+  // covers: spec 0011 AC-2, AC-3 (the description and the rows share one
+  // order, so changing it in one helper alone fails here)
+  it.each([
+    ['two profiles', [github, linkedin]],
+    ['the profiles reversed', [linkedin, github]],
+    ['no profiles', []],
+  ] as const)(
+    'names the channels in the contact row order with %s',
+    (_, profiles) => {
+      const keys = formatContactRows({
+        email: 'ada@example.com',
+        profiles,
+      }).map(({ key }) => key);
+
+      expect(formatChannelList({ profiles }).toLowerCase()).toBe(
+        new Intl.ListFormat('en', { type: 'disjunction' }).format(keys),
+      );
+    },
+  );
+});
+
 describe('DESCRIPTIONS', () => {
   // covers: AC-4
   it('describes the home page with the bio', () => {
@@ -201,6 +261,20 @@ describe('DESCRIPTIONS', () => {
     expect(DESCRIPTIONS.projects(fixture)).toBe(
       'What Ada has built, with the stack behind each project and where it stands.',
     );
+  });
+
+  // covers: spec 0011 AC-2
+  it('describes the contact page with the given name and the channels', () => {
+    expect(DESCRIPTIONS.contact(cv)).toBe(
+      'How to reach Jorge: email, GitHub, or LinkedIn.',
+    );
+    expect(DESCRIPTIONS.contact(fixture)).toBe('How to reach Ada: email.');
+    expect(
+      DESCRIPTIONS.contact({
+        ...fixture,
+        basics: { ...fixture.basics, profiles: [{ network: 'GitHub' }] },
+      }),
+    ).toBe('How to reach Ada: email or GitHub.');
   });
 
   it('keeps the CV description within 119 characters at the caps', () => {
@@ -298,6 +372,24 @@ describe('pageMeta', () => {
     });
   });
 
+  // covers: spec 0011 AC-1, AC-2
+  it('gives the contact page its title, description, canonical, image, and alt text', () => {
+    expect(pageMeta('contact', cv, site)).toEqual({
+      title: 'Contact · Jorge González Ozorno',
+      description: 'How to reach Jorge: email, GitHub, or LinkedIn.',
+      share: {
+        url: 'https://jorgergo.dev/contact',
+        siteName: 'Jorge González Ozorno',
+        image: {
+          url: 'https://jorgergo.dev/og/contact.png',
+          alt: 'Contact, Jorge González Ozorno, Full Stack Developer',
+          width: 1200,
+          height: 630,
+        },
+      },
+    });
+  });
+
   // covers: AC-1, AC-5
   it('builds every URL from site, so a new domain moves them all', () => {
     const other = new URL('https://example.com');
@@ -377,12 +469,13 @@ describe('footerLength', () => {
     return footerLength(content);
   };
 
-  // covers: AC-17, spec 0009 AC-2, spec 0010 AC-4
+  // covers: AC-17, spec 0009 AC-2, spec 0010 AC-4, spec 0011 AC-2
   it.each([
     ['home', 22],
     ['about', 28],
     ['cv', 25],
     ['projects', 31],
+    ['contact', 30],
   ] as const)(
     'counts today’s %s card footer as %i characters',
     (key, length) => {

@@ -152,6 +152,7 @@ check_pages() {
   check_page /cv cv.html || return 1
   check_page /about about.html || return 1
   check_page /projects projects.html || return 1
+  check_page /contact contact.html || return 1
 
   fetch "$origin$stylesheet"
   check_status "$stylesheet" 200 || return 1
@@ -168,6 +169,10 @@ check_pages() {
   fetch "$origin/og/projects.png"
   check_status /og/projects.png 200 || return 1
   check_header /og/projects.png 'content-type: image/png' || return 1
+
+  fetch "$origin/og/contact.png"
+  check_status /og/contact.png 200 || return 1
+  check_header /og/contact.png 'content-type: image/png' || return 1
 
   fetch "$origin/missing"
   check_status /missing 404 || return 1
