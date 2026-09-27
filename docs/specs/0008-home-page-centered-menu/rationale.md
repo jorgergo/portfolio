@@ -15,6 +15,8 @@ Constraints that shape the answer: profile content lives only in `cv.json` behin
 
 A theme selector (auto, light, dark) was raised and then dropped during the interview; spec 0003's system driven colours stand.
 
+Update, 2026-09-26: since this spec was written, About (spec 0009) and Projects (spec 0010) shipped, so the menu this spec centres now has four rows, `01 about` to `04 contact`, and the contact page it waits on is spec 0011. The menu tests already derive from `SITE_NAV` (spec 0009 AC-8). The design itself is unchanged; only the row count, the 320×400 overflow, and the build plan's finished parts were brought up to date.
+
 ## Options considered
 
 ### Option 1: Centred block, left aligned text, on the existing components
