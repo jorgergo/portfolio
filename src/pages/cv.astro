@@ -9,8 +9,10 @@ import {
   type CvAward,
   type CvCertificate,
   type CvEducation,
+  type CvProject,
 } from '@/lib/cv';
 import {
+  cvProjects,
   firstUrl,
   formatDateRange,
   formatLocation,
@@ -19,6 +21,7 @@ import {
   formatSkillRows,
   groupConsecutive,
   joinMeta,
+  projectHref,
   sortByDateDesc,
   sortNewestFirst,
   spanOf,
@@ -86,6 +89,7 @@ const skillRows = formatSkillRows(cv);
 type Section = { readonly id: string; readonly heading: string } & (
   | { readonly kind: 'summary'; readonly text: string }
   | { readonly kind: 'roles'; readonly groups: readonly Group<Role>[] }
+  | { readonly kind: 'projects'; readonly entries: readonly CvProject[] }
   | { readonly kind: 'education'; readonly entries: readonly CvEducation[] }
   | { readonly kind: 'awards'; readonly entries: readonly CvAward[] }
   | {
@@ -101,6 +105,7 @@ const hasContent = (section: Section): boolean => {
       return true;
     case 'roles':
       return section.groups.length > 0;
+    case 'projects':
     case 'education':
     case 'awards':
     case 'certificates':
@@ -117,6 +122,13 @@ const sections: readonly Section[] = [
     id: 'experience',
     heading: 'Experience',
     groups: experience,
+  },
+  // The projects flagged `cv` in cv.json, in the /projects order (spec 0010).
+  {
+    kind: 'projects',
+    id: 'projects',
+    heading: 'Projects',
+    entries: cvProjects(cv.projects),
   },
   {
     kind: 'education',
@@ -230,6 +242,17 @@ const rendered = sections.filter(hasContent);
               </CvEntry>
             );
           })}
+        {section.kind === 'projects' &&
+          section.entries.map((project) => (
+            <CvEntry
+              title={project.name}
+              href={projectHref(project)}
+              meta={formatDateRange(project.startDate, project.endDate)}
+              summary={project.description}
+            >
+              <p class="text-sm text-muted">{joinMeta(...project.keywords)}</p>
+            </CvEntry>
+          ))}
         {section.kind === 'education' &&
           section.entries.map((entry) => (
             <CvEntry
