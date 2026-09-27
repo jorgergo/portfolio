@@ -2,22 +2,21 @@
 import NavRow from '@/components/NavRow.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
-import { formatProfileHandle } from '@/lib/cv-format';
 import { pageMeta } from '@/lib/site-meta';
 import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 
-// Spec 0004: the name, the bio, the pages that exist as numbered rows, and the
-// profiles and email as keyed rows. No avatar, no motion, no script. The head
-// comes from the `home` row (spec 0006).
+// Spec 0008: the name, the muted tagline, and the pages that exist as numbered
+// rows, centred in the page by the layout. The bio stays in the head as the
+// description, and the links live on /contact. No avatar, no motion, no
+// script. The head comes from the `home` row (spec 0006).
 const cv = await getCv();
 const { basics } = cv;
-const profiles = basics.profiles ?? [];
 ---
 
-<BaseLayout {...pageMeta('home', cv, Astro.site)}>
+<BaseLayout {...pageMeta('home', cv, Astro.site)} centered>
   <header class="flex flex-col gap-2">
     <h1 class="text-title font-medium">{basics.name}</h1>
-    <p class="text-pretty">{basics.bio}</p>
+    <p class="text-pretty text-muted">{basics.tagline}</p>
   </header>
   <nav aria-label="Pages">
     <ol class="flex flex-col gap-1">
@@ -30,23 +29,5 @@ const profiles = basics.profiles ?? [];
         />
       ))}
     </ol>
-  </nav>
-  <nav aria-label="Elsewhere">
-    <ul class="flex flex-col gap-1">
-      {profiles.map((profile) => (
-        <NavRow
-          kind="key"
-          href={profile.url}
-          prefix={profile.network.toLowerCase()}
-          label={formatProfileHandle(profile)}
-        />
-      ))}
-      <NavRow
-        kind="key"
-        href={`mailto:${basics.email}`}
-        prefix="email"
-        label={basics.email}
-      />
-    </ul>
   </nav>
 </BaseLayout>

@@ -40,6 +40,7 @@ const location = { city: 'Monterrey', countryCode: 'MX' } as const;
 const basics = {
   name: 'Ada Lovelace',
   label: 'Full Stack Developer',
+  tagline: 'build things, from scratch',
   bio: 'Builds things.',
   summary: 'Builds web platforms.',
   email: 'ada@example.com',
@@ -162,8 +163,8 @@ describe('makeCvSchema: valid content', () => {
 });
 
 describe('makeCvSchema: required fields', () => {
-  // covers: AC-3
-  it.each(['name', 'label', 'bio', 'summary', 'email', 'location'])(
+  // covers: AC-3, spec 0008 AC-2
+  it.each(['name', 'label', 'tagline', 'bio', 'summary', 'email', 'location'])(
     'fails at basics.%s when it is missing',
     (field) => {
       const data = { ...minimalCv, basics: omit(basics, field) };
@@ -209,6 +210,13 @@ describe('makeCvSchema: required fields', () => {
   it('treats a whitespace only value as missing', () => {
     expect(issues(withBasics({ name: '   ' }))).toEqual([
       expect.stringMatching(/^basics\.name:/),
+    ]);
+  });
+
+  // covers: spec 0008 AC-2
+  it('fails a whitespace only basics.tagline as empty', () => {
+    expect(issues(withBasics({ tagline: '   ' }))).toEqual([
+      expect.stringMatching(/^basics\.tagline:/),
     ]);
   });
 });
@@ -418,8 +426,8 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7, spec 0006 AC-2, spec 0010 AC-1, spec 0011 AC-12
-  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0009, 0010, and 0011', () => {
+  // covers: AC-7, spec 0006 AC-2, spec 0008 AC-2, spec 0010 AC-1, spec 0011 AC-12
+  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0008, 0009, 0010, and 0011', () => {
     expect(CV_LIMITS).toEqual({
       name: 30,
       namePart: 24,
@@ -443,23 +451,26 @@ describe('makeCvSchema: caps', () => {
       projects: 8,
       cvProjectsMax: 2,
       email: 27,
+      tagline: 27,
     });
   });
 
-  // covers: AC-7, spec 0006 AC-2
+  // covers: AC-7, spec 0006 AC-2, spec 0008 AC-2
   it.each([
     ['name', CV_LIMITS.name, nameOf],
     ['label', CV_LIMITS.label, chars],
+    ['tagline', CV_LIMITS.tagline, chars],
     ['bio', CV_LIMITS.bio, chars],
     ['summary', CV_LIMITS.summary, chars],
   ])('accepts basics.%s at exactly %i characters', (field, cap, make) => {
     expect(issues(withBasics({ [field]: make(cap) }))).toEqual([]);
   });
 
-  // covers: AC-7, spec 0006 AC-2
+  // covers: AC-7, spec 0006 AC-2, spec 0008 AC-2
   it.each([
     ['name', CV_LIMITS.name, nameOf],
     ['label', CV_LIMITS.label, chars],
+    ['tagline', CV_LIMITS.tagline, chars],
     ['bio', CV_LIMITS.bio, chars],
     ['summary', CV_LIMITS.summary, chars],
   ])('fails at basics.%s one character past %i', (field, cap, make) => {
@@ -647,6 +658,11 @@ describe('makeCvSchema: card text (spec 0006)', () => {
     expect(issues(withBasics({ label: 'Разработчик' }))).toEqual([
       `basics.label: ${outside('Р, а, з, р, б, о, т, ч, и, к')}`,
     ]);
+  });
+
+  // covers: spec 0008 AC-2
+  it('accepts a tagline with letters the card font lacks, since the card never draws it', () => {
+    expect(issues(withBasics({ tagline: 'Разработчик' }))).toEqual([]);
   });
 
   // covers: spec 0006 AC-15
