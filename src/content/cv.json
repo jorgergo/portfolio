@@ -4,6 +4,7 @@
     "basics": {
       "name": "Jorge González Ozorno",
       "label": "Full Stack Developer",
+      "tagline": "build things, from scratch",
       "bio": "Full Stack Developer building web platforms, AI assistants, and release automation.",
       "summary": "Full Stack Developer building scalable web platforms, AI assistants, and automated release pipelines. Led the modernization of Ford's PDPO Portal and Knowledge Base, delivering a production RAG assistant used across both platforms and removing manual versioning and release work. Computer Science graduate of Tecnológico de Monterrey with a 4.0 GPA and winner of a national hackathon.",
       "email": "jorgergo@icloud.com",

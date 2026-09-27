@@ -14,7 +14,8 @@ import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 // two desktop lines, a keyword chip inside the 272px phone column. The email
 // cap (spec 0011) keeps the /contact row's address on one line in that 272px
 // column, since the label never shrinks: Plex Mono is 10px per glyph in CI,
-// so 27 characters is the most that fits.
+// so 27 characters is the most that fits. The tagline cap (spec 0008) keeps
+// the home tagline on one line in the same column, by the same count.
 export const CV_LIMITS = {
   name: 30,
   namePart: 24,
@@ -38,6 +39,7 @@ export const CV_LIMITS = {
   projects: 8,
   cvProjectsMax: 2,
   email: 27,
+  tagline: 27,
 } as const;
 
 export const NETWORKS = ['GitHub', 'LinkedIn'] as const;
@@ -346,6 +348,7 @@ export const makeCvSchema = <I extends z.ZodType>(image: () => I) =>
     basics: z.strictObject({
       name: cardName,
       label: cardText(CV_LIMITS.label),
+      tagline: text(CV_LIMITS.tagline),
       bio: text(CV_LIMITS.bio),
       summary: text(CV_LIMITS.summary),
       email: z.email().max(CV_LIMITS.email),
