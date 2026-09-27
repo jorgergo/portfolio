@@ -660,6 +660,11 @@ describe('makeCvSchema: card text (spec 0006)', () => {
     ]);
   });
 
+  // covers: spec 0008 AC-2
+  it('accepts a tagline with letters the card font lacks, since the card never draws it', () => {
+    expect(issues(withBasics({ tagline: 'Разработчик' }))).toEqual([]);
+  });
+
   // covers: spec 0006 AC-15
   it('fails a Cyrillic city', () => {
     expect(issues(withCity('Москва'))).toEqual([

@@ -1647,6 +1647,73 @@ test.describe('home page', () => {
       );
     }
   });
+
+  // covers: AC-4, AC-6
+  test('every row spans the block and turns its label accent-warm when hovered at its far edge', async ({
+    page,
+  }) => {
+    // Reduced motion drops the colour transition, so the hover colour shows
+    // at once instead of partway through 150ms.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    const block = await boxOf(main(page));
+
+    for (const { label } of SITE_NAV) {
+      const row = pagesNav(page).getByRole('link', {
+        name: label,
+        exact: true,
+      });
+      const box = await boxOf(row);
+      within1px(box.x, block.x);
+      within1px(box.width, block.width);
+
+      await row.hover({ position: { x: box.width - 2, y: box.height / 2 } });
+
+      await expect(spans(row).nth(1)).toHaveCSS(
+        'color',
+        rgb('light', 'accent-warm'),
+      );
+    }
+  });
+
+  // covers: AC-7
+  test('nothing animates, and every transition moves only colours', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const found = await page.evaluate(() => {
+      const elements = [...document.querySelectorAll('*')];
+      return {
+        running: document.getAnimations().length,
+        keyframes: elements
+          .filter((el) => getComputedStyle(el).animationName !== 'none')
+          .map((el) => el.tagName),
+        // Each property an element transitions for longer than 0s, as `TAG
+        // property`; an element with no transition lasts 0s and adds none.
+        transitions: elements.flatMap((el) => {
+          const style = getComputedStyle(el);
+          const lasts = style.transitionDuration
+            .split(', ')
+            .some((duration) => Number.parseFloat(duration) > 0);
+          return lasts
+            ? style.transitionProperty
+                .split(', ')
+                .map((property) => `${el.tagName} ${property}`)
+            : [];
+        }),
+      };
+    });
+    // What `transition-colors` lists: the colour properties, fill, stroke,
+    // and the gradient stops.
+    const colour = /\s(\S*color|fill|stroke|--tw-gradient-\S+)$/;
+
+    expect(found.running).toBe(0);
+    expect(found.keyframes).toEqual([]);
+    expect(found.transitions.filter((entry) => !colour.test(entry))).toEqual(
+      [],
+    );
+  });
 });
 
 // Spec 0009: /about as a heading, an intro, the marker list, and one closing
