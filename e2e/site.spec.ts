@@ -55,7 +55,7 @@ import {
 
 // Spec 0003 on the built site (dist/ through wrangler): the shell every page
 // shares, fonts and CSP, keyboard, print, and the 320px floor. The home page
-// block at the end covers spec 0004.
+// block at the end covers spec 0008.
 
 type PageCase = {
   readonly path: string;
@@ -151,14 +151,9 @@ const PAGES: readonly PageCase[] = [
     title: homeMeta.title,
     description: homeMeta.description,
     h1: basics.name,
-    // Spec 0004 AC-7: the menu rows, then the social rows, and nothing after.
-    stops: [
-      'a "Skip to content"',
-      ...MENU_ROWS.map((row) => `a "${row}"`),
-      'a "github @jorgergo"',
-      'a "linkedin in/jorgergo"',
-      'a "email jorgergo@icloud.com"',
-    ],
+    // Spec 0008 AC-6: the menu rows, and nothing after (the footer has no
+    // link on the home page).
+    stops: ['a "Skip to content"', ...MENU_ROWS.map((row) => `a "${row}"`)],
   },
   {
     path: '/about',
@@ -1392,40 +1387,106 @@ test.describe('build output', () => {
   });
 });
 
-// Spec 0004: the home page as a numbered menu and keyed social rows.
+// Spec 0008: the home page as the name, the muted tagline, and the numbered
+// menu, centred in the page. Every expectation is read from cv.json and
+// SITE_NAV, so a valid content edit or a new menu row needs no test edit.
 test.describe('home page', () => {
+  const main = (page: Page): Locator => page.locator('main#main');
+  const header = (page: Page): Locator => main(page).locator(':scope > header');
+  const tagline = (page: Page): Locator => header(page).locator('p');
   const pagesNav = (page: Page): Locator =>
     page.getByRole('navigation', { name: 'Pages' });
-  const elsewhereNav = (page: Page): Locator =>
-    page.getByRole('navigation', { name: 'Elsewhere' });
-  // A row's two spans: the prefix, then the label (with the arrow inside).
+  // A row's two spans: the prefix, then the label.
   const spans = (row: Locator): Locator => row.locator(':scope > span');
+  // A missing box reads as NaN, so every comparison on it fails.
+  const boxOf = async (
+    locator: Locator,
+  ): Promise<{ x: number; y: number; width: number; height: number }> =>
+    (await locator.boundingBox()) ?? {
+      x: Number.NaN,
+      y: Number.NaN,
+      width: Number.NaN,
+      height: Number.NaN,
+    };
+  const within1px = (actual: number, expected: number): void => {
+    expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+  };
+  // The name's text width, measured: Plex Mono is 9.6px a glyph on macOS and
+  // 10px in Linux Chromium, so it is 277.2px or 273px today, never a constant.
+  const nameWidth = (page: Page): Promise<number> =>
+    page.getByRole('heading', { level: 1 }).evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return range.getBoundingClientRect().width;
+    });
 
-  // covers: AC-1, AC-6
-  test('main holds the header, the Pages nav, and the Elsewhere nav, 56px apart', async ({
+  // covers: AC-1, AC-3
+  test('main holds the header and the Pages nav, 56px apart, and nothing else', async ({
     page,
   }) => {
     await page.goto('/');
-    const main = page.locator('main#main');
-    const blocks = main.locator(':scope > *');
-    const header = main.locator(':scope > header');
+    const blocks = main(page).locator(':scope > *');
 
-    await expect(blocks).toHaveCount(3);
+    await expect(blocks).toHaveCount(2);
     await expect(blocks.nth(0)).toHaveJSProperty('tagName', 'HEADER');
+    await expect(blocks.nth(1)).toHaveJSProperty('tagName', 'NAV');
     await expect(blocks.nth(1)).toHaveAttribute('aria-label', 'Pages');
-    await expect(blocks.nth(2)).toHaveAttribute('aria-label', 'Elsewhere');
-    await expect(main).toHaveCSS('row-gap', '56px');
-    await expect(header.locator(':scope > *')).toHaveCount(2);
-    await expect(header.getByRole('heading', { level: 1 })).toHaveText(
-      basics.name,
+    await expect(main(page)).toHaveCSS('row-gap', '56px');
+    const head = await boxOf(header(page));
+    const nav = await boxOf(pagesNav(page));
+    within1px(nav.y - (head.y + head.height), 56);
+    await expect(main(page)).toHaveText(
+      [basics.name, basics.tagline, ...MENU_ROWS].join(' '),
     );
-    await expect(header.locator('p')).toHaveText(basics.bio);
-    await expect(header.locator('p')).toHaveCSS('color', rgb('light', 'fg'));
-    await expect(header).toHaveCSS('row-gap', '8px');
-    await expect(page.locator('main img, main video')).toHaveCount(0);
+    await expect(
+      page.getByRole('navigation', { name: 'Elsewhere' }),
+    ).toHaveCount(0);
+    await expect(
+      main(page).locator('a[href^="mailto:"], a[href^="http"]'),
+    ).toHaveCount(0);
+    await expect(main(page).locator('img, video, svg')).toHaveCount(0);
+    // No top bar: main opens the column, and its header is the page's only one.
+    await expect(main(page).locator('xpath=preceding-sibling::*')).toHaveCount(
+      0,
+    );
+    await expect(page.locator('header')).toHaveCount(1);
   });
 
-  // covers: AC-2, spec 0009 AC-8
+  for (const scheme of SCHEMES) {
+    // covers: AC-2, AC-3
+    test(`the header is the name, then the tagline 8px below it in muted, in ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/');
+      const h1 = header(page).getByRole('heading', { level: 1 });
+
+      await expect(header(page).locator(':scope > *')).toHaveCount(2);
+      await expect(header(page)).toHaveCSS('row-gap', '8px');
+      await expect(h1).toHaveText(basics.name);
+      await expect(tagline(page)).toHaveText(basics.tagline);
+      await expect(tagline(page)).toHaveCSS('color', rgb(scheme, 'muted'));
+      await expect(tagline(page)).toHaveCSS('text-wrap-style', 'pretty');
+      const name = await boxOf(h1);
+      const line = await boxOf(tagline(page));
+      within1px(line.y - (name.y + name.height), 8);
+      expect(line.x).toBe(name.x);
+    });
+  }
+
+  // covers: AC-7
+  test('at 320px the tagline is one line tall', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/');
+    const lineHeight = await tagline(page).evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).lineHeight),
+    );
+
+    within1px((await boxOf(tagline(page))).height, lineHeight);
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  // covers: AC-5, AC-8, spec 0009 AC-8
   test('the Pages nav is an ordered list of the site pages, numbered from 01', async ({
     page,
   }) => {
@@ -1443,36 +1504,90 @@ test.describe('home page', () => {
     await expect(page.locator('body [role]')).toHaveCount(0);
   });
 
-  // covers: AC-3, AC-4
-  test('the Elsewhere nav lists each profile, then the email, as keyed rows', async ({
-    page,
-  }) => {
+  // covers: AC-5
+  test('the Pages nav holds a contact row', async ({ page }) => {
     await page.goto('/');
-    const nav = elsewhereNav(page);
-    const links = nav.getByRole('link');
-    const hrefs = [
-      ...(basics.profiles ?? []).map(({ url }) => url),
-      `mailto:${basics.email}`,
-    ];
 
-    await expect(nav.locator('ul')).toHaveCount(1);
-    await expect(links).toHaveText([
-      'github @jorgergo',
-      'linkedin in/jorgergo',
-      `email ${basics.email}`,
-    ]);
-    for (const [index, href] of hrefs.entries()) {
-      await expect(links.nth(index)).toHaveAttribute('href', href);
-    }
-    // A key stays in the accessible name; only an https row ends with the arrow.
-    await expect(nav.locator('[aria-hidden]')).toHaveCount(2);
-    await expect(nav.locator('span[aria-hidden]')).toHaveCount(0);
-    await expect(links.nth(0).locator('svg')).toHaveCount(1);
-    await expect(links.nth(1).locator('svg')).toHaveCount(1);
-    await expect(links.nth(2).locator('svg')).toHaveCount(0);
+    expect(SITE_NAV.map(({ href }) => href)).toContain('/contact');
+    await expect(pagesNav(page).locator('a[href="/contact"]')).toHaveCount(1);
   });
 
   // covers: AC-5
+  test('every Pages nav href answers 200 with redirects disabled', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const links = await pagesNav(page).getByRole('link').all();
+    const hrefs = await Promise.all(
+      links.map((link) => link.getAttribute('href')),
+    );
+
+    expect(hrefs).not.toEqual([]);
+    for (const href of hrefs) {
+      const response = await page.request.get(href ?? '', { maxRedirects: 0 });
+      expect(response.status(), href ?? 'missing href').toBe(200);
+    }
+  });
+
+  // covers: AC-4
+  test('at 1280×800 main is centred, as wide as the name, with equal space above and below', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const block = await boxOf(main(page));
+    const head = await boxOf(header(page));
+    const nav = await boxOf(pagesNav(page));
+    const above = head.y - block.y;
+    const below = block.y + block.height - (nav.y + nav.height);
+
+    within1px(block.x + block.width / 2, 640);
+    within1px(block.width, await nameWidth(page));
+    within1px(nav.x, head.x);
+    expect(above).toBeGreaterThan(1);
+    within1px(above, below);
+  });
+
+  // covers: AC-4
+  test('at 320×400 main is its content height and the page scrolls', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 400 });
+    await page.goto('/');
+    const block = await boxOf(main(page));
+    const head = await boxOf(header(page));
+    const nav = await boxOf(pagesNav(page));
+
+    within1px(head.y, block.y);
+    within1px(nav.y + nav.height, block.y + block.height);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight),
+    ).toBeGreaterThan(400);
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    await expect(pagesNav(page).getByRole('listitem').last()).toBeInViewport();
+    await expect(page.getByRole('contentinfo')).toBeInViewport();
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  for (const path of ['/about', '/cv', '/projects', '/contact', '/missing']) {
+    // covers: AC-4
+    test(`${path} keeps a full width, top aligned main`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(path);
+      const column = await boxOf(main(page).locator('..'));
+
+      expect(await boxOf(main(page))).toMatchObject({
+        x: column.x + 24,
+        y: column.y + 40,
+        width: column.width - 48,
+      });
+    });
+  }
+
+  // covers: AC-7
   test('ships no script and loads only the page, the stylesheet, and two Plex Mono files', async ({
     page,
   }) => {
@@ -1494,70 +1609,32 @@ test.describe('home page', () => {
     ]);
   });
 
-  // covers: AC-6
-  test('at 320px the email address moves whole under its key, and back beside it once the row fits', async ({
+  // covers: AC-7
+  test('the footer keeps its hairline rule and its city line', async ({
     page,
   }) => {
-    const row = elsewhereNav(page).getByRole('link', {
-      name: `email ${basics.email}`,
-      exact: true,
-    });
-    const boxes = async () => ({
-      row: await row.boundingBox(),
-      key: await spans(row).nth(0).boundingBox(),
-      value: await spans(row).nth(1).boundingBox(),
-    });
-
-    await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/');
-    const narrow = await boxes();
-    expect(narrow.value?.x).toBe(narrow.key?.x);
-    expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
-      (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
-    );
-    expect(narrow.value?.height ?? Infinity).toBeLessThan(40);
-    expect(
-      (narrow.value?.x ?? 0) + (narrow.value?.width ?? Infinity),
-    ).toBeLessThanOrEqual(320);
-    expect(await scrollsSideways(page)).toBe(false);
+    const footer = page.getByRole('contentinfo');
+    const { city, countryCode } = basics.location;
 
-    // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
-    // Chromium, so the width where the row fits again (327px or 334px today)
-    // is measured, not hard coded.
-    const gap = await row.evaluate((el) =>
-      Number.parseFloat(getComputedStyle(el).columnGap),
-    );
-    const fits = Math.ceil(
-      320 -
-        (narrow.row?.width ?? 0) +
-        (narrow.key?.width ?? 0) +
-        gap +
-        (narrow.value?.width ?? 0),
-    );
-    await page.setViewportSize({ width: fits, height: 640 });
-    const wide = await boxes();
-    expect(wide.value?.y).toBe(wide.key?.y);
-    expect(wide.value?.x ?? 0).toBeGreaterThan(
-      (wide.key?.x ?? 0) + (wide.key?.width ?? 0),
+    await expect(footer).toHaveCSS('border-top-width', '1px');
+    await expect(footer).toHaveCSS('border-top-style', 'solid');
+    await expect(footer).toHaveCSS('border-top-color', rgb('light', 'line'));
+    await expect(footer).toHaveText(
+      `${city}, ${countryCode} · ${new Date().getUTCFullYear()}`,
     );
   });
 
-  // covers: AC-4, AC-7
+  // covers: AC-6
   test('every row shows the accent ring on keyboard focus and turns its label accent-warm', async ({
     page,
   }) => {
     await page.goto('/');
-    const names = [
-      ...SITE_NAV.map(({ label }) => label),
-      'github @jorgergo',
-      'linkedin in/jorgergo',
-      `email ${basics.email}`,
-    ];
 
     await page.keyboard.press('Tab');
-    for (const name of names) {
+    for (const { label } of SITE_NAV) {
       await page.keyboard.press('Tab');
-      const row = page.getByRole('link', { name, exact: true });
+      const row = page.getByRole('link', { name: label, exact: true });
       await expect(row).toBeFocused();
       await expect(row).toHaveCSS('outline-style', 'solid');
       await expect(row).toHaveCSS('outline-width', '2px');
@@ -1568,23 +1645,6 @@ test.describe('home page', () => {
         'color',
         rgb('light', 'accent-warm'),
       );
-    }
-  });
-
-  // covers: AC-10
-  test('every Pages nav href answers 200 with redirects disabled', async ({
-    page,
-  }) => {
-    await page.goto('/');
-    const links = await pagesNav(page).getByRole('link').all();
-    const hrefs = await Promise.all(
-      links.map((link) => link.getAttribute('href')),
-    );
-
-    expect(hrefs).not.toEqual([]);
-    for (const href of hrefs) {
-      const response = await page.request.get(href ?? '', { maxRedirects: 0 });
-      expect(response.status(), href ?? 'missing href').toBe(200);
     }
   });
 });
