@@ -185,7 +185,7 @@ spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/cont
 - [x] Verify it: `/check verify home page redesign`
 - [x] Test it: `/test home page redesign`
 - [x] Review it (fresh model): `/check review home page redesign`
-- [ ] Document it: `/document home page redesign`
+- [x] Document it: `/document home page redesign`
 
 ## Release 2: CV extras
 
