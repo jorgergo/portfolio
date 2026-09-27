@@ -170,7 +170,7 @@ spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.a
 - [x] Verify it: `/check verify contact page`
 - [x] Test it: `/test contact page`
 - [x] Review it (fresh model): `/check review contact page`
-- [ ] Document it: `/document contact page`
+- [x] Document it: `/document contact page`
 
 ### 14. Home page redesign · in-progress
 Your name, a short muted tagline, and the numbered menu, centred on the screen; the bio and the social rows leave the page (the bio stays in `cv.json`, rewritten without Ford, as the meta description; the links live on `/contact`). The bio rewrite ships first on its own; the new layout ships after About and Contact are live.
