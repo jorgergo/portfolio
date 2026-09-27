@@ -23,7 +23,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | Command menu | Release 2 | planned |
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
-| 13 | Contact page | Release 1 | in-progress |
+| 13 | Contact page | Release 1 | done |
 | 14 | Home page redesign | Release 1 | in-progress |
 
 ## Foundations
@@ -157,7 +157,7 @@ spec [0009](../specs/0009-about-page/index.md) · code in `src/pages/about.astro
 - [x] Review it (fresh model): `/check review about page`
 - [x] Document it: `/document about page`
 
-### 13. Contact page · in-progress · from spec 0004
+### 13. Contact page · done · from spec 0004
 A `/contact` page listing your GitHub, LinkedIn, and email as keyed `NavRow` rows (spec 0004's component), the future home of the deferred contact form. It adds the `contact` row to the home menu (`SITE_NAV`, spec 0004) as its last entry. Small enough to go straight to `/develop` if you already know the build.
 **Done when:** `/contact` renders every profile and the email from the content model through `BaseLayout` with its own title and description; the home menu shows `contact` as its last row linking to it; it reads well on phone and desktop in light and dark.
 spec [0011](../specs/0011-contact-page/index.md) · code in `src/pages/contact.astro`, `src/lib/cv-format.ts`, `src/lib/site-meta.ts`, `src/lib/site-nav.ts`
