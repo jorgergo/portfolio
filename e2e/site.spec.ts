@@ -2520,8 +2520,8 @@ test.describe('contact page', () => {
     }
   });
 
-  // covers: spec 0011 AC-6
-  test('at 320px the email address moves whole under its key, and back beside it once the row fits', async ({
+  // covers: spec 0011 AC-6, AC-10
+  test('at 320px the email address sits whole under its key while the row is too wide, and beside it once the row fits', async ({
     page,
   }) => {
     expect(emailRow).toBeDefined();
@@ -2535,10 +2535,6 @@ test.describe('contact page', () => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/contact');
     const narrow = await boxes();
-    expect(narrow.value?.x).toBe(narrow.key?.x);
-    expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
-      (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
-    );
     expect(narrow.value?.height ?? Infinity).toBeLessThan(40);
     expect(
       (narrow.value?.x ?? 0) + (narrow.value?.width ?? Infinity),
@@ -2547,7 +2543,8 @@ test.describe('contact page', () => {
 
     // A Plex Mono glyph at 16px is 9.6px wide on macOS but 10px in Linux
     // Chromium, so the width where the row fits again (327px or 334px today)
-    // is measured, not hard coded.
+    // is measured, not hard coded. A shorter address fits at 320px already
+    // and never moves, so a content edit needs no test edit.
     const gap = await row.evaluate((el) =>
       Number.parseFloat(getComputedStyle(el).columnGap),
     );
@@ -2558,7 +2555,13 @@ test.describe('contact page', () => {
         gap +
         (narrow.value?.width ?? 0),
     );
-    await page.setViewportSize({ width: fits, height: 640 });
+    if (fits > 320) {
+      expect(narrow.value?.x).toBe(narrow.key?.x);
+      expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
+        (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
+      );
+      await page.setViewportSize({ width: fits, height: 640 });
+    }
     const wide = await boxes();
     expect(wide.value?.y).toBe(wide.key?.y);
     expect(wide.value?.x ?? 0).toBeGreaterThan(
