@@ -204,7 +204,7 @@ spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects
 - [x] Verify it: `/check verify projects page`
 - [x] Test it: `/test projects page`
 - [x] Review it (fresh model): `/check review projects page`
-- [ ] Document it: `/document projects page`
+- [x] Document it: `/document projects page`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
