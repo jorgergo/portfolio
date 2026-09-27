@@ -199,7 +199,7 @@ export const axeViolations = async (
 };
 
 // Spec 0007 AC-9: smoke.sh, run as the deploy job runs it, but against the
-// local wrangler server. The script reads these five files from dist/.
+// local wrangler server. The script reads these six files from dist/.
 const SMOKE = fileURLToPath(
   new URL('../.github/scripts/smoke.sh', import.meta.url),
 );
@@ -208,6 +208,7 @@ const SMOKE_FILES = [
   'index.html',
   'cv.html',
   'about.html',
+  'projects.html',
   '404.html',
   '_headers',
 ] as const;

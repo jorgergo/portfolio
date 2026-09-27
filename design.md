@@ -20,7 +20,7 @@ You are a senior product designer shipping a small, finished site. Every page sh
 
 ## Source
 
-Spec 0003 is the source of truth: its token table, its component table, and its acceptance criteria. The Claude Design draft "Minimalist Developer Portfolio" (`Portfolio.dc.html`) set the starting point (warm paper, olive and terracotta, a mono interface, a 640px column, uppercase labels) and nothing more. Its header, theme toggle, typing animation, and inline styles were dropped, and its light colours were corrected to pass contrast. Later pages take their composition from their own spec (home, about, CV, metadata, portfolio).
+Spec 0003 is the source of truth: its token table, its component table, and its acceptance criteria. The Claude Design draft "Minimalist Developer Portfolio" (`Portfolio.dc.html`) set the starting point (warm paper, olive and terracotta, a mono interface, a 640px column, uppercase labels) and nothing more. Its header, theme toggle, typing animation, and inline styles were dropped, and its light colours were corrected to pass contrast. Later pages take their composition from their own spec (home, about, CV, metadata, projects).
 
 ## Two surfaces
 
@@ -30,14 +30,14 @@ Mono is the default face on every page: headings, body text, meta text, labels, 
 
 Six colour roles, each written once as `light-dark(light, dark)` in the `@theme` block of `src/styles/global.css`, with a paper value in the `@media print` block of the same file. Use them through Tailwind utilities (`bg-bg`, `text-fg`, `text-muted`, `border-line`, `text-accent`, `hover:text-accent-warm`), never through a literal.
 
-| Token         | Role                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| `bg`          | the page ground                                                                                       |
-| `fg`          | body text, headings, link text                                                                        |
-| `muted`       | meta text (dates, contact line, footer, chips), list markers, the underline colour, the button border |
-| `line`        | hairlines: the footer rule, the chip border (decorative, no contrast requirement)                     |
-| `accent`      | structure: section labels, selected text ground, the focus ring                                       |
-| `accent-warm` | interaction: hover and active text, hover border                                                      |
+| Token         | Role                                                                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `bg`          | the page ground                                                                                                  |
+| `fg`          | body text, headings, link text                                                                                   |
+| `muted`       | meta text (dates, contact line, footer, chips), list markers, the underline colour, the button border            |
+| `line`        | hairlines: the footer rule, the chip border, the rows of the projects list (decorative, no contrast requirement) |
+| `accent`      | structure: section labels, selected text ground, the focus ring                                                  |
+| `accent-warm` | interaction: hover and active text, hover border                                                                 |
 
 Other tokens in the same file: the `text-title` size and line height, the body line height, `tracking-label`, `underline-offset-link`, `max-w-content` (the column), the `xs` breakpoint, the transition defaults, and the `--motion-*` variables on `:root`. Fonts come from Astro's Fonts API (`astro.config.mjs`) and reach Tailwind through `@theme inline` as `font-mono` and `font-sans`.
 
@@ -65,21 +65,22 @@ WCAG 2.2 AA is the requirement of record, checked in light, dark, and print: eve
 
 Tailwind's numeric scale with fixed meanings:
 
-| Spacing            | Meaning                                                                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gap-14`           | between sections, and between main and the footer (`print:gap-6` on the CV page wrapper)                                                                                |
-| `gap-6`            | between blocks inside a section (`print:gap-4` on a CV section)                                                                                                         |
-| `gap-4`            | between a row's prefix and its label (`NavRow`), and between roles in a group (`CvEntry`)                                                                               |
-| `gap-x-4`          | a pair's left text to its right meta (`CvEntry` lines, `KeyedList` rows)                                                                                                |
-| `gap-2`            | between an icon and its label, between a heading and its subtitle (the home h1 and the bio), between an entry's lines, between keyed rows, and between marker list rows |
-| `gap-1`            | between rows in a list (`NavRow` rows), and between bullets                                                                                                             |
-| `pl-5`             | the bullet indent inside `Prose`                                                                                                                                        |
-| `w-5`              | a marker column: the 20px indent the CV's bullets use                                                                                                                   |
-| `pb-2`             | a heading over its hairline rule (a `SectionHeading` on a document page)                                                                                                |
-| `mx-2`             | a contact separator (the middle dot between contact links)                                                                                                              |
-| `min-h-6`          | a contact link, like the footer link: a text link inside a text line                                                                                                    |
-| `xs:w-40`          | a keyed row's key column: 160px fits 19 characters of Plex Mono at `text-sm`                                                                                            |
-| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`                                                                                                                              |
+| Spacing            | Meaning                                                                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gap-14`           | between sections, and between main and the footer (`print:gap-6` on the CV page wrapper)                                                                                               |
+| `gap-6`            | between blocks inside a section (`print:gap-4` on a CV section)                                                                                                                        |
+| `gap-4`            | between a row's prefix and its label (`NavRow`), and between roles in a group (`CvEntry`)                                                                                              |
+| `gap-x-4`          | a pair's left text to its right meta (`CvEntry` lines, `KeyedList` rows)                                                                                                               |
+| `gap-2`            | between an icon and its label, between a heading and its subtitle (the home h1 and the bio), between an entry's lines, between keyed rows, between marker list rows, and between chips |
+| `gap-1`            | between rows in a list (`NavRow` rows), and between bullets                                                                                                                            |
+| `pl-5`             | the bullet indent inside `Prose`                                                                                                                                                       |
+| `w-5`              | a marker column: the 20px indent the CV's bullets use                                                                                                                                  |
+| `py-4`             | a projects row's space above and below its content, between hairlines                                                                                                                  |
+| `pb-2`             | a heading over its hairline rule (a `SectionHeading` on a document page)                                                                                                               |
+| `mx-2`             | a contact separator (the middle dot between contact links)                                                                                                                             |
+| `min-h-6`          | a contact link, like the footer link: a text link inside a text line                                                                                                                   |
+| `xs:w-40`          | a keyed row's key column: 160px fits 19 characters of Plex Mono at `text-sm`                                                                                                           |
+| `pt-10 px-6 pb-20` | the page padding, set once in `BaseLayout`                                                                                                                                             |
 
 A `NavRow` prefix is a fixed column on the same scale: `w-6` (24px) for a two digit number, `w-20` (80px) for a key of up to eight characters in Plex Mono (`linkedin` is the longest); a longer key needs a wider column and a spec line. The content column is `max-w-content`, centred, on every page. `body` is a full height flex column and the footer sits at the bottom with `mt-auto`. Long words, emails, and URLs wrap (`overflow-wrap: anywhere` on `body`). The only rounded corners are `rounded-xs` on buttons and chips. Nothing has a shadow.
 
@@ -92,7 +93,7 @@ All in `src/components/`, all semantic HTML, no UI library. Each takes a `class`
 - `SiteFooter`: `City, CC · YYYY` from the CV, plus `← home` on every route except `/`. It reads `getCv()` itself, an exception spec 0003 allows.
 - `TextLink`: a link inside running text. Underlined at rest in muted, terracotta text and underline on hover and focus. Use it for every link in prose. Never add `target`.
 - `SectionHeading`: a real `h2` (or `h3` with `as`) styled as an uppercase label. Pick the level from the document outline, never for the look. On a document page (the CV) it carries `border-b border-line pb-2 break-after-avoid`: a hairline under the label that spans the column, and a heading that never ends a printed page alone.
-- `TagChip`: a hairline chip for skills and technologies. Prints as plain text.
+- `TagChip`: a hairline chip for skills and technologies. Prints as plain text. Its first user is the projects list, one chip per technology in a nested `ul`, `gap-2` apart.
 - `IconLink`: an icon with a visible label (`github`, `linkedin`, `mail`, `arrow-up-right`, `download`). An `https` link gets the arrow after its label on its own. Never an icon alone.
 - `NavRow`: one row of a menu, the `<li>` and its link together, so the parent writes only the `<ol>` or `<ul>` and the `<nav>` around it. A muted prefix, then the label: `kind="number"` is a two digit position (`01`) in a `w-6` column, hidden from assistive tech because the list already conveys it; `kind="key"` is a word (`github`, `email`) in a `w-20` column that stays in the link's name (`github @jorgergo`). An `https` link ends with the arrow. The row wraps rather than breaking a value mid word. Rows sit `gap-1` apart, and the lists carry no `role`. The home page menu is built from `SITE_NAV` in `src/lib/site-nav.ts`.
 - `Button`: one variant. A link when `href` is given, otherwise a real `<button>`. Use it for an action, not for navigation inside text. Hidden in print.
@@ -102,6 +103,8 @@ All in `src/components/`, all semantic HTML, no UI library. Each takes a `class`
 - Icons (`src/components/icons/`): five outline icons on a 24 unit grid, stroke 2, `currentColor`, hidden from assistive tech. Sized with `size-5` (or `size-4` for the trailing arrow). A sixth icon is a decision.
 
 The about page's marker list is page markup, not a component (spec 0009): a `ul` of `flex` rows `gap-2` apart, each a muted `›` in an `aria-hidden` `w-5` column, then the text in its own span, so a wrapped line starts under the text. The marker is `›` because Plex Mono's `latin` file has it and lacks `←` and `→`. Safari's VoiceOver reads the rows in order but does not announce a list, as for any list with no CSS marker.
+
+The projects list is page markup too (spec 0010): under the `projects` h1, a `ul` of rows, each `flex flex-col gap-2 border-t border-line py-4 last:border-b`, so a `line` hairline sits above every row and below the last. A row holds, in order, the `CvEntry` pair (an `h2 font-medium` name, a `TextLink` to the live site when there is one, then the muted `text-sm` status and years, `building · 2026 – now`), the description in `fg`, the stack as `TagChip`s, and a `text-sm` code line. A public source is an `inline-flex min-h-6` link showing `code` and the arrow, named `code for <name>` through a hidden ` for <name>` span, so the visible word leads the name and a list of links never reads as identical. A private source is the muted word `private`, with a hidden ` code`, never a link. No `aria-label` or other ARIA attribute (the arrow keeps its own `aria-hidden`), no motion, no script.
 
 Links open in the same tab everywhere. Icons sit next to visible text. No ARIA roles on generic elements.
 
@@ -113,7 +116,7 @@ The only animation on the base pages is `transition-colors`, at the theme defaul
 
 The tokens take their paper values, `color-scheme` becomes `light`, the page gets an 18mm margin, and the root size drops to 11pt so the rem scale follows. The page drops its minimum height and the column its padding. The skip link, the footer home link, and every `Button` are hidden. Links print as plain text without underline, and chips print as plain text without a border. The CV page builds on this layer, and the PDF spec reuses it.
 
-The CV page adds its own print rules (spec 0005): `BaseLayout` takes `printFooter={false}`, which gives `SiteFooter` `print:hidden` (every other page keeps its city line on paper); the page wrapper tightens `gap-14` to `print:gap-6` (1.5rem, 22px at 11pt) and each section `gap-6` to `print:gap-4` (1rem); every `CvEntry` except a `splittable` group and every `KeyedList` row is `break-inside-avoid`; every section heading and a group's first line is `break-after-avoid` (honoured by Chromium, best effort elsewhere); the contact links (`fg`, kept by `a { color: inherit }`) and every `TextLink` print as plain ink with no underline; muted meta prints in the paper muted value; nothing else on the page is hidden, and the page ships no script and no print button.
+The CV page adds its own print rules (spec 0005): `BaseLayout` takes `printFooter={false}`, which gives `SiteFooter` `print:hidden` (every other page keeps its city line on paper); the page wrapper tightens `gap-14` to `print:gap-6` (1.5rem, 22px at 11pt) and each section `gap-6` to `print:gap-4` (1rem); every `CvEntry` except a `splittable` group (the Projects section's entries among them, spec 0010) and every `KeyedList` row is `break-inside-avoid`; every section heading and a group's first line is `break-after-avoid` (honoured by Chromium, best effort elsewhere); the contact links (`fg`, kept by `a { color: inherit }`) and every `TextLink` print as plain ink with no underline; muted meta prints in the paper muted value; nothing else on the page is hidden, and the page ships no script and no print button.
 
 ## Share cards and icons
 

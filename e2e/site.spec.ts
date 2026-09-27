@@ -1,19 +1,23 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
+  cvProjects,
   firstUrl,
   formatDateRange,
   formatLocation,
   formatMonth,
   formatProfilePath,
   formatSkillRows,
+  formatYearSpan,
   groupConsecutive,
   joinMeta,
+  projectHref,
   sortByDateDesc,
+  sortByStart,
   sortNewestFirst,
   spanOf,
   type Group,
 } from '@/lib/cv-format';
-import { splitAtEmail } from '@/lib/cv-schema';
+import { PRIVATE_SOURCE, splitAtEmail } from '@/lib/cv-schema';
 import {
   formatPageTitle,
   OG_TYPE,
@@ -84,6 +88,7 @@ const CV_STOPS: readonly string[] = [
     (group) => group.key,
     groupUrl,
   ),
+  ...linked(cvProjects(cv.projects), (project) => project.name, projectHref),
   ...linked(
     sortNewestFirst(cv.education),
     (entry) => entry.institution,
@@ -110,6 +115,18 @@ const CV_STOPS: readonly string[] = [
 const homeMeta = pageMeta('home', cv, site);
 const aboutMeta = pageMeta('about', cv, site);
 const cvMeta = pageMeta('cv', cv, site);
+const projectsMeta = pageMeta('projects', cv, site);
+
+// Spec 0010 AC-8: each row's name link when it has a url, then its code link
+// when its source is public, in the page's order.
+const PROJECT_STOPS: readonly string[] = [
+  'a "Skip to content"',
+  ...sortByStart(cv.projects).flatMap(({ name, url, source }) => [
+    ...(url === undefined ? [] : [`a "${name}"`]),
+    ...(source === PRIVATE_SOURCE ? [] : [`a "code for ${name}"`]),
+  ]),
+  'a "← home"',
+];
 
 // The home menu rows as they read, `01 about`, from SITE_NAV (spec 0009 AC-8).
 const MENU_ROWS = SITE_NAV.map(
@@ -147,6 +164,13 @@ const PAGES: readonly PageCase[] = [
     stops: CV_STOPS,
   },
   {
+    path: '/projects',
+    title: projectsMeta.title,
+    description: projectsMeta.description,
+    h1: 'projects',
+    stops: PROJECT_STOPS,
+  },
+  {
     path: '/missing',
     title: formatPageTitle(basics, 'Not found'),
     description: 'This page does not exist.',
@@ -156,6 +180,67 @@ const PAGES: readonly PageCase[] = [
 ];
 
 const SCHEMES = ['light', 'dark'] as const;
+
+// Every file an @font-face rule points at, as `family weight` with the
+// Fonts API hash dropped from the family (`IBM Plex Mono 500`).
+const fontFiles = (page: Page): Promise<Readonly<Record<string, string>>> =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule instanceof CSSFontFaceRule)
+        .flatMap(({ style }) => {
+          const family = style
+            .getPropertyValue('font-family')
+            .replaceAll('"', '')
+            .replace(/-\w+$/, '');
+          const face = `${family} ${style.getPropertyValue('font-weight')}`;
+          return [
+            ...style.getPropertyValue('src').matchAll(/url\("?([^")]+)"?\)/g),
+          ].map(([, url]) => [
+            new URL(url ?? '', document.baseURI).pathname,
+            face,
+          ]);
+        }),
+    ),
+  );
+
+// Each employer's full name and every word of four or more letters in it
+// (today Ford, Motor, Puerto, Liverpool, Daimler, Truck), in any case. A word
+// that names a kind of business or a place rather than the employer stays
+// out, so a line may still say it; add one here when a new employer brings
+// one. Pages that lead with role and craft name none of them (specs 0009 and
+// 0010).
+const GENERIC = new Set(['company', 'mexico']);
+const EMPLOYERS: readonly string[] = [
+  ...new Set(
+    cv.work.flatMap(({ name }) => [
+      name,
+      ...(name.match(/[\p{L}\p{N}]{4,}/gu) ?? []).filter(
+        (word) => !GENERIC.has(word.toLowerCase()),
+      ),
+    ]),
+  ),
+];
+
+// The employers the open page names in its title, its meta tags, or its text.
+const employersNamed = async (page: Page): Promise<readonly string[]> => {
+  const words = await page.evaluate(() =>
+    [
+      document.title,
+      ...[...document.querySelectorAll('meta[content]')].map(
+        (meta) => meta.getAttribute('content') ?? '',
+      ),
+      document.body.innerText,
+    ].join('\n'),
+  );
+  return EMPLOYERS.filter((employer) =>
+    new RegExp(
+      `(?<![\\p{L}\\p{N}])${RegExp.escape(employer)}(?![\\p{L}\\p{N}])`,
+      'iu',
+    ).test(words),
+  );
+};
 
 // The src of the Plex Mono 400 @font-face the Font component emits.
 const monoRegularUrl = (page: Page): Promise<string | undefined> =>
@@ -538,8 +623,8 @@ test.describe('type and layout', () => {
     await expect(h1).toHaveCSS('font-weight', '500');
   });
 
-  for (const path of ['/about', '/cv', '/missing']) {
-    // covers: AC-4, spec 0009 AC-5
+  for (const path of ['/about', '/cv', '/projects', '/missing']) {
+    // covers: AC-4, spec 0009 AC-5, spec 0010 AC-5
     test(`the ${path} h1 is text-lg at weight 500`, async ({ page }) => {
       await page.goto(path);
       const h1 = page.getByRole('heading', { level: 1 });
@@ -801,8 +886,8 @@ test.describe('response headers', () => {
   const stylesheet = (): string =>
     /\/_astro\/[^"]+\.css/.exec(distFile('index.html'))?.[0] ?? '';
 
-  // covers: spec 0007 AC-3, spec 0009 AC-12
-  for (const path of ['/', '/about', '/cv']) {
+  // covers: spec 0007 AC-3, spec 0009 AC-12, spec 0010 AC-10
+  for (const path of ['/', '/about', '/cv', '/projects']) {
     test(`${path} carries every /* header and no immutable cache`, async ({
       request,
     }) => {
@@ -1045,11 +1130,13 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
-  // covers: spec 0007 AC-1, AC-9 (expected page bytes), spec 0009 AC-12
+  // covers: spec 0007 AC-1, AC-9 (expected page bytes), spec 0009 AC-12,
+  // spec 0010 AC-10
   for (const [path, file] of [
     ['/', 'index.html'],
     ['/cv', 'cv.html'],
     ['/about', 'about.html'],
+    ['/projects', 'projects.html'],
     ['/missing', '404.html'],
   ] as const) {
     test(`fails when ${path} differs from dist/${file} by one byte`, async () => {
@@ -1073,8 +1160,8 @@ test.describe('smoke check', () => {
     });
   }
 
-  // covers: spec 0007 AC-3, AC-9, spec 0009 AC-12
-  for (const path of ['/', '/cv', '/about']) {
+  // covers: spec 0007 AC-3, AC-9, spec 0009 AC-12, spec 0010 AC-10
+  for (const path of ['/', '/cv', '/about', '/projects']) {
     test(`fails when ${path} is served with an immutable cache`, async () => {
       const cache = 'public, max-age=31536000, immutable';
 
@@ -1138,8 +1225,8 @@ test.describe('smoke check', () => {
     expect(run.code).toBe(1);
   });
 
-  // covers: spec 0007 AC-9 (share image), spec 0009 AC-12
-  for (const path of ['/og/cv.png', '/og/about.png']) {
+  // covers: spec 0007 AC-9 (share image), spec 0009 AC-12, spec 0010 AC-10
+  for (const path of ['/og/cv.png', '/og/about.png', '/og/projects.png']) {
     test(`fails when ${path} is not served as image/png`, async () => {
       const { origin, run } = await smokeThrough(served(), {
         path,
@@ -1491,30 +1578,6 @@ test.describe('about page', () => {
   const colours = (locator: Locator): Promise<readonly string[]> =>
     locator.evaluateAll((els) => els.map((el) => getComputedStyle(el).color));
 
-  // Every file an @font-face rule points at, as `family weight` with the
-  // Fonts API hash dropped from the family (`IBM Plex Mono 500`).
-  const fontFiles = (page: Page): Promise<Readonly<Record<string, string>>> =>
-    page.evaluate(() =>
-      Object.fromEntries(
-        [...document.styleSheets]
-          .flatMap((sheet) => [...sheet.cssRules])
-          .filter((rule) => rule instanceof CSSFontFaceRule)
-          .flatMap(({ style }) => {
-            const family = style
-              .getPropertyValue('font-family')
-              .replaceAll('"', '')
-              .replace(/-\w+$/, '');
-            const face = `${family} ${style.getPropertyValue('font-weight')}`;
-            return [
-              ...style.getPropertyValue('src').matchAll(/url\("?([^")]+)"?\)/g),
-            ].map(([, url]) => [
-              new URL(url ?? '', document.baseURI).pathname,
-              face,
-            ]);
-          }),
-      ),
-    );
-
   // covers: spec 0009 AC-5
   test('main holds one block: the h1, the intro, the list, and the closing, 24px apart', async ({
     page,
@@ -1568,39 +1631,9 @@ test.describe('about page', () => {
     page,
   }) => {
     await page.goto('/about');
-    const words = await page.evaluate(() =>
-      [
-        document.title,
-        ...[...document.querySelectorAll('meta[content]')].map(
-          (meta) => meta.getAttribute('content') ?? '',
-        ),
-        document.body.innerText,
-      ].join('\n'),
-    );
-    // Each full name and every word of four or more letters in it (today Ford,
-    // Motor, Puerto, Liverpool, Daimler, Truck), in any case. A word that names
-    // a kind of business or a place rather than the employer stays out, so a
-    // line may still say it; add one here when a new employer brings one.
-    const GENERIC = new Set(['company', 'mexico']);
-    const employers = [
-      ...new Set(
-        cv.work.flatMap(({ name }) => [
-          name,
-          ...(name.match(/[\p{L}\p{N}]{4,}/gu) ?? []).filter(
-            (word) => !GENERIC.has(word.toLowerCase()),
-          ),
-        ]),
-      ),
-    ];
-    const named = employers.filter((employer) =>
-      new RegExp(
-        `(?<![\\p{L}\\p{N}])${RegExp.escape(employer)}(?![\\p{L}\\p{N}])`,
-        'iu',
-      ).test(words),
-    );
 
-    expect(employers.length).toBeGreaterThan(0);
-    expect(named).toEqual([]);
+    expect(EMPLOYERS.length).toBeGreaterThan(0);
+    expect(await employersNamed(page)).toEqual([]);
   });
 
   // covers: spec 0009 AC-6
@@ -1842,12 +1875,389 @@ test.describe('about page', () => {
   });
 });
 
+// Spec 0010: /projects as a heading and one list of rows between hairlines,
+// newest start first. Every expectation is read from cv.json through the
+// site's helpers, so a valid content edit (a fifth project, a reworded line,
+// TRACSUR going live with its url) needs no test edit.
+test.describe('projects page', () => {
+  const projects = sortByStart(cv.projects);
+  const main = (page: Page): Locator => page.locator('main#main');
+  const block = (page: Page): Locator => main(page).locator(':scope > div');
+  const list = (page: Page): Locator => block(page).locator(':scope > ul');
+  const rows = (page: Page): Locator => list(page).locator(':scope > li');
+  // A row's four lines: the pair, the description, the chips, the code line.
+  const pair = (row: Locator): Locator => row.locator(':scope > div');
+  const name = (row: Locator): Locator => pair(row).locator(':scope > h2');
+  const meta = (row: Locator): Locator => pair(row).locator(':scope > span');
+  const description = (row: Locator): Locator =>
+    row.locator(':scope > p').first();
+  const chips = (row: Locator): Locator =>
+    row.locator(':scope > ul > li > span');
+  const codeLine = (row: Locator): Locator => row.locator(':scope > p').last();
+  const lineCount = (locator: Locator): Promise<number> =>
+    locator.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set(
+        [...range.getClientRects()]
+          .filter(({ width }) => width > 0)
+          .map(({ top }) => Math.round(top)),
+      ).size;
+    });
+
+  // covers: spec 0010 AC-5
+  test('main holds one block: the h1 and one list with a row per project, 24px apart', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+    const children = block(page).locator(':scope > *');
+
+    await expect(main(page).locator(':scope > *')).toHaveCount(1);
+    await expect(block(page)).toHaveJSProperty('tagName', 'DIV');
+    await expect(block(page)).toHaveCSS('row-gap', '24px');
+    await expect(block(page)).toHaveCSS('text-wrap-style', 'pretty');
+    expect(
+      await children.evaluateAll((els) => els.map((el) => el.tagName)),
+    ).toEqual(['H1', 'UL']);
+    await expect(children.nth(0)).toHaveText('projects');
+    await expect(rows(page)).toHaveCount(projects.length);
+    await expect(
+      main(page).locator('nav, img, video, picture, h3, dl, section, article'),
+    ).toHaveCount(0);
+    expect(distFile('projects.html')).not.toMatch(/<script/i);
+  });
+
+  // covers: spec 0010 AC-2, AC-5, AC-6
+  test('each row shows the name, its status and years, the description, the chips, and the code line, in sortByStart order', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+
+    await expect(rows(page).locator(':scope > div > h2')).toHaveText(
+      projects.map((project) => project.name),
+    );
+    for (const [index, project] of projects.entries()) {
+      const row = rows(page).nth(index);
+      const link = name(row).getByRole('link');
+
+      expect(
+        await row
+          .locator(':scope > *')
+          .evaluateAll((els) => els.map((el) => el.tagName)),
+      ).toEqual(['DIV', 'P', 'UL', 'P']);
+      await expect(link).toHaveCount(project.url === undefined ? 0 : 1);
+      if (project.url !== undefined) {
+        await expect(link).toHaveAttribute('href', project.url);
+        expect(await link.textContent()).toBe(project.name);
+      }
+      await expect(meta(row)).toHaveText(
+        joinMeta(
+          project.status,
+          formatYearSpan(project.startDate, project.endDate),
+        ),
+      );
+      await expect(description(row)).toHaveText(project.description);
+      await expect(row.locator(':scope > ul > li')).toHaveCount(
+        project.keywords.length,
+      );
+      await expect(chips(row)).toHaveText([...project.keywords]);
+    }
+  });
+
+  // covers: spec 0010 AC-6
+  test('a public source is a code link named for its project, a private one the muted word private', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+
+    for (const [index, project] of projects.entries()) {
+      const line = codeLine(rows(page).nth(index));
+      const code = line.getByRole('link');
+
+      await expect(line).toHaveCSS('display', 'flex');
+      await expect(line).toHaveCSS('font-size', '14px');
+      if (project.source === PRIVATE_SOURCE) {
+        await expect(code).toHaveCount(0);
+        expect((await line.textContent())?.replace(/\s+/g, ' ').trim()).toBe(
+          'private code',
+        );
+        await expect(line.locator(':scope > span')).toHaveCSS(
+          'color',
+          rgb('light', 'muted'),
+        );
+        await expect(line.locator('.sr-only')).toHaveText(' code');
+        continue;
+      }
+      await expect(code).toHaveCount(1);
+      await expect(code).toHaveAttribute('href', project.source);
+      await expect(code).toHaveAccessibleName(`code for ${project.name}`);
+      expect((await code.textContent())?.replace(/\s+/g, ' ').trim()).toBe(
+        `code for ${project.name}`,
+      );
+      await expect(code.locator('.sr-only')).toHaveText(` for ${project.name}`);
+      await expect(code.locator('.sr-only')).toHaveCSS('position', 'absolute');
+      await expect(code.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+      await expect(code).toHaveCSS('color', rgb('light', 'fg'));
+      await expect(code).toHaveCSS('min-height', '24px');
+      await expect(code).toHaveCSS('column-gap', '8px');
+    }
+  });
+
+  for (const scheme of SCHEMES) {
+    // covers: spec 0010 AC-6
+    test(`rows sit between 1px line hairlines with 16px padding and 8px gaps in ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/projects');
+      const count = await rows(page).count();
+
+      expect(count).toBe(projects.length);
+      for (const [index, row] of (await rows(page).all()).entries()) {
+        await expect(row).toHaveCSS('border-top-width', '1px');
+        await expect(row).toHaveCSS('border-top-style', 'solid');
+        await expect(row).toHaveCSS('border-top-color', rgb(scheme, 'line'));
+        await expect(row).toHaveCSS(
+          'border-bottom-width',
+          index === count - 1 ? '1px' : '0px',
+        );
+        await expect(row).toHaveCSS('padding-top', '16px');
+        await expect(row).toHaveCSS('padding-bottom', '16px');
+        await expect(row).toHaveCSS('row-gap', '8px');
+        await expect(row.locator(':scope > ul')).toHaveCSS('row-gap', '8px');
+        await expect(row.locator(':scope > ul')).toHaveCSS('column-gap', '8px');
+        await expect(name(row)).toHaveCSS('font-weight', '500');
+        await expect(name(row)).toHaveCSS('color', rgb(scheme, 'fg'));
+        await expect(meta(row)).toHaveCSS('font-size', '14px');
+        await expect(meta(row)).toHaveCSS('color', rgb(scheme, 'muted'));
+        await expect(description(row)).toHaveCSS('color', rgb(scheme, 'fg'));
+      }
+      await expect(rows(page).last()).toHaveCSS(
+        'border-bottom-color',
+        rgb(scheme, 'line'),
+      );
+    });
+  }
+
+  // covers: spec 0010 AC-6
+  test('at 1280px each pair shares a baseline and the meta ends at the list edge', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/projects');
+    const edge = await list(page).boundingBox();
+
+    for (const row of await rows(page).all()) {
+      const title = await name(row).boundingBox();
+      const value = await meta(row).boundingBox();
+
+      await expect(pair(row)).toHaveCSS('flex-direction', 'row');
+      await expect(pair(row)).toHaveCSS('align-items', 'baseline');
+      expect(value?.y ?? 0).toBeLessThan(
+        (title?.y ?? 0) + (title?.height ?? 0),
+      );
+      expect((value?.y ?? 0) + (value?.height ?? 0)).toBeGreaterThan(
+        title?.y ?? 0,
+      );
+      expect((value?.x ?? 0) + (value?.width ?? 0)).toBeCloseTo(
+        (edge?.x ?? 0) + (edge?.width ?? 0),
+        0,
+      );
+      expect(await lineCount(meta(row))).toBe(1);
+    }
+  });
+
+  // covers: spec 0010 AC-6
+  test('at 320px each meta drops under its name, left aligned on one line', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/projects');
+
+    for (const row of await rows(page).all()) {
+      const title = await name(row).boundingBox();
+      const value = await meta(row).boundingBox();
+
+      await expect(pair(row)).toHaveCSS('flex-direction', 'column');
+      expect(value?.x).toBe(title?.x);
+      expect(value?.y ?? 0).toBeGreaterThanOrEqual(
+        (title?.y ?? 0) + (title?.height ?? 0),
+      );
+      expect(await lineCount(meta(row))).toBe(1);
+    }
+    expect(await scrollsSideways(page)).toBe(false);
+  });
+
+  // covers: spec 0010 AC-5
+  test('names no employer on the page, in its title, or in its meta tags', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+
+    expect(EMPLOYERS.length).toBeGreaterThan(0);
+    expect(await employersNamed(page)).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-8
+  test('every Tab stop shows the 2px accent ring offset 3px', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+
+    for (const label of PROJECT_STOPS) {
+      await page.keyboard.press('Tab');
+      const ring = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (el === null || el === document.body) return undefined;
+        const style = getComputedStyle(el);
+        return {
+          style: style.outlineStyle,
+          width: style.outlineWidth,
+          offset: style.outlineOffset,
+          color: style.outlineColor,
+        };
+      });
+      expect(ring, label).toEqual({
+        style: 'solid',
+        width: '2px',
+        offset: '3px',
+        color: rgb('light', 'accent'),
+      });
+    }
+  });
+
+  // covers: spec 0010 AC-6, AC-8
+  test('has one h1, one h2 per project, no role, no style, and no ARIA beyond the hidden arrows', async ({
+    page,
+  }) => {
+    await page.goto('/projects');
+    const aria = await main(page).evaluate((el) =>
+      [el, ...el.querySelectorAll('*')].flatMap((node) =>
+        node
+          .getAttributeNames()
+          .filter((attribute) => attribute.startsWith('aria-'))
+          .map(
+            (attribute) =>
+              `${node.tagName.toLowerCase()} ${attribute}=${node.getAttribute(attribute) ?? ''}`,
+          ),
+      ),
+    );
+
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(main(page).locator('h2')).toHaveCount(projects.length);
+    await expect(page.locator('body [role]')).toHaveCount(0);
+    await expect(page.locator('[style]')).toHaveCount(0);
+    expect(new Set(aria)).toEqual(
+      new Set(
+        projects.some(({ source }) => source !== PRIVATE_SOURCE)
+          ? ['svg aria-hidden=true']
+          : [],
+      ),
+    );
+  });
+
+  // covers: spec 0010 AC-8
+  test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
+    page,
+  }) => {
+    const paths: string[] = [];
+    page.on('request', (request) =>
+      paths.push(new URL(request.url()).pathname),
+    );
+
+    await page.goto('/projects', { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const files = await fontFiles(page);
+    const fonts = paths
+      .filter((path) => path.endsWith('.woff2'))
+      .map((path) => files[path] ?? path);
+
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
+    expect(fonts.toSorted()).toEqual([
+      'IBM Plex Mono 400',
+      'IBM Plex Mono 500',
+    ]);
+    // Headless Chromium skips the favicon, so it is allowed, not required.
+    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
+      '/projects',
+    ]);
+  });
+
+  test.describe('in print', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+      await page.goto('/projects');
+    });
+
+    // covers: spec 0010 AC-8
+    test('prints every row between paper hairlines, the chips as plain text', async ({
+      page,
+    }) => {
+      await expect(page.locator('html')).toHaveCSS(
+        'background-color',
+        rgb('print', 'bg'),
+      );
+      for (const row of await rows(page).all()) {
+        await expect(row).toBeVisible();
+        await expect(row).toHaveCSS('border-top-width', '1px');
+        await expect(row).toHaveCSS('border-top-color', rgb('print', 'line'));
+        await expect(meta(row)).toHaveCSS('color', rgb('print', 'muted'));
+        for (const chip of await chips(row).all()) {
+          await expect(chip).toBeVisible();
+          await expect(chip).toHaveCSS('border-top-width', '0px');
+          await expect(chip).toHaveCSS('padding-left', '0px');
+        }
+      }
+      await expect(rows(page).last()).toHaveCSS('border-bottom-width', '1px');
+    });
+
+    // covers: spec 0010 AC-8
+    test('prints every link as plain ink with no underline', async ({
+      page,
+    }) => {
+      const links = await main(page).getByRole('link').all();
+
+      for (const link of links) {
+        await expect(link).toBeVisible();
+        await expect(link).toHaveCSS('text-decoration-line', 'none');
+        await expect(link).toHaveCSS('color', rgb('print', 'fg'));
+      }
+    });
+
+    // covers: spec 0010 AC-8
+    test('keeps the footer city line and hides the skip link and ← home', async ({
+      page,
+    }) => {
+      const { city, countryCode } = basics.location;
+      const year = new Date().getUTCFullYear();
+
+      await expect(page.getByRole('contentinfo')).toBeVisible();
+      await expect(page.getByRole('contentinfo')).toContainText(
+        `${city}, ${countryCode} · ${year}`,
+      );
+      await expect(page.locator('a[href="#main"]')).toHaveCSS(
+        'display',
+        'none',
+      );
+      await expect(
+        page.getByRole('contentinfo').locator('a[href="/"]'),
+      ).toBeHidden();
+    });
+  });
+});
+
 // Spec 0005: the CV as a Harvard style document on /cv, checked against the
 // fixture so a content edit moves the expectations with it.
 test.describe('cv page', () => {
   const SECTIONS = [
     { id: 'summary', heading: 'Summary', present: true },
     { id: 'experience', heading: 'Experience', present: cv.work.length > 0 },
+    {
+      id: 'projects',
+      heading: 'Projects',
+      present: cvProjects(cv.projects).length > 0,
+    },
     { id: 'education', heading: 'Education', present: cv.education.length > 0 },
     {
       id: 'leadership',
@@ -1879,6 +2289,7 @@ test.describe('cv page', () => {
   const education = sortNewestFirst(cv.education);
   const awards = sortByDateDesc(cv.awards ?? []);
   const certificates = sortByDateDesc(cv.certificates ?? []);
+  const flagged = cvProjects(cv.projects);
 
   const wrapper = (page: Page): Locator => page.locator('main#main > div');
   const section = (page: Page, id: string): Locator =>
@@ -2266,6 +2677,43 @@ test.describe('cv page', () => {
         certificate.issuer,
       );
       await expect(lines(root)).toHaveCount(2);
+    }
+  });
+
+  // covers: spec 0010 AC-9
+  test('the projects section lists each flagged project by start date with its link, dates, description, and technologies', async ({
+    page,
+  }) => {
+    test.skip(flagged.length === 0, 'no project in the fixture sets cv');
+    await page.goto('/cv');
+    const titles = section(page, 'projects').getByRole('heading', {
+      level: 3,
+    });
+
+    await expect(titles).toHaveText(flagged.map((project) => project.name));
+    await expect(section(page, 'projects').locator('ul')).toHaveCount(0);
+    for (const [index, project] of flagged.entries()) {
+      const root = entryOf(titles.nth(index));
+      const href = projectHref(project);
+      const link = titles.nth(index).getByRole('link');
+      // The technologies line sits in the slot, outside the lines and body.
+      const technologies = root.locator(':scope > p');
+
+      expect(
+        await root
+          .locator(':scope > *')
+          .evaluateAll((els) => els.map((el) => el.tagName)),
+      ).toEqual(['DIV', 'DIV', 'P']);
+      await expect(link).toHaveCount(href === undefined ? 0 : 1);
+      if (href !== undefined) await expect(link).toHaveAttribute('href', href);
+      await expect(meta(root)).toHaveText(
+        formatDateRange(project.startDate, project.endDate),
+      );
+      await expect(body(root).locator('p')).toHaveText([project.description]);
+      await expect(technologies).toHaveText([joinMeta(...project.keywords)]);
+      await expect(technologies).toHaveCSS('font-size', '14px');
+      await expect(technologies).toHaveCSS('color', rgb('light', 'muted'));
+      await expect(root).toHaveCSS('break-inside', 'avoid');
     }
   });
 

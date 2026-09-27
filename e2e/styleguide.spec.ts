@@ -145,7 +145,7 @@ test.describe('style guide page', () => {
     expect(await scrollsSideways(page)).toBe(false);
   });
 
-  // covers: spec 0006 AC-12, spec 0009 AC-11
+  // covers: spec 0006 AC-12, spec 0009 AC-11, spec 0010 AC-11
   test('shows the built share cards and icons, every image loaded', async ({
     page,
   }) => {
@@ -158,7 +158,7 @@ test.describe('style guide page', () => {
     });
     const images = section.getByRole('img');
 
-    await expect(images).toHaveCount(6);
+    await expect(images).toHaveCount(7);
     expect(
       await images.evaluateAll((all) =>
         all.map((el) => el.getAttribute('alt')),
@@ -167,6 +167,7 @@ test.describe('style guide page', () => {
       'Home share card',
       'CV share card',
       'About share card',
+      'Projects share card',
       'Favicon at 16px',
       'Favicon at 32px',
       'Apple touch icon at 60px',
@@ -184,15 +185,15 @@ test.describe('style guide page', () => {
         .toBe(true);
     }
     for (const [index, size] of [
-      [3, 16],
-      [4, 32],
-      [5, 60],
+      [4, 16],
+      [5, 32],
+      [6, 60],
     ] as const) {
       const box = await images.nth(index).boundingBox();
       expect([box?.width, box?.height]).toEqual([size, size]);
     }
     // The cards keep their 1200×630 shape at column width.
-    for (const index of [0, 1, 2]) {
+    for (const index of [0, 1, 2, 3]) {
       const box = await images.nth(index).boundingBox();
       expect((box?.height ?? 0) / (box?.width ?? 1)).toBeCloseTo(630 / 1200, 2);
     }
