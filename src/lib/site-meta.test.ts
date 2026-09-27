@@ -58,12 +58,13 @@ describe('SHARE_PAGES', () => {
     for (const path of paths) expect(path).toMatch(/^\/([a-z-]+)?$/);
   });
 
-  // covers: AC-5, spec 0009 AC-2
-  it('holds the home, About, and CV rows in menu order, each but home labelled', () => {
+  // covers: AC-5, spec 0009 AC-2, spec 0010 AC-4
+  it('holds the home, About, CV, and Projects rows in menu order, each but home labelled', () => {
     expect(SHARE_PAGES).toEqual([
       { key: 'home', path: '/' },
       { key: 'about', path: '/about', label: 'About' },
       { key: 'cv', path: '/cv', label: 'CV' },
+      { key: 'projects', path: '/projects', label: 'Projects' },
     ]);
   });
 });
@@ -192,6 +193,16 @@ describe('DESCRIPTIONS', () => {
     );
   });
 
+  // covers: spec 0010 AC-4
+  it('describes the projects page with the given name', () => {
+    expect(DESCRIPTIONS.projects(cv)).toBe(
+      'What Jorge has built, with the stack behind each project and where it stands.',
+    );
+    expect(DESCRIPTIONS.projects(fixture)).toBe(
+      'What Ada has built, with the stack behind each project and where it stands.',
+    );
+  });
+
   it('keeps the CV description within 119 characters at the caps', () => {
     const capped: MetaCv = {
       ...fixture,
@@ -261,6 +272,25 @@ describe('pageMeta', () => {
         image: {
           url: 'https://jorgergo.dev/og/about.png',
           alt: 'About, Jorge González Ozorno, Full Stack Developer',
+          width: 1200,
+          height: 630,
+        },
+      },
+    });
+  });
+
+  // covers: spec 0010 AC-4
+  it('gives the projects page its title, description, canonical, image, and alt text', () => {
+    expect(pageMeta('projects', cv, site)).toEqual({
+      title: 'Projects · Jorge González Ozorno',
+      description:
+        'What Jorge has built, with the stack behind each project and where it stands.',
+      share: {
+        url: 'https://jorgergo.dev/projects',
+        siteName: 'Jorge González Ozorno',
+        image: {
+          url: 'https://jorgergo.dev/og/projects.png',
+          alt: 'Projects, Jorge González Ozorno, Full Stack Developer',
           width: 1200,
           height: 630,
         },
@@ -347,11 +377,12 @@ describe('footerLength', () => {
     return footerLength(content);
   };
 
-  // covers: AC-17, spec 0009 AC-2
+  // covers: AC-17, spec 0009 AC-2, spec 0010 AC-4
   it.each([
     ['home', 22],
     ['about', 28],
     ['cv', 25],
+    ['projects', 31],
   ] as const)(
     'counts today’s %s card footer as %i characters',
     (key, length) => {
