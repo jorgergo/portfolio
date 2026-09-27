@@ -2557,8 +2557,11 @@ test.describe('contact page', () => {
     );
     if (fits > 320) {
       expect(narrow.value?.x).toBe(narrow.key?.x);
-      expect(narrow.value?.y ?? 0).toBeGreaterThanOrEqual(
+      // No row gap: the address is its key's second line, so it reads as
+      // part of its own row, not the next one.
+      expect(narrow.value?.y ?? 0).toBeCloseTo(
         (narrow.key?.y ?? 0) + (narrow.key?.height ?? 0),
+        1,
       );
       await page.setViewportSize({ width: fits, height: 640 });
     }
