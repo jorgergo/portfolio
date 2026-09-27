@@ -1,0 +1,71 @@
+---
+import TagChip from '@/components/TagChip.astro';
+import TextLink from '@/components/TextLink.astro';
+import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCv } from '@/lib/cv';
+import { formatYearSpan, joinMeta, sortByStart } from '@/lib/cv-format';
+import { PRIVATE_SOURCE } from '@/lib/cv-schema';
+import { PAIR } from '@/lib/pair';
+import { pageMeta } from '@/lib/site-meta';
+
+// Spec 0010: the heading and one list of rows between hairlines, newest start
+// first. A row holds the name (linked to the live site when there is one) with
+// its status and years as `CvEntry`'s `PAIR`, the description, the stack as
+// chips, then a `code` link or the muted `private` word. No intro, no image, no
+// script. The head comes from the `projects` row (spec 0006).
+const cv = await getCv();
+const projects = sortByStart(cv.projects);
+---
+
+<BaseLayout {...pageMeta('projects', cv, Astro.site)}>
+  <div class="flex flex-col gap-6 text-pretty">
+    <h1 class="text-lg font-medium">projects</h1>
+    <ul class="flex flex-col">
+      {projects.map((project) => (
+        <li class="flex flex-col gap-2 border-t border-line py-4 last:border-b">
+          <div class={PAIR}>
+            <h2 class="font-medium">
+              {project.url !== undefined ? (
+                <TextLink href={project.url}>{project.name}</TextLink>
+              ) : (
+                project.name
+              )}
+            </h2>
+            <span class="shrink-0 text-sm text-muted xs:ml-auto xs:text-right">
+              {joinMeta(
+                project.status,
+                formatYearSpan(project.startDate, project.endDate),
+              )}
+            </span>
+          </div>
+          <p>{project.description}</p>
+          <ul class="flex flex-wrap gap-2">
+            {project.keywords.map((keyword) => (
+              <li>
+                <TagChip>{keyword}</TagChip>
+              </li>
+            ))}
+          </ul>
+          <p class="flex text-sm">
+            {project.source === PRIVATE_SOURCE ? (
+              <span class="inline-flex min-h-6 items-center text-muted">
+                private<span class="sr-only"> code</span>
+              </span>
+            ) : (
+              <a
+                href={project.source}
+                class="inline-flex min-h-6 items-center gap-2 text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm"
+              >
+                <span>
+                  code<span class="sr-only"> for {project.name}</span>
+                </span>
+                <ArrowUpRight class="size-4 shrink-0" />
+              </a>
+            )}
+          </p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>

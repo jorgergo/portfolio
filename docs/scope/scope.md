@@ -21,7 +21,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 8 | Go live | Release 1 | done |
 | 9 | CV PDF download | Release 2 | planned |
 | 10 | Command menu | Release 2 | planned |
-| 11 | Portfolio page | Release 3 | planned |
+| 11 | Projects page | Release 3 | in-progress |
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | planned |
 | 14 | Home page redesign | Release 1 | in-progress |
@@ -189,19 +189,29 @@ A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.ja
 **Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
 - [ ] Design it (spec): `/architect command menu`
 
-## Release 3: Portfolio
+## Release 3: Projects
 
-### 11. Portfolio page · needs a decision
+### 11. Projects page · in-progress
 A simple list of your projects, each with a line of context, linked from the home page. Honest about older work (year and status shown).
 **Done when:** projects render from the content model with name, year, short description, and links; the home page links to it; it matches the rest of the site in light and dark.
-- [ ] Design it (spec): `/architect portfolio page`
+spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects.astro`, `src/content/cv.json`, `src/lib/cv-schema.ts`, `src/lib/cv-format.ts`, `src/pages/cv.astro`
+- [x] Design it (spec): `/architect projects page`
+- [x] Build it: `/develop projects page`
+  - [x] Content, schema, and helpers: the `projects` list in `cv.json` with its rules, `formatYearSpan`, `projectHref`, `sortByStart`, `cvProjects`, and their Vitest cases (AC-1 to AC-3)
+  - [x] Metadata, page, and menu: the `projects` share row and description, `/projects` as hairline rows, `03 projects` in `SITE_NAV` (AC-4 to AC-8)
+  - [x] CV section: Projects after Experience from the two flagged projects (AC-9)
+  - [x] Tests, deploy gate, and docs: the page tests, the style guide card, `smoke.sh`, `design.md`, then the gate and the steps in `verify.md` (AC-8 to AC-11)
+- [x] Verify it: `/check verify projects page`
+- [x] Test it: `/test projects page`
+- [x] Review it (fresh model): `/check review projects page`
+- [x] Document it: `/document projects page`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
 - **Spanish version**: site and CV in Spanish as a second language · needs a decision
 - **Contact form**: message you from the site instead of just an email link · needs a decision
 - **Visitor analytics**: declined for now to stay light and banner free; if added later, pick a cookieless option so no consent banner is needed · needs a decision
-- **Sitemap and structured data**: a sitemap once the portfolio page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
+- **Sitemap and structured data**: a sitemap once the projects page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
 - **PR previews**: a Workers Preview URL per pull request, if visual reviews ever need a shared link · needs a decision · from spec 0007
 - **Email at the domain**: an address such as hello@jorgergo.dev through Cloudflare Email Routing, if you want one on the CV · needs a decision · from spec 0007
 - **Footer arrow glyph**: Plex Mono's shipped `latin` file has no `←` or `→`, so the footer's `← home` arrow draws in the system fallback face; pick a glyph the font ships, or accept the fallback on record (spec 0003) · needs a decision · from spec 0009

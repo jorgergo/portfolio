@@ -29,7 +29,7 @@ describe('SITE_NAV', () => {
 
   // covers: AC-2
   it('keeps the planned order for the pages that exist', () => {
-    const planned = ['about', 'cv', 'portfolio', 'contact'];
+    const planned = ['about', 'cv', 'projects', 'contact'];
     const positions = SITE_NAV.map(({ label }) => planned.indexOf(label));
 
     expect(positions).not.toContain(-1);

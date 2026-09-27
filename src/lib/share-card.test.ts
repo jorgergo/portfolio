@@ -213,6 +213,21 @@ describe('cardTree', () => {
     ]);
   });
 
+  // covers: spec 0010 AC-4
+  it('draws the Projects card with its label, the name, the role, and the /projects footer', () => {
+    const lines = texts(treeFor('projects'));
+    const [label] = lines;
+
+    expect(lines.map(({ text }) => text)).toEqual([
+      'Projects',
+      'Jorge González Ozorno',
+      'Full Stack Developer',
+      'jorgergo.dev/projects',
+      'Toluca, MX',
+    ]);
+    expect(label?.style?.textTransform).toBe('uppercase');
+  });
+
   // covers: AC-7
   it('draws no label on the home card', () => {
     expect(texts(treeFor('home')).map(({ text }) => text)).toEqual([

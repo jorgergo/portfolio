@@ -5,6 +5,8 @@ import {
   CV_LIMITS,
   EMAIL_TOKEN,
   makeCvSchema,
+  PRIVATE_SOURCE,
+  PROJECT_STATUSES,
   regionName,
   splitAtEmail,
 } from '@/lib/cv-schema';
@@ -67,9 +69,21 @@ const about = {
   closing: 'Write to me at {email}.',
 } as const;
 
+// Building, private code, no url, no cv flag, so the live, cv count, and
+// empty CV cases start from a clean base (spec 0010).
+const project = {
+  name: 'Ledger',
+  description: 'Tracks what I spend.',
+  startDate: '2024-03',
+  status: 'building',
+  source: PRIVATE_SOURCE,
+  keywords: ['Astro'],
+} as const;
+
 const minimalCv = {
   basics,
   about,
+  projects: [project],
   work: [role],
   education: [school],
 } as const;
@@ -83,6 +97,14 @@ const withAbout = (patch: Data): Data => ({
   ...minimalCv,
   about: { ...about, ...patch },
 });
+
+const withProjects = (projects: readonly Data[]): Data => ({
+  ...minimalCv,
+  projects,
+});
+
+const withProject = (patch: Data): Data =>
+  withProjects([{ ...project, ...patch }]);
 
 const withRole = (patch: Data): Data => ({
   ...minimalCv,
@@ -164,8 +186,8 @@ describe('makeCvSchema: required fields', () => {
     },
   );
 
-  // covers: AC-3
-  it.each(['work', 'education'])(
+  // covers: AC-3, spec 0010 AC-1
+  it.each(['work', 'education', 'projects'])(
     'fails at %s when it has no entries',
     (section) => {
       expect(issues({ ...minimalCv, [section]: [] })).toEqual([
@@ -174,8 +196,8 @@ describe('makeCvSchema: required fields', () => {
     },
   );
 
-  // covers: AC-3
-  it.each(['work', 'education', 'basics', 'about'])(
+  // covers: AC-3, spec 0010 AC-1
+  it.each(['work', 'education', 'basics', 'about', 'projects'])(
     'fails at %s when the section is left out',
     (section) => {
       expect(issues(omit(minimalCv, section))).toEqual([
@@ -396,8 +418,8 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7, spec 0006 AC-2
-  it('reads every cap from CV_LIMITS with the values in specs 0002 and 0006', () => {
+  // covers: AC-7, spec 0006 AC-2, spec 0010 AC-1
+  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0009, and 0010', () => {
     expect(CV_LIMITS).toEqual({
       name: 30,
       namePart: 24,
@@ -414,6 +436,12 @@ describe('makeCvSchema: caps', () => {
       aboutItemsMin: 3,
       aboutItems: 7,
       aboutClosing: 160,
+      projectName: 30,
+      projectDescription: 120,
+      projectKeyword: 20,
+      projectKeywords: 6,
+      projects: 8,
+      cvProjectsMax: 2,
     });
   });
 
@@ -806,6 +834,281 @@ describe('makeCvSchema: about (spec 0009)', () => {
     ['a misspelt marker', 'Write to {Email}.'],
   ])('fails a closing with %s, naming spec 0009', (_, closing) => {
     expect(issues(withAbout({ closing }))).toEqual([tokenMissing]);
+  });
+});
+
+describe('makeCvSchema: projects (spec 0010)', () => {
+  const liveNeedsUrl =
+    'projects.0.url: a live project needs a url, the site a visitor can open; see spec 0010';
+
+  const sourceMessage = `expected an https URL or "${PRIVATE_SOURCE}"; see spec 0010`;
+
+  // `count` projects with distinct names, each patched the same way.
+  const named = (count: number, patch: Data = {}): readonly Data[] =>
+    Array.from({ length: count }, (_, i) => ({
+      ...project,
+      name: `Project ${i}`,
+      ...patch,
+    }));
+
+  const words = (count: number): readonly string[] =>
+    Array.from({ length: count }, (_, i) => `Tool ${i}`);
+
+  // covers: spec 0010 AC-1
+  it('accepts a finished live project with a url, public code, and the cv flag', () => {
+    const data = withProject({
+      status: 'live',
+      url: 'https://ledger.example',
+      source: 'https://github.com/ada/ledger',
+      endDate: '2024-09',
+      cv: true,
+    });
+
+    expect(issues(data)).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(['name', 'description', 'startDate', 'status', 'source', 'keywords'])(
+    'fails at projects.0.%s when it is missing',
+    (field) => {
+      expect(issues(withProjects([omit(project, field)]))).toEqual([
+        expect.stringMatching(`^projects.0.${field}:`),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it('rejects an unknown key inside a project, such as a role', () => {
+    expect(issues(withProject({ role: 'Lead' }))).toEqual([
+      'projects.0: Unrecognized key: "role"',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each([
+    ['name', ''],
+    ['name', '   '],
+    ['description', ''],
+    ['description', '   '],
+  ])('fails a project %s of %j as too small', (field, value) => {
+    expect(issues(withProject({ [field]: value }))).toEqual([
+      expect.stringMatching(`^projects.0.${field}: Too small`),
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(['', '   '])('fails a keyword of %j at its index', (keyword) => {
+    expect(issues(withProject({ keywords: ['Astro', keyword] }))).toEqual([
+      expect.stringMatching(/^projects\.0\.keywords\.1: Too small/),
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each([
+    ['name', CV_LIMITS.projectName],
+    ['description', CV_LIMITS.projectDescription],
+  ])(
+    'accepts a project %s at exactly %i characters and fails one past it',
+    (field, cap) => {
+      expect(issues(withProject({ [field]: chars(cap) }))).toEqual([]);
+      expect(issues(withProject({ [field]: chars(cap + 1) }))).toEqual([
+        expect.stringMatching(`^projects.0.${field}: Too big`),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it('accepts a 20 character keyword and fails at 21', () => {
+    const cap = CV_LIMITS.projectKeyword;
+
+    expect(issues(withProject({ keywords: [chars(cap)] }))).toEqual([]);
+    expect(issues(withProject({ keywords: [chars(cap + 1)] }))).toEqual([
+      expect.stringMatching(/^projects\.0\.keywords\.0: Too big/),
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('accepts 1 and 6 keywords, and fails at 0 and at 7', () => {
+    const cap = CV_LIMITS.projectKeywords;
+
+    expect(issues(withProject({ keywords: words(1) }))).toEqual([]);
+    expect(issues(withProject({ keywords: words(cap) }))).toEqual([]);
+    expect(issues(withProject({ keywords: [] }))).toEqual([
+      expect.stringMatching(/^projects\.0\.keywords: Too small/),
+    ]);
+    expect(issues(withProject({ keywords: words(cap + 1) }))).toEqual([
+      expect.stringMatching(/^projects\.0\.keywords: Too big/),
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('accepts 8 projects and fails at a ninth', () => {
+    expect(issues(withProjects(named(CV_LIMITS.projects)))).toEqual([]);
+    expect(issues(withProjects(named(CV_LIMITS.projects + 1)))).toEqual([
+      expect.stringMatching(/^projects: Too big/),
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(PROJECT_STATUSES)('accepts the status %s', (status) => {
+    // Only `live` needs a url; the other three words stand without one.
+    const data = withProject(
+      status === 'live'
+        ? { status, url: 'https://ledger.example' }
+        : { status },
+    );
+
+    expect(issues(data)).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(['paused', 'Live', ''])(
+    'rejects the status %j, outside the four words',
+    (status) => {
+      expect(issues(withProject({ status }))).toEqual([
+        expect.stringMatching(/^projects\.0\.status:/),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it.each(['http://ledger.example', 'ledger.example'])(
+    'rejects the url %j because it is not https',
+    (url) => {
+      expect(issues(withProject({ url }))).toEqual([
+        expect.stringMatching(/^projects\.0\.url:/),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it.each([
+    'http://github.com/ada/ledger',
+    'github.com/ada/ledger',
+    'Private',
+    'public',
+    '',
+  ])('rejects the source %j, neither an https URL nor private', (source) => {
+    expect(issues(withProject({ source }))).toEqual([
+      `projects.0.source: ${sourceMessage}`,
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('rejects a malformed start month', () => {
+    expect(issues(withProject({ startDate: '2024-3' }))).toEqual([
+      'projects.0.startDate: expected a month as YYYY-MM (01 to 12)',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('fails at projects.N.endDate when the end is before the start', () => {
+    expect(issues(withProject({ endDate: '2024-02' }))).toEqual([
+      'projects.0.endDate: endDate is before startDate',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('fails a live project with no url, naming spec 0010', () => {
+    expect(issues(withProject({ status: 'live' }))).toEqual([liveNeedsUrl]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('fails a live project with no url even when its code is public', () => {
+    const data = withProject({
+      status: 'live',
+      source: 'https://github.com/ada/ledger',
+    });
+
+    expect(issues(data)).toEqual([liveNeedsUrl]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('fails at the later project when a name repeats', () => {
+    expect(issues(withProjects([project, project]))).toEqual([
+      'projects.1.name: duplicate project name',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('compares names after trimming, so surrounding spaces still repeat', () => {
+    const spaced = { ...project, name: `  ${project.name} ` };
+
+    expect(issues(withProjects([project, spaced]))).toEqual([
+      'projects.1.name: duplicate project name',
+    ]);
+  });
+
+  it('compares names exactly, so a change of case is a new name', () => {
+    const lower = { ...project, name: project.name.toLowerCase() };
+
+    expect(issues(withProjects([project, lower]))).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('accepts two projects on the CV and fails at the third and each after it', () => {
+    const max = CV_LIMITS.cvProjectsMax;
+    const message = `at most ${max} projects may set cv; see spec 0010`;
+
+    expect(issues(withProjects(named(max, { cv: true })))).toEqual([]);
+    expect(issues(withProjects(named(max + 2, { cv: true })))).toEqual([
+      `projects.2.cv: ${message}`,
+      `projects.3.cv: ${message}`,
+    ]);
+  });
+
+  it('counts only cv true, so cv false means the same as leaving it out', () => {
+    const list = [
+      ...named(CV_LIMITS.cvProjectsMax, { cv: true }),
+      { ...project, name: 'Off', cv: false },
+    ];
+
+    expect(issues(withProjects(list))).toEqual([]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('names the four status words and the private source word', () => {
+    expect(PROJECT_STATUSES).toEqual(['live', 'building', 'done', 'archived']);
+    expect(PRIVATE_SOURCE).toBe('private');
+  });
+
+  // covers: spec 0010 AC-1
+  it.each(['2024-13', '2024-3', '24-09'])(
+    'rejects the end month %j with the YYYY-MM message',
+    (endDate) => {
+      expect(issues(withProject({ endDate }))).toEqual([
+        'projects.0.endDate: expected a month as YYYY-MM (01 to 12)',
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it.each(['yes', 'true', 1])(
+    'rejects a cv flag of %j, not a boolean',
+    (cv) => {
+      expect(issues(withProject({ cv }))).toEqual([
+        expect.stringMatching(/^projects\.0\.cv:/),
+      ]);
+    },
+  );
+
+  // covers: spec 0010 AC-1
+  it('fails every later repeat of a name, never the first', () => {
+    expect(issues(withProjects([project, project, project]))).toEqual([
+      'projects.1.name: duplicate project name',
+      'projects.2.name: duplicate project name',
+    ]);
+  });
+
+  // covers: spec 0010 AC-1
+  it('accepts a live project whose url is public while its code stays private', () => {
+    const data = withProject({
+      status: 'live',
+      url: 'https://ledger.example',
+      source: PRIVATE_SOURCE,
+    });
+
+    expect(issues(data)).toEqual([]);
   });
 });
 

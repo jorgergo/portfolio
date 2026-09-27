@@ -15,6 +15,7 @@ export const SHARE_PAGES = [
   { key: 'home', path: '/' },
   { key: 'about', path: '/about', label: 'About' },
   { key: 'cv', path: '/cv', label: 'CV' },
+  { key: 'projects', path: '/projects', label: 'Projects' },
 ] as const satisfies readonly SharePage[];
 
 export type SharePageKey = (typeof SHARE_PAGES)[number]['key'];
@@ -113,6 +114,8 @@ export const DESCRIPTIONS = {
     `What ${givenName(basics.name)} cares about, at work and away from it.`,
   cv: (cv) =>
     `The CV of ${cv.basics.name}, ${cv.basics.label}: ${formatSectionList(cv)}.`,
+  projects: ({ basics }) =>
+    `What ${givenName(basics.name)} has built, with the stack behind each project and where it stands.`,
 } as const satisfies Record<SharePageKey, (cv: MetaCv) => string>;
 
 // The card's words in reading order, which are also its alt text.
