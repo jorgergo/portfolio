@@ -951,7 +951,12 @@ describe('makeCvSchema: projects (spec 0010)', () => {
 
   // covers: spec 0010 AC-1
   it.each(PROJECT_STATUSES)('accepts the status %s', (status) => {
-    const data = withProject({ status, url: 'https://ledger.example' });
+    // Only `live` needs a url; the other three words stand without one.
+    const data = withProject(
+      status === 'live'
+        ? { status, url: 'https://ledger.example' }
+        : { status },
+    );
 
     expect(issues(data)).toEqual([]);
   });

@@ -215,9 +215,10 @@ describe('cardTree', () => {
 
   // covers: spec 0010 AC-4
   it('draws the Projects card with its label, the name, the role, and the /projects footer', () => {
-    const [label] = texts(treeFor('projects'));
+    const lines = texts(treeFor('projects'));
+    const [label] = lines;
 
-    expect(texts(treeFor('projects')).map(({ text }) => text)).toEqual([
+    expect(lines.map(({ text }) => text)).toEqual([
       'Projects',
       'Jorge González Ozorno',
       'Full Stack Developer',
