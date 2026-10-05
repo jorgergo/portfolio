@@ -1,7 +1,7 @@
 # 0013. CV curated to two pages and printed to a PDF by the build
 
 **Date**: 2026-10-05
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

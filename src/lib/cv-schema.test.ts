@@ -426,8 +426,8 @@ describe('makeCvSchema: date order', () => {
 });
 
 describe('makeCvSchema: caps', () => {
-  // covers: AC-7, spec 0006 AC-2, spec 0008 AC-2, spec 0010 AC-1, spec 0011 AC-12
-  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0008, 0009, 0010, and 0011', () => {
+  // covers: AC-7, spec 0006 AC-2, spec 0008 AC-2, spec 0010 AC-1, spec 0011 AC-12, spec 0013 AC-2
+  it('reads every cap from CV_LIMITS with the values in specs 0002, 0006, 0008, 0009, 0010, 0011, and 0013', () => {
     expect(CV_LIMITS).toEqual({
       name: 30,
       namePart: 24,
@@ -449,7 +449,8 @@ describe('makeCvSchema: caps', () => {
       projectKeyword: 20,
       projectKeywords: 6,
       projects: 8,
-      cvProjectsMax: 2,
+      cvProjectsMax: 3,
+      projectHighlights: 3,
       email: 27,
       tagline: 27,
     });
@@ -1073,15 +1074,16 @@ describe('makeCvSchema: projects (spec 0010)', () => {
     expect(issues(withProjects([project, lower]))).toEqual([]);
   });
 
-  // covers: spec 0010 AC-1
-  it('accepts two projects on the CV and fails at the third and each after it', () => {
+  // covers: spec 0010 AC-1, spec 0013 AC-2
+  it('accepts three projects on the CV and fails at the fourth and each after it', () => {
     const max = CV_LIMITS.cvProjectsMax;
-    const message = `at most ${max} projects may set cv; see spec 0010`;
+    const message = 'at most 3 projects may set cv; see spec 0010';
 
+    expect(max).toBe(3);
     expect(issues(withProjects(named(max, { cv: true })))).toEqual([]);
     expect(issues(withProjects(named(max + 2, { cv: true })))).toEqual([
-      `projects.2.cv: ${message}`,
       `projects.3.cv: ${message}`,
+      `projects.4.cv: ${message}`,
     ]);
   });
 
@@ -1137,6 +1139,98 @@ describe('makeCvSchema: projects (spec 0010)', () => {
     });
 
     expect(issues(data)).toEqual([]);
+  });
+});
+
+describe('makeCvSchema: project highlights (spec 0013)', () => {
+  const needsCv =
+    'projects.0.highlights: highlights show only on the CV, so the project must set cv; see spec 0013';
+
+  const bullets = (count: number): readonly string[] =>
+    Array.from({ length: count }, (_, i) => `Did thing ${i}.`);
+
+  const onCv = (highlights: readonly string[]): Data =>
+    withProject({ cv: true, highlights });
+
+  // covers: spec 0013 AC-2
+  it('caps the CV at 3 projects and a project at 3 highlights', () => {
+    expect(CV_LIMITS.cvProjectsMax).toBe(3);
+    expect(CV_LIMITS.projectHighlights).toBe(3);
+  });
+
+  // covers: spec 0013 AC-2
+  it('accepts a project on the CV with no highlights key', () => {
+    expect(issues(withProject({ cv: true }))).toEqual([]);
+  });
+
+  // covers: spec 0013 AC-2
+  it.each([2, 3])(
+    'accepts %i highlights on a project that sets cv',
+    (count) => {
+      expect(issues(onCv(bullets(count)))).toEqual([]);
+    },
+  );
+
+  // covers: spec 0013 AC-2
+  it('fails four highlights on a project that sets cv', () => {
+    expect(issues(onCv(bullets(CV_LIMITS.projectHighlights + 1)))).toEqual([
+      expect.stringMatching(/^projects\.0\.highlights: Too big/),
+    ]);
+  });
+
+  // covers: spec 0013 AC-2
+  it('accepts a 220 character project highlight and fails at 221', () => {
+    const cap = CV_LIMITS.highlight;
+
+    expect(issues(onCv([chars(cap)]))).toEqual([]);
+    expect(issues(onCv([chars(cap + 1)]))).toEqual([
+      expect.stringMatching(/^projects\.0\.highlights\.0: Too big/),
+    ]);
+  });
+
+  // covers: spec 0013 AC-2
+  it.each(['', '   '])(
+    'fails a project highlight of %j at its index',
+    (text) => {
+      expect(issues(onCv(['Did it.', text]))).toEqual([
+        expect.stringMatching(/^projects\.0\.highlights\.1: Too small/),
+      ]);
+    },
+  );
+
+  // covers: spec 0013 AC-2
+  it.each([
+    ['no cv flag', {}],
+    ['cv false', { cv: false }],
+  ])(
+    'fails highlights on a project with %s, once, at highlights',
+    (_, flag) => {
+      expect(issues(withProject({ ...flag, highlights: bullets(2) }))).toEqual([
+        needsCv,
+      ]);
+    },
+  );
+
+  // covers: spec 0013 AC-2
+  it('fails an empty highlights list on a project without cv too', () => {
+    expect(issues(withProject({ highlights: [] }))).toEqual([needsCv]);
+  });
+
+  // covers: spec 0013 AC-2
+  it('accepts an empty highlights list on a project that sets cv', () => {
+    expect(issues(onCv([]))).toEqual([]);
+  });
+
+  // covers: spec 0013 AC-2
+  it('points at the project that holds the highlights, not at one on the CV', () => {
+    const list = [
+      { ...project, name: 'On the CV', cv: true, highlights: bullets(3) },
+      { ...project, name: 'Off the CV', highlights: bullets(1) },
+    ];
+
+    expect(issues(withProjects(list))).toEqual([
+      'projects.1.highlights: highlights show only on the CV, so the project must set cv; see spec 0013',
+    ]);
   });
 });
 

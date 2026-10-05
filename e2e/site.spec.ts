@@ -3300,7 +3300,7 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: spec 0010 AC-9
+  // covers: spec 0010 AC-9, spec 0013 AC-3
   test('the projects section lists each flagged project by start date with its link, dates, description, and technologies', async ({
     page,
   }) => {
@@ -3311,13 +3311,16 @@ test.describe('cv page', () => {
     });
 
     await expect(titles).toHaveText(flagged.map((project) => project.name));
-    await expect(section(page, 'projects').locator('ul')).toHaveCount(0);
     for (const [index, project] of flagged.entries()) {
       const root = entryOf(titles.nth(index));
       const href = projectHref(project);
       const link = titles.nth(index).getByRole('link');
       // The technologies line sits in the slot, outside the lines and body.
       const technologies = root.locator(':scope > p');
+      // A project's bullets sit in its body, under the description, and only
+      // a project with highlights has the list (spec 0013).
+      const highlights = project.highlights ?? [];
+      const bullets = root.locator('ul');
 
       expect(
         await root
@@ -3330,6 +3333,13 @@ test.describe('cv page', () => {
         formatDateRange(project.startDate, project.endDate),
       );
       await expect(body(root).locator('p')).toHaveText([project.description]);
+      await expect(bullets).toHaveCount(highlights.length > 0 ? 1 : 0);
+      if (highlights.length > 0) {
+        await expect(body(root).locator(':scope > p + ul > li')).toHaveText([
+          ...highlights,
+        ]);
+        await expect(bullets).toHaveCSS('list-style-type', 'disc');
+      }
       await expect(technologies).toHaveText([joinMeta(...project.keywords)]);
       await expect(technologies).toHaveCSS('font-size', '14px');
       await expect(technologies).toHaveCSS('color', rgb('light', 'muted'));

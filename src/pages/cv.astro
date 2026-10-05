@@ -123,7 +123,8 @@ const sections: readonly Section[] = [
     heading: 'Experience',
     groups: experience,
   },
-  // The projects flagged `cv` in cv.json, in the /projects order (spec 0010).
+  // The projects flagged `cv` in cv.json, in the /projects order (spec 0010),
+  // each with its bullets when it has any (spec 0013).
   {
     kind: 'projects',
     id: 'projects',
@@ -249,6 +250,7 @@ const rendered = sections.filter(hasContent);
               href={projectHref(project)}
               meta={formatDateRange(project.startDate, project.endDate)}
               summary={project.description}
+              highlights={project.highlights}
             >
               <p class="text-sm text-muted">{joinMeta(...project.keywords)}</p>
             </CvEntry>
