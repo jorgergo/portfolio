@@ -216,7 +216,7 @@ spec [0013](../specs/0013-cv-pdf-download/index.md)
   - [x] Content and schema: bullets on a CV project, three CV projects, the curated `cv.json`, and the project bullets on `/cv` (AC-1 to AC-3)
   - [x] Paper: the site's paper scale (10pt, half inch margins, full width) and the CV's tighter gaps and headings, with the edited print tests (AC-9, AC-10)
   - [x] The file: `cv-pdf.ts`, the `render-pdf.ts` build step, Chromium before the build in CI, the `noindex` header, and the page tests for the PDF (AC-12 to AC-15, AC-17, AC-19)
-  - [ ] Button and contact line: `download` on `Button`, `formatCvContacts`, the new header, and the edited header, Tab order, and contact tests (AC-4 to AC-8, AC-11)
+  - [x] Button and contact line: `download` on `Button`, `formatCvContacts`, the new header, and the edited header, Tab order, and contact tests (AC-4 to AC-8, AC-11)
   - [ ] Deploy gate, style guide, and docs: the `/cv.pdf` checks in `smoke.sh`, the style guide button, `design.md`, the README, then the gate and the steps in `verify.md` (AC-16, AC-18, AC-20, AC-21)
 - [ ] Verify it: `/check verify cv pdf download`
 - [ ] Test it: `/test cv pdf download`

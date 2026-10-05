@@ -3,6 +3,7 @@ import {
   cvProjects,
   firstUrl,
   formatContactRows,
+  formatCvContacts,
   formatDateRange,
   formatLanguage,
   formatLocation,
@@ -873,4 +874,127 @@ describe('formatContactRows', () => {
       expect(key).not.toMatch(/\s/);
     },
   );
+});
+
+describe('formatCvContacts', () => {
+  const email = 'ada@example.com';
+  const site = new URL('https://ada.example');
+  const github = { url: 'https://github.com/ada' } as const;
+  const linkedin = { url: 'https://www.linkedin.com/in/ada/' } as const;
+  const separators = (
+    contacts: readonly { readonly separator: string }[],
+  ): readonly string[] => contacts.map(({ separator }) => separator);
+
+  // covers: spec 0013 AC-7
+  it('gives the email, the site on paper only, then each profile in file order', () => {
+    expect(
+      formatCvContacts({ email, profiles: [github, linkedin] }, site),
+    ).toEqual([
+      {
+        href: 'mailto:ada@example.com',
+        text: 'ada@example.com',
+        paperOnly: false,
+        separator: 'always',
+      },
+      {
+        href: 'https://ada.example/',
+        text: 'ada.example',
+        paperOnly: true,
+        separator: 'always',
+      },
+      {
+        href: 'https://github.com/ada',
+        text: 'github.com/ada',
+        paperOnly: false,
+        separator: 'always',
+      },
+      {
+        href: 'https://www.linkedin.com/in/ada/',
+        text: 'linkedin.com/in/ada',
+        paperOnly: false,
+        separator: 'none',
+      },
+    ]);
+  });
+
+  // covers: spec 0013 AC-7
+  it('shows the dot after the email on paper alone when only the site follows', () => {
+    const contacts = formatCvContacts({ email }, site);
+
+    expect(contacts.map(({ text }) => text)).toEqual([email, 'ada.example']);
+    expect(separators(contacts)).toEqual(['paper', 'none']);
+    expect(separators(formatCvContacts({ email, profiles: [] }, site))).toEqual(
+      ['paper', 'none'],
+    );
+  });
+
+  // covers: spec 0013 AC-7
+  it('gives no paper only item without a site', () => {
+    const contacts = formatCvContacts(
+      { email, profiles: [github, linkedin] },
+      undefined,
+    );
+
+    expect(contacts.map(({ paperOnly }) => paperOnly)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    expect(separators(contacts)).toEqual(['always', 'always', 'none']);
+  });
+
+  // covers: spec 0013 AC-7
+  it('gives the email alone, with no dot, without a site or a profile', () => {
+    expect(formatCvContacts({ email }, undefined)).toEqual([
+      {
+        href: 'mailto:ada@example.com',
+        text: 'ada@example.com',
+        paperOnly: false,
+        separator: 'none',
+      },
+    ]);
+  });
+
+  // covers: spec 0013 AC-7
+  it('keeps the cv.json order of the profiles, after the site', () => {
+    const contacts = formatCvContacts(
+      { email, profiles: [linkedin, github] },
+      site,
+    );
+
+    expect(contacts.map(({ text }) => text)).toEqual([
+      email,
+      'ada.example',
+      'linkedin.com/in/ada',
+      'github.com/ada',
+    ]);
+  });
+
+  // covers: spec 0013 AC-7
+  it('links the site as the browser writes it and shows it as a profile path', () => {
+    const [, deep] = formatCvContacts(
+      { email },
+      new URL('https://www.ada.example/cv/'),
+    );
+
+    expect(deep).toMatchObject({
+      href: 'https://www.ada.example/cv/',
+      text: 'ada.example/cv',
+    });
+  });
+
+  // covers: spec 0013 AC-7
+  it('never mutates the input', () => {
+    const profiles = Object.freeze([
+      Object.freeze({ ...github }),
+      Object.freeze({ ...linkedin }),
+    ]);
+    const basics = Object.freeze({ email, profiles });
+    const before = structuredClone(basics);
+
+    formatCvContacts(basics, site);
+
+    expect(basics).toEqual(before);
+    expect(site.href).toBe('https://ada.example/');
+  });
 });

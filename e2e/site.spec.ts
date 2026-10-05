@@ -3,6 +3,7 @@ import {
   cvProjects,
   firstUrl,
   formatContactRows,
+  formatCvContacts,
   formatDateRange,
   formatLocation,
   formatMonth,
@@ -23,6 +24,7 @@ import {
   CV_PDF_FONTS,
   CV_PDF_MAX_PAGES,
   CV_PDF_PATH,
+  cvPdfFileName,
   readPdfFacts,
   type PdfFacts,
 } from '@/lib/cv-pdf';
@@ -75,7 +77,10 @@ type PageCase = {
 
 // Spec 0005 AC-12: the /cv body links in document order, derived from the
 // fixture, so an entry that gains or loses a url in cv.json moves the expected
-// stops with it. A group links through `firstUrl`, as the page does.
+// stops with it. A group links through `firstUrl`, as the page does. The
+// download button follows the name block in the markup, so it is the first
+// stop after the skip link (spec 0013 AC-8); the contact item that shows on
+// paper only is never a stop on screen.
 const linked = <T>(
   items: readonly T[],
   name: (item: T) => string,
@@ -89,10 +94,13 @@ const groupUrl = (group: {
   readonly items: readonly { readonly url?: string | undefined }[];
 }): string | undefined => firstUrl(group.items);
 
+const DOWNLOAD_LABEL = 'Download PDF';
 const CV_STOPS: readonly string[] = [
   'a "Skip to content"',
-  `a "${basics.email}"`,
-  ...(basics.profiles ?? []).map(({ url }) => `a "${formatProfilePath(url)}"`),
+  `a "${DOWNLOAD_LABEL}"`,
+  ...formatCvContacts(basics, site)
+    .filter(({ paperOnly }) => !paperOnly)
+    .map(({ text }) => `a "${text}"`),
   ...linked(
     groupConsecutive(sortNewestFirst(cv.work), (role) => role.name),
     (group) => group.key,
@@ -2912,13 +2920,9 @@ test.describe('cv page', () => {
     },
   ].filter(({ present }) => present);
 
-  const contacts = [
-    { href: `mailto:${basics.email}`, text: basics.email },
-    ...(basics.profiles ?? []).map(({ url }) => ({
-      href: url,
-      text: formatProfilePath(url),
-    })),
-  ];
+  // The contact items as the page gets them (spec 0013 AC-7): the email, the
+  // site on paper only, then each profile, each with its separator state.
+  const contacts = formatCvContacts(basics, site);
   const work = groupConsecutive(sortNewestFirst(cv.work), (role) => role.name);
   const group = work.find(({ items }) => items.length > 1);
   const education = sortNewestFirst(cv.education);
@@ -2927,6 +2931,50 @@ test.describe('cv page', () => {
   const flagged = cvProjects(cv.projects);
 
   const wrapper = (page: Page): Locator => page.locator('main#main > div');
+  // The header's first row holds the name block (the h1, then the label
+  // line) and the download button; the address follows the row (spec 0013).
+  const header = (page: Page): Locator =>
+    wrapper(page).locator(':scope > header');
+  const headerRow = (page: Page): Locator =>
+    header(page).locator(':scope > div');
+  const nameBlock = (page: Page): Locator =>
+    headerRow(page).locator(':scope > div');
+  const labelLine = (page: Page): Locator =>
+    nameBlock(page).locator(':scope > p');
+  const downloadButton = (page: Page): Locator =>
+    headerRow(page).locator(':scope > a');
+  const tags = (children: Locator): Promise<readonly string[]> =>
+    children.evaluateAll((els) => els.map((el) => el.tagName));
+  const classes = async (target: Locator): Promise<ReadonlySet<string>> =>
+    new Set(
+      ((await target.getAttribute('class')) ?? '').split(/\s+/).filter(Boolean),
+    );
+  // Tabs from the top of the page to one stop by walking the stops, so a new
+  // stop before it never needs an edit here.
+  const EMAIL_STOP = `a "${basics.email}"`;
+  const DOWNLOAD_STOP = `a "${DOWNLOAD_LABEL}"`;
+  const tabTo = async (page: Page, target: string): Promise<void> => {
+    for (const stop of CV_STOPS) {
+      await page.keyboard.press('Tab');
+      if (stop === target) return;
+    }
+  };
+  // An element's text as laid out: how wide it is on one line (the sum of
+  // its line fragments) and how many lines it takes.
+  const textBox = (
+    target: Locator,
+  ): Promise<{ readonly width: number; readonly lines: number }> =>
+    target.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rects = [...range.getClientRects()].filter(
+        (rect) => rect.width > 0,
+      );
+      return {
+        width: rects.reduce((sum, rect) => sum + rect.width, 0),
+        lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+      };
+    });
   const section = (page: Page, id: string): Locator =>
     page.locator(`section[aria-labelledby="${id}"]`);
   // An entry's root sits two levels above its heading; its lines are its
@@ -2948,13 +2996,12 @@ test.describe('cv page', () => {
   const optional = (value: string | undefined): readonly string[] =>
     value === undefined ? [] : [value];
 
-  // covers: spec 0005 AC-1, AC-2, AC-3
+  // covers: spec 0005 AC-1, AC-2, AC-3, spec 0013 AC-4, AC-7
   test('the header holds the name, the label line, and the contact links, then the sections in order', async ({
     page,
   }) => {
     await page.goto('/cv');
-    const header = wrapper(page).locator(':scope > header');
-    const items = header.locator('address > ul > li');
+    const items = header(page).locator('address > ul > li');
     const sections = wrapper(page).locator(':scope > section');
 
     await expect(wrapper(page).locator(':scope > *')).toHaveCount(
@@ -2965,36 +3012,84 @@ test.describe('cv page', () => {
       'HEADER',
     );
     await expect(wrapper(page)).toHaveCSS('row-gap', '56px');
-    await expect(header).toHaveCSS('row-gap', '8px');
-    await expect(header.locator(':scope > *')).toHaveCount(3);
-    await expect(header.getByRole('heading', { level: 1 })).toHaveText(
+    // Two children: the row (the name block, then the button), then the
+    // address. The label line sits inside the name block, under the one h1.
+    await expect(header(page)).toHaveCSS('row-gap', '8px');
+    expect(await classes(header(page))).toEqual(
+      new Set(['flex', 'flex-col', 'gap-2', 'print:gap-1']),
+    );
+    expect(await tags(header(page).locator(':scope > *'))).toEqual([
+      'DIV',
+      'ADDRESS',
+    ]);
+    expect(await classes(headerRow(page))).toEqual(
+      new Set([
+        'flex',
+        'flex-wrap',
+        'items-center',
+        'justify-between',
+        'gap-x-4',
+        'gap-y-2',
+      ]),
+    );
+    expect(await tags(headerRow(page).locator(':scope > *'))).toEqual([
+      'DIV',
+      'A',
+    ]);
+    expect(await classes(nameBlock(page))).toEqual(
+      new Set(['flex', 'flex-col', 'gap-2', 'print:gap-1']),
+    );
+    expect(await tags(nameBlock(page).locator(':scope > *'))).toEqual([
+      'H1',
+      'P',
+    ]);
+    await expect(nameBlock(page)).toHaveCSS('row-gap', '8px');
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(nameBlock(page).getByRole('heading', { level: 1 })).toHaveText(
       basics.name,
     );
-    await expect(header.locator(':scope > p')).toHaveText(
+    await expect(labelLine(page)).toHaveText(
       joinMeta(basics.label, formatLocation(basics.location)),
     );
-    await expect(header.locator(':scope > p')).toHaveCSS(
-      'color',
-      rgb('light', 'muted'),
+    expect(await classes(labelLine(page))).toEqual(
+      new Set(['text-sm', 'text-muted']),
     );
-    await expect(header.locator('address')).toHaveCSS('font-style', 'normal');
+    await expect(labelLine(page)).toHaveCSS('color', rgb('light', 'muted'));
+    expect(await classes(header(page).locator('address'))).toEqual(
+      new Set(['not-italic']),
+    );
+    await expect(header(page).locator('address')).toHaveCSS(
+      'font-style',
+      'normal',
+    );
     await expect(items).toHaveCount(contacts.length);
-    for (const [index, { href, text }] of contacts.entries()) {
+    for (const [
+      index,
+      { href, text, paperOnly, separator },
+    ] of contacts.entries()) {
       const item = items.nth(index);
-      const link = item.getByRole('link');
-      await expect(item).toHaveCSS('display', 'flex');
+      // By tag, not by role: the paper only item is hidden on screen.
+      const link = item.locator('a');
+      const dot = item.locator('span[aria-hidden="true"]');
+      await expect(item).toHaveCSS('display', paperOnly ? 'none' : 'flex');
       await expect(link).toHaveText(text);
       await expect(link).toHaveAttribute('href', href);
       await expect(link).toHaveCSS('color', rgb('light', 'fg'));
       await expect(link).toHaveCSS('text-decoration-line', 'none');
       await expect(link).toHaveCSS('min-height', '24px');
-      await expect(item.locator('span[aria-hidden="true"]')).toHaveCount(
-        index < contacts.length - 1 ? 1 : 0,
-      );
+      // A dot follows every item but the last. It shows on screen only after
+      // an item that shows there and has a screen item after it.
+      await expect(dot).toHaveCount(separator === 'none' ? 0 : 1);
+      if (separator === 'none') continue;
+      await expect(dot).toHaveText('·');
+      if (separator === 'always' && !paperOnly) await expect(dot).toBeVisible();
+      else await expect(dot).toBeHidden();
     }
-    await expect(header.locator('address span[aria-hidden="true"]')).toHaveText(
-      contacts.slice(1).map(() => '·'),
-    );
+    // On screen the line reads as before this spec: no visible dot ends it.
+    const shown = contacts.filter(({ paperOnly }) => !paperOnly);
+    await expect(
+      header(page).locator('address span[aria-hidden="true"]:visible'),
+    ).toHaveCount(shown.length - 1);
     await expect(sections).toHaveCount(SECTIONS.length);
     for (const [index, { id, heading }] of SECTIONS.entries()) {
       await expect(sections.nth(index)).toHaveAttribute('aria-labelledby', id);
@@ -3026,8 +3121,7 @@ test.describe('cv page', () => {
     await link.hover();
     await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
 
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await tabTo(page, EMAIL_STOP);
     await expect(link).toBeFocused();
     await expect(link).toHaveCSS('outline-style', 'solid');
     await expect(link).toHaveCSS('outline-width', '2px');
@@ -3041,11 +3135,177 @@ test.describe('cv page', () => {
     await page.goto('/cv');
     const link = page.locator('address').getByRole('link').first();
 
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await tabTo(page, EMAIL_STOP);
 
     await expect(link).toBeFocused();
     await expect(link).toHaveCSS('color', rgb('light', 'accent-warm'));
+  });
+
+  for (const scheme of SCHEMES) {
+    // covers: spec 0013 AC-5
+    test(`the download button is a bordered link to the PDF named Download PDF, 40px tall, with a 16px icon before its label, in ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/cv');
+      const button = downloadButton(page);
+      const icon = button.locator(':scope > svg');
+
+      await expect(
+        page.getByRole('link', { name: DOWNLOAD_LABEL, exact: true }),
+      ).toHaveCount(1);
+      await expect(button).toHaveAccessibleName(DOWNLOAD_LABEL);
+      await expect(button).toHaveAttribute('href', CV_PDF_PATH);
+      await expect(button).toHaveAttribute(
+        'download',
+        cvPdfFileName(basics.name),
+      );
+      expect((await classes(button)).has('shrink-0')).toBe(true);
+      // Every Button state of spec 0003: 40px tall, mono meta size, a 1px
+      // muted border, ink text, no underline.
+      expect((await button.boundingBox())?.height).toBe(40);
+      // A flex item's own inline-flex computes to flex.
+      await expect(button).toHaveCSS('display', 'flex');
+      await expect(button).toHaveCSS('align-items', 'center');
+      await expect(button).toHaveCSS('flex-shrink', '0');
+      await expect(button).toHaveCSS('column-gap', '8px');
+      await expect(button).toHaveCSS('font-family', /^"IBM Plex Mono-/);
+      await expect(button).toHaveCSS('font-size', '14px');
+      await expect(button).toHaveCSS('color', rgb(scheme, 'fg'));
+      await expect(button).toHaveCSS('border-top-width', '1px');
+      await expect(button).toHaveCSS('border-top-style', 'solid');
+      await expect(button).toHaveCSS('border-top-color', rgb(scheme, 'muted'));
+      await expect(button).toHaveCSS('text-decoration-line', 'none');
+      // One icon, hidden from assistive tech, 16px square, left of the label.
+      await expect(icon).toHaveCount(1);
+      await expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(await classes(icon)).toEqual(new Set(['size-4', 'shrink-0']));
+      const [mark, box] = [
+        await icon.boundingBox(),
+        await button.boundingBox(),
+      ];
+      expect(mark).toMatchObject({ width: 16, height: 16 });
+      expect((mark?.x ?? 0) - (box?.x ?? 0)).toBeLessThan(
+        (box?.width ?? 0) / 2,
+      );
+    });
+  }
+
+  // covers: spec 0013 AC-5
+  test('the download button turns its text and border accent-warm on hover, and on keyboard focus with the ring', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const button = downloadButton(page);
+    const warm = rgb('light', 'accent-warm');
+
+    await button.hover();
+    await expect(button).toHaveCSS('color', warm);
+    await expect(button).toHaveCSS('border-top-color', warm);
+
+    // Away from the button, it rests again before the keyboard reaches it.
+    await page.mouse.move(0, 0);
+    await expect(button).toHaveCSS('color', rgb('light', 'fg'));
+    await tabTo(page, DOWNLOAD_STOP);
+    await expect(button).toBeFocused();
+    await expect(button).toHaveCSS('color', warm);
+    await expect(button).toHaveCSS('border-top-color', warm);
+    await expect(button).toHaveCSS('outline-style', 'solid');
+    await expect(button).toHaveCSS('outline-width', '2px');
+    await expect(button).toHaveCSS('outline-offset', '3px');
+    await expect(button).toHaveCSS('outline-color', rgb('light', 'accent'));
+  });
+
+  // covers: spec 0013 AC-5, AC-8
+  test('the PDF is requested only on a click, which saves it under the name from cvPdfFileName and leaves the page on /cv', async ({
+    page,
+  }) => {
+    const paths: string[] = [];
+    page.on('request', (request) =>
+      paths.push(new URL(request.url()).pathname),
+    );
+
+    await page.goto('/cv', { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    expect(paths.filter((path) => path.endsWith('.pdf'))).toEqual([]);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton(page).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe(cvPdfFileName(basics.name));
+    expect(new URL(download.url()).pathname).toBe(CV_PDF_PATH);
+    expect(await download.failure()).toBeNull();
+    expect(new URL(page.url()).pathname).toBe('/cv');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      basics.name,
+    );
+  });
+
+  // covers: spec 0013 AC-6
+  test('the download button sits beside the name block when the row has room for both and under it when not, at 320px, 480px, 640px, and 1280px', async ({
+    page,
+  }) => {
+    // The row wraps by fit, so the test predicts each state from what it
+    // measures, and a longer name or label needs no edit here. Flexbox keeps
+    // both on one line when the wider of the two texts, the gap, and the
+    // button fit the header.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/cv');
+    // The name is Plex Mono 500, which is not preloaded: measure once the
+    // fonts are in, or a fallback face gives another width.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const name = (await textBox(nameBlock(page).locator('h1'))).width;
+    const label = (await textBox(labelLine(page))).width;
+    const button = (await downloadButton(page).boundingBox())?.width ?? 0;
+    const gap = await headerRow(page).evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).columnGap),
+    );
+    const needed = Math.max(name, label) + gap + button;
+
+    expect(name).toBeGreaterThan(0);
+    expect(label).toBeGreaterThan(0);
+    expect(button).toBeGreaterThan(0);
+    expect(gap).toBe(16);
+    for (const width of [320, 480, 640, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      const at = `at ${String(width)}px`;
+      const room = (await header(page).boundingBox())?.width ?? 0;
+      const row = await headerRow(page).boundingBox();
+      const block = await nameBlock(page).boundingBox();
+      const box = await downloadButton(page).boundingBox();
+      const title = await nameBlock(page).locator('h1').boundingBox();
+      const lines = (await textBox(labelLine(page))).lines;
+
+      expect(await scrollsSideways(page), at).toBe(false);
+      expect(room, at).toBeGreaterThan(0);
+      // Within a pixel of the edge, rounding picks the state.
+      if (Math.abs(room - needed) < 1) continue;
+      if (needed < room) {
+        expect((box?.x ?? 0) + (box?.width ?? 0), at).toBeCloseTo(
+          (row?.x ?? 0) + (row?.width ?? Infinity),
+          0,
+        );
+        expect(
+          Math.abs(
+            (box?.y ?? 0) +
+              (box?.height ?? 0) / 2 -
+              ((block?.y ?? 0) + (block?.height ?? Infinity) / 2),
+          ),
+          at,
+        ).toBeLessThanOrEqual(1);
+        // The label fits beside the button by the same sum.
+        expect(lines, at).toBe(1);
+      } else {
+        expect(box?.x ?? Infinity, at).toBeCloseTo(title?.x ?? 0, 0);
+        expect(box?.y ?? 0, at).toBeGreaterThanOrEqual(
+          (block?.y ?? Infinity) + (block?.height ?? 0),
+        );
+        // Alone on its row, the label keeps one line when the row holds it.
+        if (label <= room - 1) expect(lines, at).toBe(1);
+      }
+    }
   });
 
   // covers: spec 0005 AC-4
@@ -3479,16 +3739,21 @@ test.describe('cv page', () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/cv');
-    const items = page.locator('address > ul > li');
+    // The item that shows on paper only takes no room on screen (spec 0013).
+    const items = page.locator('address > ul > li:visible');
 
     expect(await scrollsSideways(page)).toBe(false);
+    await expect(items).toHaveCount(
+      contacts.filter(({ paperOnly }) => !paperOnly).length,
+    );
     for (const item of await items.all()) {
       const link = await item.getByRole('link').boundingBox();
-      const dots = item.locator('span[aria-hidden="true"]');
+      const dots = item.locator('span[aria-hidden="true"]:visible');
       expect((link?.x ?? 0) + (link?.width ?? Infinity)).toBeLessThanOrEqual(
         320,
       );
-      // The last item has no dot; every other dot shares its link's line.
+      // The last item on screen shows no dot; every other dot shares its
+      // link's line.
       if ((await dots.count()) === 0) continue;
       const dot = await dots.boundingBox();
       expect((dot?.y ?? 0) + (dot?.height ?? 0)).toBeGreaterThan(link?.y ?? 0);
@@ -3681,10 +3946,7 @@ test.describe('cv page', () => {
 
       // The muted line turning ink shows the setting is on, so a heading that
       // keeps its olive does so by rule: the accent pair needs no stronger one.
-      await expect(wrapper(page).locator(':scope > header > p')).toHaveCSS(
-        'color',
-        rgb(scheme, 'fg'),
-      );
+      await expect(labelLine(page)).toHaveCSS('color', rgb(scheme, 'fg'));
       await expect(headings).toHaveCount(SECTIONS.length);
       for (const heading of await headings.all()) {
         await expect(heading).toHaveCSS('color', rgb(scheme, 'accent'));
@@ -3734,8 +3996,8 @@ test.describe('cv page', () => {
       await page.goto('/cv');
     });
 
-    // covers: spec 0005 AC-10
-    test('hides the footer and the skip link, and nothing else', async ({
+    // covers: spec 0005 AC-10, spec 0013 AC-11
+    test('hides the footer, the skip link, and the download button, and nothing else', async ({
       page,
     }) => {
       await expect(page.locator('footer')).toBeHidden();
@@ -3744,13 +4006,44 @@ test.describe('cv page', () => {
         'display',
         'none',
       );
-      const hidden = await page.evaluate(
-        () =>
-          [...document.querySelectorAll('main *')].filter(
-            (el) => getComputedStyle(el).display === 'none',
-          ).length,
+      // Under main the one hidden element is the download link; every
+      // contact item prints, the paper only one among them.
+      const hidden = await page.evaluate(() =>
+        [...document.querySelectorAll('main *')]
+          .filter((el) => getComputedStyle(el).display === 'none')
+          .map((el) => `${el.tagName} ${el.getAttribute('href') ?? ''}`),
       );
-      expect(hidden).toBe(0);
+      expect(hidden).toEqual([`A ${CV_PDF_PATH}`]);
+      await expect(downloadButton(page)).toHaveCSS('display', 'none');
+    });
+
+    // covers: spec 0013 AC-7, AC-11
+    test('prints every contact item, the site right after the email, with a dot after each but the last', async ({
+      page,
+    }) => {
+      const items = page.locator('address > ul > li');
+
+      await expect(items).toHaveCount(contacts.length);
+      await expect(items.locator('a')).toHaveText(
+        contacts.map(({ text }) => text),
+      );
+      for (const [index, { paperOnly, separator }] of contacts.entries()) {
+        const item = items.nth(index);
+        const dot = item.locator('span[aria-hidden="true"]');
+        await expect(item).toHaveCSS('display', 'flex');
+        await expect(item).toBeVisible();
+        if (paperOnly) {
+          // The site's own address, from `site` (spec 0006).
+          expect(index).toBe(1);
+          await expect(item.locator('a')).toHaveText(
+            formatProfilePath(site.href),
+          );
+          await expect(item.locator('a')).toHaveAttribute('href', site.href);
+        }
+        await expect(dot).toHaveCount(separator === 'none' ? 0 : 1);
+        if (separator !== 'none') await expect(dot).toBeVisible();
+      }
+      expect(contacts.filter(({ paperOnly }) => paperOnly)).toHaveLength(1);
     });
 
     // covers: spec 0005 AC-10, spec 0013 AC-9, AC-10
@@ -3767,10 +4060,8 @@ test.describe('cv page', () => {
 
       // 1.25rem between the header and each section, 0.75rem inside a section.
       await expect(wrapper(page)).toHaveCSS('row-gap', '16.6667px');
-      await expect(wrapper(page).locator(':scope > header')).toHaveCSS(
-        'row-gap',
-        '3.33333px',
-      );
+      await expect(header(page)).toHaveCSS('row-gap', '3.33333px');
+      await expect(nameBlock(page)).toHaveCSS('row-gap', '3.33333px');
       for (const { id } of SECTIONS) {
         await expect(section(page, id)).toHaveCSS('row-gap', '10px');
       }
