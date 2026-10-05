@@ -3644,6 +3644,64 @@ test.describe('cv page', () => {
     }
   });
 
+  // covers: spec 0012 AC-5
+  test('under prefers-contrast: more the muted label line turns ink and the section headings stay accent capitals, in light and dark', async ({
+    page,
+  }) => {
+    for (const scheme of SCHEMES) {
+      await page.emulateMedia({ colorScheme: scheme, contrast: 'more' });
+      await page.goto('/cv');
+      const headings = page.locator('main section h2');
+
+      // The muted line turning ink shows the setting is on, so a heading that
+      // keeps its olive does so by rule: the accent pair needs no stronger one.
+      await expect(wrapper(page).locator(':scope > header > p')).toHaveCSS(
+        'color',
+        rgb(scheme, 'fg'),
+      );
+      await expect(headings).toHaveCount(SECTIONS.length);
+      for (const heading of await headings.all()) {
+        await expect(heading).toHaveCSS('color', rgb(scheme, 'accent'));
+        await expect(heading).toHaveCSS('font-size', '16px');
+        await expect(heading).toHaveCSS('font-weight', '500');
+        await expect(heading).toHaveCSS('text-transform', 'uppercase');
+      }
+    }
+  });
+
+  // covers: spec 0012 AC-5, and the AC-2 ladder with no step told by colour alone
+  test('under forced colours a section heading loses its olive and keeps its size, weight, capitals, tracking, and rule', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.goto('/cv');
+    const headings = page.locator('main section h2');
+    // The name is ink on a normal page and a heading olive, so the two match
+    // only once the system palette has replaced both.
+    const systemText = await page
+      .locator('h1')
+      .evaluate((el) => getComputedStyle(el).color);
+
+    await expect(headings).toHaveCount(SECTIONS.length);
+    for (const heading of await headings.all()) {
+      await expect(heading).toHaveCSS('color', systemText);
+      await expect(heading).toHaveCSS('font-size', '16px');
+      await expect(heading).toHaveCSS('font-weight', '500');
+      await expect(heading).toHaveCSS('text-transform', 'uppercase');
+      await expect(heading).toHaveCSS('letter-spacing', '1.6px');
+      await expect(heading).toHaveCSS('border-bottom-width', '1px');
+      await expect(heading).toHaveCSS('border-bottom-style', 'solid');
+    }
+    // An entry title is 16px at 500 too, so with the olive gone the capitals
+    // are what set a heading above it. Zero titles is a valid CV (AC-16).
+    const titleCases = await page
+      .locator('main section h3')
+      .evaluateAll((titles) =>
+        titles.map((title) => getComputedStyle(title).textTransform),
+      );
+    expect(titleCases.filter((value) => value !== 'none')).toEqual([]);
+  });
+
   test.describe('print', () => {
     test.beforeEach(async ({ page }) => {
       await page.emulateMedia({ media: 'print', colorScheme: 'dark' });

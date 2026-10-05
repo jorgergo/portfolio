@@ -650,6 +650,37 @@ test.describe('type', () => {
     await expect(heading).toHaveCSS('color', rgb('light', 'accent'));
   });
 
+  // covers: spec 0012 AC-6
+  test('the type specimen line for a section heading looks the same as SectionHeading', async ({
+    page,
+  }) => {
+    await open(page);
+    // The specimen copies the component's classes by hand, so it is read
+    // against the component as it renders, never against a second literal.
+    const look = (target: Locator): Promise<readonly string[]> =>
+      target.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return [
+          style.fontFamily,
+          style.fontSize,
+          style.lineHeight,
+          style.fontWeight,
+          style.textTransform,
+          style.letterSpacing,
+          style.color,
+        ];
+      });
+    const specimen = panel(page, 'Light').getByText(
+      'Section heading in text-base at 500, uppercase, tracked',
+      { exact: true },
+    );
+
+    await expect(specimen).toHaveCount(1);
+    expect(await look(specimen)).toEqual(
+      await look(page.locator('h3#light-heading')),
+    );
+  });
+
   // covers: AC-4
   test('b renders at weight 500, the only emphasis weight', async ({
     page,
