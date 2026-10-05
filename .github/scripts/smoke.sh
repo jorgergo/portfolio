@@ -3,7 +3,9 @@
 # dist/. `pages` checks the bytes, headers, share images, and 404 (a failure
 # rolls the deploy back); `redirects` checks the www and http 301s. Every
 # expectation comes from dist/, so run it from the repo root after building the
-# commit that is live. SMOKE_ORIGIN points it at another server, such as
+# commit that is live. The CV's PDF is checked by its headers and its %PDF-
+# signature, never its bytes, since Chromium stamps the time into every build
+# of it (spec 0013). SMOKE_ORIGIN points it at another server, such as
 # `pnpm preview` on http://localhost:8787. Runs on bash 3.2 (macOS) and needs
 # only curl, grep, sed, and cmp.
 set -euo pipefail
@@ -75,6 +77,13 @@ if [ -z "$all_headers" ] || [ -z "$cache_headers" ]; then
   exit 1
 fi
 
+pdf_headers=$(block '/cv.pdf')
+
+if [ -z "$pdf_headers" ]; then
+  echo "no /cv.pdf block in $dist/_headers" >&2
+  exit 1
+fi
+
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -110,6 +119,13 @@ check_status() {
 
 check_bytes() {
   cmp -s "$tmp/body" "$2" || miss "$1 body" "the bytes of $2" 'different bytes'
+}
+
+# A PDF by its signature: the body's first line starts with %PDF-. LC_ALL=C
+# lets sed read bytes that are not text.
+check_pdf() {
+  LC_ALL=C sed -n '1{p;q;}' "$tmp/body" | grep -q '^%PDF-' ||
+    miss "$1 body" 'a PDF' 'something else'
 }
 
 # One `Name: value` line: the name in any case, the value exactly (trimmed, as
@@ -150,6 +166,15 @@ check_page() {
 check_pages() {
   check_page / index.html || return 1
   check_page /cv cv.html || return 1
+
+  fetch "$origin/cv.pdf"
+  check_status /cv.pdf 200 || return 1
+  check_pdf /cv.pdf || return 1
+  check_headers /cv.pdf "$all_headers" || return 1
+  check_headers /cv.pdf "$pdf_headers" || return 1
+  check_header /cv.pdf 'content-type: application/pdf' || return 1
+  check_not_immutable /cv.pdf || return 1
+
   check_page /about about.html || return 1
   check_page /projects projects.html || return 1
   check_page /contact contact.html || return 1

@@ -4275,4 +4275,87 @@ test.describe('cv pdf', () => {
       expect(response.headers()['x-robots-tag'], path).toBeUndefined();
     }
   });
+
+  // The deploy gate (spec 0013 AC-18): smoke.sh asks the served site for the
+  // PDF's status, signature, and headers, and reads what to expect from
+  // dist/_headers. It never compares the PDF's bytes, since Chromium stamps
+  // the time into every build of the file. Modelled on the smoke check cases
+  // above: a scratch copy of dist/ makes the script expect what the server
+  // does not send.
+  const dir = (): string => test.info().outputPath();
+  const served = (): string => test.info().project.use.baseURL ?? '';
+
+  // covers: spec 0013 AC-18
+  test('smoke.sh pages passes against the served build with the /cv.pdf checks in it', async () => {
+    const run = await runSmoke({
+      args: ['pages'],
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run).toEqual({
+      code: 0,
+      stdout: `smoke pages: ${served()}\nattempt 1/10: every check passed\n`,
+      stderr: '',
+      pauses: [],
+    });
+  });
+
+  // covers: spec 0013 AC-18
+  test('smoke.sh demands the X-Robots-Tag value of the /cv.pdf block on the PDF', async ({
+    request,
+  }) => {
+    const cwd = scratchDist(dir(), {
+      _headers: (headers) =>
+        headers.replace(
+          /^(\/cv\.pdf\n\s+X-Robots-Tag:).*$/m,
+          '$1 noindex, nofollow',
+        ),
+    });
+    // The header as the server sends it, name case included.
+    const sent = (await request.get(CV_PDF_PATH))
+      .headersArray()
+      .filter(({ name }) => name.toLowerCase() === 'x-robots-tag')
+      .map(({ name, value }) => `${name}: ${value}`)
+      .join(' | ');
+
+    const run = await runSmoke({
+      args: ['pages'],
+      cwd,
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(sent.toLowerCase()).toBe('x-robots-tag: noindex');
+    expect(run.stdout).toBe(
+      failedEveryAttempt(
+        'pages',
+        served(),
+        `${CV_PDF_PATH} header expected X-Robots-Tag: noindex, nofollow got ${sent}`,
+      ),
+    );
+    expect(run.code).toBe(1);
+  });
+
+  // covers: spec 0013 AC-18
+  test('smoke.sh exits at once when dist/_headers has no /cv.pdf block', async () => {
+    const cwd = scratchDist(dir(), {
+      _headers: (headers) =>
+        headers.replace(/^\/cv\.pdf\n(?:[ \t]+.*\n?)*/m, ''),
+    });
+
+    const run = await runSmoke({
+      args: ['pages'],
+      cwd,
+      dir: dir(),
+      origin: served(),
+    });
+
+    expect(run).toEqual({
+      code: 1,
+      stdout: '',
+      stderr: 'no /cv.pdf block in dist/_headers\n',
+      pauses: [],
+    });
+  });
 });
