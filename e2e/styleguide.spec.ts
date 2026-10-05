@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { COLOR_ROLES, CONTRAST_PAIRS } from '@/lib/contrast';
+import { CV_PDF_PATH } from '@/lib/cv-pdf';
 import { SHARE_IMAGE, SHARE_PAGES } from '@/lib/site-meta';
 import {
   axeViolations,
@@ -539,6 +540,40 @@ test.describe('semantic HTML', () => {
     ).toHaveAttribute('type', 'button');
   });
 
+  // covers: spec 0013 AC-20
+  test('the download Button follows the two others in both panels: a link to the PDF with a download name and a 16px icon before its label', async ({
+    page,
+  }) => {
+    await open(page);
+
+    for (const name of ['Light', 'Dark'] as const) {
+      const section = panel(page, name);
+      const button = section.getByRole('link', {
+        name: 'Download PDF',
+        exact: true,
+      });
+      const icon = button.locator(':scope > svg');
+
+      await expect(
+        section
+          .getByRole('link', { name: 'Button as a link' })
+          .locator('xpath=..')
+          .locator(':scope > *'),
+      ).toHaveText(['Button as a link', 'Button as a button', 'Download PDF']);
+      await expect(button).toHaveAttribute('href', CV_PDF_PATH);
+      await expect(button).toHaveAttribute('download', 'Example-CV.pdf');
+      await expect(icon).toHaveCount(1);
+      const [mark, box] = [
+        await icon.boundingBox(),
+        await button.boundingBox(),
+      ];
+      expect(mark, name).toMatchObject({ width: 16, height: 16 });
+      expect((mark?.x ?? 0) - (box?.x ?? 0), name).toBeLessThan(
+        (box?.width ?? 0) / 2,
+      );
+    }
+  });
+
   // covers: AC-9
   test('every icon is hidden from assistive tech and never focusable', async ({
     page,
@@ -853,18 +888,19 @@ test.describe('print', () => {
     await expect(page.locator('html')).toHaveCSS('color', rgb('print', 'fg'));
   });
 
-  // covers: AC-11
+  // covers: AC-11, spec 0013 AC-20
   test('hides every Button, the skip link, and the footer home link', async ({
     page,
   }) => {
     const hidden = [
       ...(await page.getByText('Button as a link').all()),
       ...(await page.getByText('Button as a button').all()),
+      ...(await page.getByText('Download PDF', { exact: true }).all()),
       page.locator('a[href="#main"]'),
       page.getByRole('contentinfo').locator('a[href="/"]'),
     ];
 
-    expect(hidden).toHaveLength(6);
+    expect(hidden).toHaveLength(8);
     for (const element of hidden) {
       await expect(element).toBeHidden();
     }

@@ -236,7 +236,7 @@ const fontFiles = (page: Page): Promise<Readonly<Record<string, string>>> =>
   );
 
 // Each employer's full name and every word of four or more letters in it
-// (today Ford, Motor, Puerto, Liverpool, Daimler, Truck), in any case. A word
+// (today Ford, Motor, Puerto, Liverpool), in any case. A word
 // that names a kind of business or a place rather than the employer stays
 // out, so a line may still say it; add one here when a new employer brings
 // one. Pages that lead with role and craft name none of them (specs 0009 and
