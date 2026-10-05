@@ -3161,8 +3161,8 @@ test.describe('cv page', () => {
         cvPdfFileName(basics.name),
       );
       expect((await classes(button)).has('shrink-0')).toBe(true);
-      // Every Button state of spec 0003: 40px tall, mono meta size, a 1px
-      // muted border, ink text, no underline.
+      // A Button at rest (spec 0003): 40px tall, mono meta size, a 1px muted
+      // border, ink text, no underline.
       expect((await button.boundingBox())?.height).toBe(40);
       // A flex item's own inline-flex computes to flex.
       await expect(button).toHaveCSS('display', 'flex');
