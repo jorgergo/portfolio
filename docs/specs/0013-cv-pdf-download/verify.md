@@ -52,3 +52,34 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - [ ] In `cv.json` add the bullet this spec removed to both Ford roles (`Set repo standards and strict build checks that ended about an hour a week of fixing broken links, and helped contributors through 18+ support issues.`), run `pnpm build` → it stops with `cv.pdf has 3 pages, over the cap of 2; shorten src/content/cv.json; see spec 0013` and `dist/cv.pdf` does not exist; restore → AC-15
 - [ ] In `public/_headers` delete the `/cv.pdf` block, run `pnpm build`, then `bash .github/scripts/smoke.sh pages` with `SMOKE_ORIGIN` set → it exits 1 with `no /cv.pdf block in dist/_headers`; restore → AC-18
 - [ ] Run `pnpm dev` and open `/cv` → the page renders with the button, and `/cv.pdf` answers 404 there; this is the known limit in Consequences, not a failure → AC-13
+
+## Build measurements · /develop · 2026-10-05
+_Taken during the build, so `/check verify` can compare without running them again. The break steps ran in a scratch clone (`cp -cR`), never in the working tree. Nothing above is ticked: that is for `/check verify`._
+
+- Gate on macOS: `pnpm lint` and `pnpm format:check` clean; `pnpm test` 498 passing; `pnpm build` logs `[cv-pdf] cv.pdf: 2 pages, 64 kB` (66,020 bytes) and takes about 0.4 s longer than before; `pnpm exec wrangler deploy --dry-run` reads 23 files; `pnpm exec playwright test` 360 passing → AC-21
+- `grep -c '<script' dist/cv.html` → 0 → AC-4
+- The PDF, read with `readPdfFacts` and PyMuPDF: 2 pages, 612 by 792pt, the fonts `IBMPlexMono-Medium`, `IBMPlexMono-Regular`, and `IBMPlexSans-Regular`, tagged, `lang` `en`, the title `CV · Jorge González Ozorno`, and 9 links (the email, `https://jorgergo.dev/`, GitHub, LinkedIn, Ford, TRACSUR, the jorgergo.dev project, Tec, EF SET) → AC-14
+- Page fill: the text of page one ends at 723.1pt of 792pt, 32.9pt above the bottom margin (about two lines), on the technologies line of jorgergo.dev; page two starts with Medipal and ends at 722.0pt, 34.0pt above the margin → AC-10, AC-14
+- Contact line on paper: `jorgergo@icloud.com · jorgergo.dev · github.com/jorgergo · linkedin.com/in/jorgergo`; the PDF holds no `Download` text → AC-7, AC-11
+- Header fit, measured on the built page: the name block is 310.8px wide (the label line), the button 150.8px, the gap 16px, so the row needs 477.6px. At 525px wide the header is 477px and the button sits under the name block at the left edge; at 526px it is 478px and the button sits at the right edge with its centre on the name block's. Nothing scrolls sideways at 320, 375, 480, 525, 526, 640, or 1280px → AC-6
+- `pnpm preview`: `/cv.pdf` answers 200 with `Content-Type: application/pdf`, `x-robots-tag: noindex`, `Cache-Control: public, max-age=0, must-revalidate`, and the five `/*` headers; `/cv` carries no `x-robots-tag`; `SMOKE_ORIGIN=http://localhost:8787 bash .github/scripts/smoke.sh pages` → `attempt 1/10: every check passed` → AC-17, AC-18
+- `pnpm dev`: `/cv` renders with the button and `/cv.pdf` answers 404 there; `/styleguide` shows `Download PDF` after the two other buttons in both panels, with a 16px icon and `download="Example-CV.pdf"` → AC-13, AC-20
+- Forced colours and contrast more, probed on the built page: under `forced-colors: active` the button keeps a 1px solid border and its icon, both in the system link colour, and takes the underline every link gets there; under `prefers-contrast: more` its border and the label line turn ink, in light and dark → AC-5
+- Break steps. Each `pnpm build` exited 1 and left no `dist/cv.pdf` → AC-2, AC-15
+  - `html { font-size: 11pt; }` in the print block → `cv.pdf has 3 pages, over the cap of 2; shorten src/content/cv.json; see spec 0013`
+  - `PLAYWRIGHT_BROWSERS_PATH` set to an empty folder → the Chromium message, with Playwright's own launch error printed under `Caused by`
+  - the printed path changed to `/nope` → `cv.pdf: dist/cv.html did not load; see spec 0013`
+  - `IBMPlexSans-Medium` in `CV_PDF_FONTS` → the font message of the step above, word for word
+  - an arrow in the first Ford bullet → `cv.pdf embeds ArialMT, IBMPlexMono-Medium, IBMPlexMono-Regular, IBMPlexSans-Regular, expected IBMPlexMono-Medium, IBMPlexMono-Regular, IBMPlexSans-Regular; …`. On macOS the fourth face is Arial
+  - `"highlights": ["x"]`, then `"highlights": []`, on FinTech AI → `projects.2.highlights: highlights show only on the CV, so the project must set cv; see spec 0013`
+  - `"cv": true` on FinTech AI → `projects.3.cv: at most 3 projects may set cv; see spec 0010`. The issue lands on Medipal, the fourth flagged project in file order, not on FinTech AI
+  - the removed bullet added to both Ford roles → the three page message again
+- Content edits that needed no test edit, each followed by `pnpm exec playwright test --project site` with 293 passing: `basics.profiles` removed (on screen the email alone with its dot hidden; on paper `jorgergo@icloud.com · jorgergo.dev`), and one short bullet added to the IT Academy role (still two pages, and page one still ends after jorgergo.dev) → AC-7, AC-14, AC-21
+- `site` changed to `https://www.example.dev/me/` in the clone → the paper only item reads `example.dev/me` and links `https://www.example.dev/me/`, so it follows `site` and nothing else → AC-7
+- `check_pdf`, lifted from `smoke.sh` as written and run under the bash 3.2 of macOS: it passes the built `cv.pdf` and fails `cv.html`, an empty body, a signature that is not at the start of line one, and random bytes, each with `/cv.pdf body expected a PDF got something else`. No page test locks this branch yet; the three smoke cases the spec names cover the pass, the header value, and the missing block → AC-18
+- Linux comparison, in `mcr.microsoft.com/playwright:v1.63.0-noble` (arm64, Node 26.10.0, pnpm 12.6.0): the build logs `[cv-pdf] cv.pdf: 2 pages, 65 kB` (66,160 bytes, against 66,020 on macOS). Both files have 2 pages, the same text lines on each (46 on page one, 51 on page two), and the same three fonts; across 768 words the largest move of a word edge is 0.12pt, and the text ends at 723.15pt and 722.00pt in both. In the same image `pnpm lint`, `pnpm format:check`, `pnpm test` (498 passing), and `CI=1 pnpm exec playwright test` (360 passing) pass → AC-16, AC-21
+- A note for the next Linux run: make the archive with `COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata`. With the plain macOS tar, `pnpm lint` and `pnpm format:check` fail inside the image while the build and the page tests pass, so the failure is the archive, not the code.
+
+## Not run by the build
+- The Safari, Firefox, iPhone, Preview, and VoiceOver steps, the read as a recruiter, the three numbers, and the TRACSUR organizer's answer are yours.
+- The deploy steps wait for the merge.
