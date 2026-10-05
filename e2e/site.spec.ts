@@ -19,6 +19,13 @@ import {
   type ContactRow,
   type Group,
 } from '@/lib/cv-format';
+import {
+  CV_PDF_FONTS,
+  CV_PDF_MAX_PAGES,
+  CV_PDF_PATH,
+  readPdfFacts,
+  type PdfFacts,
+} from '@/lib/cv-pdf';
 import { CV_LIMITS, PRIVATE_SOURCE, splitAtEmail } from '@/lib/cv-schema';
 import {
   formatPageTitle,
@@ -34,6 +41,7 @@ import {
   basics,
   closedPort,
   cv,
+  distBytes,
   distFile,
   distFiles,
   failedEveryAttempt,
@@ -3892,5 +3900,88 @@ test.describe('cv page', () => {
         ).toEqual(new Set(['print:pb-1', 'print:leading-tight']));
       }
     });
+  });
+});
+
+// Spec 0013: every build prints /cv to dist/cv.pdf, and the site serves that
+// file at /cv.pdf. The facts are read from the built bytes with the same
+// helper the build checks them with, and every expectation comes from
+// cv.json, `site`, and the page, so a valid content edit needs no test edit.
+test.describe('cv pdf', () => {
+  const FILE = CV_PDF_PATH.slice(1);
+  const facts = (): PdfFacts => readPdfFacts(distBytes(FILE));
+
+  // covers: spec 0013 AC-13, AC-14
+  test('the build writes a tagged Letter PDF of at most two pages in the three Plex faces', () => {
+    const { pages, width, height, fonts, tagged } = facts();
+
+    expect(distFiles()).toContain(FILE);
+    expect(pages).toBeGreaterThanOrEqual(1);
+    expect(pages).toBeLessThanOrEqual(CV_PDF_MAX_PAGES);
+    // Letter, in points.
+    expect({ width, height }).toEqual({ width: 612, height: 792 });
+    expect(fonts).toEqual(CV_PDF_FONTS.toSorted());
+    expect(tagged).toBe(true);
+  });
+
+  // covers: spec 0013 AC-14
+  test('the PDF carries the language and the title of /cv', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const { lang, title } = facts();
+
+    expect(lang).toBe('en');
+    expect(lang).toBe(await page.locator('html').getAttribute('lang'));
+    expect(title).toBe(cvMeta.title);
+    expect(title).toBe(await page.title());
+  });
+
+  // covers: spec 0013 AC-14
+  test('the PDF links the email, the site, and every profile as the browser writes them', () => {
+    const { uris } = facts();
+    const expected = [
+      `mailto:${basics.email}`,
+      site.href,
+      ...(basics.profiles ?? []).map(({ url }) => new URL(url).href),
+    ];
+
+    expect(expected.filter((uri) => !uris.includes(uri))).toEqual([]);
+  });
+
+  // covers: spec 0013 AC-17
+  test('/cv.pdf answers 200 as a PDF with noindex, every /* header, no immutable cache, and the bytes of dist/cv.pdf', async ({
+    request,
+  }) => {
+    const { '/*': all = [], [CV_PDF_PATH]: own = [] } = headerBlocks(
+      distFile('_headers'),
+    );
+    const response = await request.get(CV_PDF_PATH);
+    const actual = response.headersArray();
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(own).toEqual([{ name: 'X-Robots-Tag', value: 'noindex' }]);
+    expect(all.length).toBeGreaterThan(0);
+    expect(missingHeaders(actual, [...all, ...own])).toEqual([]);
+    expect(
+      actual.filter(
+        ({ name, value }) =>
+          name.toLowerCase() === 'cache-control' && value.includes('immutable'),
+      ),
+    ).toEqual([]);
+    expect((await response.body()).equals(distBytes(FILE))).toBe(true);
+  });
+
+  // covers: spec 0013 AC-17
+  test('noindex stays on the PDF alone, so the pages can still be listed', async ({
+    request,
+  }) => {
+    for (const path of SHARE_PAGES.map(({ path }) => path)) {
+      const response = await request.get(path);
+
+      expect(response.status(), path).toBe(200);
+      expect(response.headers()['x-robots-tag'], path).toBeUndefined();
+    }
   });
 });
