@@ -3607,6 +3607,10 @@ test.describe('cv page', () => {
 
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/cv');
+    // Plex Mono 500 is not preloaded. Until it lands, Linux draws the heading
+    // in a fallback 8px a glyph (220.8px for 23 characters, not 266.8px), so
+    // measure only once the fonts are in.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     // A heading's lines are the distinct tops of its text fragments, and its
     // width their sum, as in the date wrap case above.
     const headings = await page.evaluate(() =>
