@@ -218,8 +218,8 @@ spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.t
   - [x] The file: `cv-pdf.ts`, the `render-pdf.ts` build step, Chromium before the build in CI, the `noindex` header, and the page tests for the PDF (AC-12 to AC-15, AC-17, AC-19)
   - [x] Button and contact line: `download` on `Button`, `formatCvContacts`, the new header, and the edited header, Tab order, and contact tests (AC-4 to AC-8, AC-11)
   - [ ] Deploy gate, style guide, and docs: the `/cv.pdf` checks in `smoke.sh`, the style guide button, `design.md`, the README, then the gate and the steps in `verify.md` (AC-16, AC-18, AC-20, AC-21)
-- [ ] Verify it: `/check verify cv pdf download`
-- [ ] Test it: `/test cv pdf download`
+- [x] Verify it: `/check verify cv pdf download`
+- [x] Test it: `/test cv pdf download`
 - [ ] Review it (fresh model): `/check review cv pdf download`
 - [ ] Document it: `/document cv pdf download`
 

@@ -2104,6 +2104,19 @@ test.describe('projects page', () => {
     expect(distFile('projects.html')).not.toMatch(/<script/i);
   });
 
+  // covers: spec 0013 AC-3
+  test('shows no project bullets, which print on the CV alone', async ({
+    page,
+  }) => {
+    const bullets = projects.flatMap((project) => project.highlights ?? []);
+    test.skip(bullets.length === 0, 'no project in cv.json has bullets');
+
+    await page.goto('/projects');
+    const text = await main(page).innerText();
+
+    expect(bullets.filter((bullet) => text.includes(bullet))).toEqual([]);
+  });
+
   // covers: spec 0010 AC-2, AC-5, AC-6
   test('each row shows the name, its status and years, the description, the chips, and the code line, in sortByStart order', async ({
     page,
