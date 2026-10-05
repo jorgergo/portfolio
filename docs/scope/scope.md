@@ -194,12 +194,12 @@ spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/cont
 ### 15. CV typographic hierarchy · in-progress
 On `/cv` every line sits at nearly the same size: the olive uppercase section labels are the smallest text on the page (`text-xs`), below the entry titles, so a fast scan finds nothing to hold on to. Give the page a scale a reader can skim: section headings that stand out at a glance, then entry titles, then positions, dates, and body, on screen and on paper, within the two weights and six colours the design system ships.
 **Done when:** skimming `/cv` on a phone and a desktop, the section headings are the first thing the eye lands on, and each level (section, entry title, position and meta, body) is told apart by size, weight, or spacing alone; print keeps the hierarchy; light and dark keep AA contrast; `design.md`, the style guide, and the page tests that pin today's 12px label move with the change.
-spec [0012](../specs/0012-cv-typographic-hierarchy/index.md)
+spec [0012](../specs/0012-cv-typographic-hierarchy/index.md) · code in `src/components/SectionHeading.astro`, `src/pages/_dev/styleguide.astro`, `e2e/styleguide.spec.ts`, `e2e/site.spec.ts`, `design.md`
 - [x] Design it (spec): `/architect cv typographic hierarchy`
 - [ ] Build it: `/develop cv typographic hierarchy`
-  - [ ] Baseline on `main`: a copy of the CV share card and the Letter and A4 print page counts, to compare after the change (AC-4, AC-5)
-  - [ ] Component and style guide: the `SectionHeading` class string (16px capitals at 500 in olive), the specimen line, and the style guide case (AC-1, AC-6)
-  - [ ] Page tests: the `/cv` ladder in light and dark, one line of at most 23 characters at 320px, and print (AC-2 to AC-4)
+  - [x] Baseline on `main`: a copy of the CV share card and the Letter and A4 print page counts, to compare after the change (AC-4, AC-5)
+  - [x] Component and style guide: the `SectionHeading` class string (16px capitals at 500 in olive), the specimen line, and the style guide case (AC-1, AC-6)
+  - [x] Page tests: the `/cv` ladder in light and dark, one line of at most 23 characters at 320px, and print (AC-2 to AC-4)
   - [ ] Docs and the gate: the `design.md` edits, format, the full gate, the 24 character break step, and the CI run on Linux (AC-5, AC-7, AC-8)
 - [ ] Verify it: `/check verify cv typographic hierarchy`
 - [ ] Test it: `/test cv typographic hierarchy`
