@@ -236,6 +236,6 @@ Skateboard: the smallest complete whole first, then the helpers later pages need
 
 - [ ] Home page spec: decide whether the optional avatar shows, and its alt text (empty when the name sits beside it, since it is then decorative).
 - [ ] Metadata and share cards spec: read `name`, `label`, and `bio` from `getCv()` for titles and descriptions rather than duplicating them.
-- [ ] CV PDF spec: build from `getCv()` and the same format helpers so the PDF can never drift from the page.
+- [x] CV PDF spec: build from `getCv()` and the same format helpers so the PDF can never drift from the page. Done in [0013](../0013-cv-pdf-download/index.md): the PDF is the built page printed, so it reads the same helpers by construction.
 - [ ] Portfolio page spec: add projects (name, year, status, description, links) to this model.
 - [ ] Spanish version (deferred): parameterize `Present`, month names, and the country name locale in `cv-format.ts`.
