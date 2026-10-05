@@ -1,7 +1,7 @@
 # 0012. CV section headings at body size in olive capitals
 
 **Date**: 2026-09-30
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
