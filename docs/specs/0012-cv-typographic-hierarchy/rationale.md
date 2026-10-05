@@ -85,7 +85,7 @@ Three smaller picks went with the recommendation for the same reasons. Weight 50
 
 ### Width of the longest heading at 320px
 
-The text area is 272px (320px less `px-6` on each side). Plex Mono advances 0.6em per glyph, 9.6px at 16px on macOS and 10px on the Linux CI runner, whose Chromium rounds each glyph to a whole pixel (the 22px home h1 measures 13px per glyph there, `e2e/site.spec.ts`); the label tracking adds 0.1em after every glyph. The Linux column is that rounding applied to each size; only the 16px untracked width has been measured in this repo, so the AC-3 case records the real tracked width as a test annotation on its first CI run. `Leadership & activities` is 23 characters.
+The text area is 272px (320px less `px-6` on each side). Plex Mono advances 0.6em per glyph, 9.6px at 16px on macOS and 10px on the Linux CI runner, whose Chromium rounds each glyph to a whole pixel (the 22px home h1 measures 13px per glyph there, `e2e/site.spec.ts`); the label tracking adds 0.1em after every glyph. The Linux column is that rounding applied to each size; only the 16px untracked width has been measured in this repo, so the AC-3 case attaches the real tracked width as a test annotation, which a JSON report shows when run locally or in the Linux Playwright image (CI's `list` reporter does not print it). The build measured 266.8px for `Leadership & activities` in that image, as the column predicts (see *Build measurements* in [verify.md](verify.md)). `Leadership & activities` is 23 characters.
 
 | Treatment | macOS | Linux CI (estimate) | One line at 320px |
 |---|---|---|---|
