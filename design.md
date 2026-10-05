@@ -12,7 +12,7 @@ The look of the site, defined once. Values live in `src/styles/global.css`. This
 
 ## Character
 
-Warm paper, not white. A single column of text set in a monospace face, the way a well kept plain text file reads, with the CV prose in a matching sans. Two accents only: olive for structure (labels, selected text, the focus ring) and terracotta for interaction (hover, active). Light and dark follow the visitor's system setting, with no toggle and no flash. Motion is limited to colour changes. Everything is visible at rest. Details carry the design: the underline offset, the tracked labels, the hairline footer rule, the two point radius on a chip.
+Warm paper, not white. A single column of text set in a monospace face, the way a well kept plain text file reads, with the CV prose in a matching sans. Two accents only: olive for structure (section headings, selected text, the focus ring) and terracotta for interaction (hover, active). Light and dark follow the visitor's system setting, with no toggle and no flash. Motion is limited to colour changes. Everything is visible at rest. Details carry the design: the underline offset, the tracked section headings, the hairline footer rule, the two point radius on a chip.
 
 ### Build mandate
 
@@ -36,7 +36,7 @@ Six colour roles, each written once as `light-dark(light, dark)` in the `@theme`
 | `fg`          | body text, headings, link text                                                                                          |
 | `muted`       | meta text (dates, contact line, footer, chips, the home tagline), list markers, the underline colour, the button border |
 | `line`        | hairlines: the footer rule, the chip border, the rows of the projects list (decorative, no contrast requirement)        |
-| `accent`      | structure: section labels, selected text ground, the focus ring                                                         |
+| `accent`      | structure: section headings, selected text ground, the focus ring                                                       |
 | `accent-warm` | interaction: hover and active text, hover border                                                                        |
 
 Other tokens in the same file: the `text-title` size and line height, the body line height, `tracking-label`, `underline-offset-link`, `max-w-content` (the column), the `xs` breakpoint, the transition defaults, and the `--motion-*` variables on `:root`. Fonts come from Astro's Fonts API (`astro.config.mjs`) and reach Tailwind through `@theme inline` as `font-mono` and `font-sans`.
@@ -47,15 +47,16 @@ Rules: no `dark:` variants (the tokens switch by themselves), no opacity modifie
 
 Tailwind's default steps plus one custom size, all rem based:
 
-| Utility                  | Use                                             |
-| ------------------------ | ----------------------------------------------- |
-| `text-xs`                | uppercase labels (`SectionHeading`), the footer |
-| `text-sm`                | meta text, chips, buttons                       |
-| `text-base`              | body copy (the size and line height on `body`)  |
-| `text-lg font-medium`    | inner page h1 and the CV name                   |
-| `text-title font-medium` | the home page h1                                |
+| Utility                                                      | Use                                            |
+| ------------------------------------------------------------ | ---------------------------------------------- |
+| `text-xs`                                                    | the footer                                     |
+| `text-sm`                                                    | meta text, chips, buttons                      |
+| `text-base`                                                  | body copy (the size and line height on `body`) |
+| `text-base font-medium uppercase tracking-label text-accent` | section headings (`SectionHeading`)            |
+| `text-lg font-medium`                                        | inner page h1 and the CV name                  |
+| `text-title font-medium`                                     | the home page h1                               |
 
-Weights: 400 for everything, 500 for h1, entry titles, `b`, and `strong` (an `h4` role title and a position line are 400, so each entry has one medium line). Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Labels are `text-xs uppercase tracking-label text-accent`. Never use a pixel size. Short standalone text, such as the home page tagline and the about page's lines, takes `text-pretty`, so its last line never holds a lone word; `Prose` sets it too.
+Weights: 400 for everything, 500 for h1, section headings, entry titles, `b`, and `strong` (an `h4` role title and a position line are 400, so each entry has one medium line). Only 400 and 500 ship, so never write `font-semibold` or `font-bold`, the browser would fake them. Section headings are `text-base font-medium uppercase tracking-label text-accent`, and a heading that spans the column holds at most 23 characters: at 320px the text area is 272px and a tracked capital advances 11.6px on the Linux CI runner. Never use a pixel size. Short standalone text, such as the home page tagline and the about page's lines, takes `text-pretty`, so its last line never holds a lone word; `Prose` sets it too.
 
 ## Colour and contrast bar
 
@@ -92,7 +93,7 @@ All in `src/components/`, all semantic HTML, no UI library. Each takes a `class`
 - `SkipLink`: the first focusable element. Do not add another.
 - `SiteFooter`: `City, CC · YYYY` from the CV, plus `← home` on every route except `/`. It reads `getCv()` itself, an exception spec 0003 allows.
 - `TextLink`: a link inside running text. Underlined at rest in muted, terracotta text and underline on hover and focus. Use it for every link in prose. Never add `target`.
-- `SectionHeading`: a real `h2` (or `h3` with `as`) styled as an uppercase label. Pick the level from the document outline, never for the look. On a document page (the CV) it carries `border-b border-line pb-2 break-after-avoid`: a hairline under the label that spans the column, and a heading that never ends a printed page alone.
+- `SectionHeading`: a real `h2` (or `h3` with `as`) styled as body size capitals at 500 in accent. Pick the level from the document outline, never for the look. A heading that spans the column holds at most 23 characters, so it stays one line at 320px (a tracked capital advances 11.6px on the Linux CI runner, and the text area is 272px). On a document page (the CV) it carries `border-b border-line pb-2 break-after-avoid`: a hairline under the heading that spans the column, and a heading that never ends a printed page alone.
 - `TagChip`: a hairline chip for skills and technologies. Prints as plain text. Its first user is the projects list, one chip per technology in a nested `ul`, `gap-2` apart.
 - `IconLink`: an icon with a visible label (`github`, `linkedin`, `mail`, `arrow-up-right`, `download`). An `https` link gets the arrow after its label on its own. Never an icon alone.
 - `NavRow`: one row of a menu, the `<li>` and its link together, so the parent writes only the `<ol>` or `<ul>` and the `<nav>` around it. A muted prefix, then the label: `kind="number"` is a two digit position (`01`) in a `w-6` column, hidden from assistive tech because the list already conveys it; `kind="key"` is a word (`github`, `email`) in a `w-20` column that stays in the link's name (`github @jorgergo`). An `https` link ends with the arrow. The row wraps rather than breaking a value mid word, and the gap is across only (`gap-x-4`), so a wrapped value sits right under its key as the row's second line. Rows sit `gap-1` apart, and the lists carry no `role`. The home page menu is built from `SITE_NAV` in `src/lib/site-nav.ts`. `/contact` draws its keyed rows from `formatContactRows` inside an `<address class="not-italic">`, email first; since spec 0008 the home page shows only the numbered menu.

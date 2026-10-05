@@ -636,17 +636,49 @@ test.describe('type', () => {
     await expect(prose).toHaveCSS('font-family', /^"IBM Plex Sans-/);
   });
 
-  // covers: AC-4
-  test('SectionHeading is a label: text-xs, uppercase, tracked 0.1em, in accent', async ({
+  // covers: spec 0012 AC-1 (amends spec 0003 AC-4)
+  test('SectionHeading is a section heading: text-base at 500, uppercase, tracked 0.1em, in accent', async ({
     page,
   }) => {
     await open(page);
-    const label = page.locator('h3#light-heading');
+    const heading = page.locator('h3#light-heading');
 
-    await expect(label).toHaveCSS('font-size', '12px');
-    await expect(label).toHaveCSS('text-transform', 'uppercase');
-    await expect(label).toHaveCSS('letter-spacing', '1.2px');
-    await expect(label).toHaveCSS('color', rgb('light', 'accent'));
+    await expect(heading).toHaveCSS('font-size', '16px');
+    await expect(heading).toHaveCSS('font-weight', '500');
+    await expect(heading).toHaveCSS('text-transform', 'uppercase');
+    await expect(heading).toHaveCSS('letter-spacing', '1.6px');
+    await expect(heading).toHaveCSS('color', rgb('light', 'accent'));
+  });
+
+  // covers: spec 0012 AC-6
+  test('the type specimen line for a section heading looks the same as SectionHeading', async ({
+    page,
+  }) => {
+    await open(page);
+    // The specimen copies the component's classes by hand, so it is read
+    // against the component as it renders, never against a second literal.
+    const look = (target: Locator): Promise<readonly string[]> =>
+      target.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return [
+          style.fontFamily,
+          style.fontSize,
+          style.lineHeight,
+          style.fontWeight,
+          style.textTransform,
+          style.letterSpacing,
+          style.color,
+        ];
+      });
+    const specimen = panel(page, 'Light').getByText(
+      'Section heading in text-base at 500, uppercase, tracked',
+      { exact: true },
+    );
+
+    await expect(specimen).toHaveCount(1);
+    expect(await look(specimen)).toEqual(
+      await look(page.locator('h3#light-heading')),
+    );
   });
 
   // covers: AC-4
