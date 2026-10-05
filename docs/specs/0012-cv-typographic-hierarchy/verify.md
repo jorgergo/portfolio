@@ -31,3 +31,16 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - Firefox and Safari print previews stay manual; only Chromium runs in the page tests, and `break-after: avoid` is best effort outside it (spec 0005).
 - The page count on paper is recorded, not gated; a fifth page is information for the CV PDF decision (scope row 9).
 - The skim step is a judgement, backed by the measured ladder and the bench, not a number a test can read.
+
+## Build measurements · /develop · 2026-10-04
+_Taken during the build, so `/check verify` can compare without rebuilding `main`._
+
+- Share card: two builds of `main` gave the same `dist/og/cv.png`, and the build after the change gave it again (`shasum -a 256`: `d61d9706b15f1dc4a7c7899a84136cdb3cc4d948191860d32cec13d7915cc35e`) → AC-5
+- Page counts from `page.pdf` against `pnpm preview`: Letter 4 pages before and 5 after, A4 4 before and 4 after. On Letter the fifth page holds only the last two keyed rows (Sports and Music); on A4 the last page ends 6pt lower than before → AC-4
+- Printed headings, read from the Letter PDF: 11pt IBM Plex Mono Medium in `#4f5a2c`, none the last line of a page → AC-4
+- Width of `Leadership & activities` at 320px: 257.6px on macOS and 266.8px in the Linux Playwright image (`mcr.microsoft.com/playwright:v1.63.0-noble`, all 342 page tests passing there), one line in the 272px text area on both → AC-3, AC-8
+- Break step: with the 24 character heading the 320px case failed with `Leadership & activities. holds 24 characters`, and passed again once restored → AC-3
+
+## Commands added by the build
+- [ ] `PLAYWRIGHT_JSON_OUTPUT_NAME=report.json pnpm exec playwright test --project site -g "one line" --reporter=list,json`, then read `annotations` in `report.json` → eight `heading width at 320px` entries. The `list` reporter, which CI uses, does not print annotations, so the CI log alone will not show the widths → AC-3
+- [ ] Break step, in the Linux image: remove the `document.fonts.ready` line from the 320px case and run the suite → the case still passes but records 220.8px for the longest heading, the width of a fallback face drawn before Plex Mono 500 loads; restore the line → it records 266.8px → AC-3
