@@ -201,10 +201,10 @@ spec [0012](../specs/0012-cv-typographic-hierarchy/index.md) · code in `src/com
   - [x] Component and style guide: the `SectionHeading` class string (16px capitals at 500 in olive), the specimen line, and the style guide case (AC-1, AC-6)
   - [x] Page tests: the `/cv` ladder in light and dark, one line of at most 23 characters at 320px, and print (AC-2 to AC-4)
   - [ ] Docs and the gate: the `design.md` edits, format, the full gate, the 24 character break step, and the CI run on Linux (AC-5, AC-7, AC-8)
-- [ ] Verify it: `/check verify cv typographic hierarchy`
-- [ ] Test it: `/test cv typographic hierarchy`
-- [ ] Review it (fresh model): `/check review cv typographic hierarchy`
-- [ ] Document it: `/document cv typographic hierarchy`
+- [x] Verify it: `/check verify cv typographic hierarchy`
+- [x] Test it: `/test cv typographic hierarchy`
+- [x] Review it (fresh model): `/check review cv typographic hierarchy`
+- [x] Document it: `/document cv typographic hierarchy`
 
 ### 9. CV PDF download · needs a decision
 A visible download button on the CV page that gives a ready made PDF, always matching the web version.
