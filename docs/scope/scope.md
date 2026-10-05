@@ -25,6 +25,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | done |
 | 14 | Home page redesign | Release 1 | done |
+| 15 | CV typographic hierarchy | Release 2 | in-progress |
+| 16 | Project links live | Release 3 | planned |
 
 ## Foundations
 
@@ -189,6 +191,21 @@ spec [0008](../specs/0008-home-page-centered-menu/index.md) · code in `src/cont
 
 ## Release 2: CV extras
 
+### 15. CV typographic hierarchy · in-progress
+On `/cv` every line sits at nearly the same size: the olive uppercase section labels are the smallest text on the page (`text-xs`), below the entry titles, so a fast scan finds nothing to hold on to. Give the page a scale a reader can skim: section headings that stand out at a glance, then entry titles, then positions, dates, and body, on screen and on paper, within the two weights and six colours the design system ships.
+**Done when:** skimming `/cv` on a phone and a desktop, the section headings are the first thing the eye lands on, and each level (section, entry title, position and meta, body) is told apart by size, weight, or spacing alone; print keeps the hierarchy; light and dark keep AA contrast; `design.md`, the style guide, and the page tests that pin today's 12px label move with the change.
+spec [0012](../specs/0012-cv-typographic-hierarchy/index.md)
+- [x] Design it (spec): `/architect cv typographic hierarchy`
+- [ ] Build it: `/develop cv typographic hierarchy`
+  - [ ] Baseline on `main`: a copy of the CV share card and the Letter and A4 print page counts, to compare after the change (AC-4, AC-5)
+  - [ ] Component and style guide: the `SectionHeading` class string (16px capitals at 500 in olive), the specimen line, and the style guide case (AC-1, AC-6)
+  - [ ] Page tests: the `/cv` ladder in light and dark, one line of at most 23 characters at 320px, and print (AC-2 to AC-4)
+  - [ ] Docs and the gate: the `design.md` edits, format, the full gate, the 24 character break step, and the CI run on Linux (AC-5, AC-7, AC-8)
+- [ ] Verify it: `/check verify cv typographic hierarchy`
+- [ ] Test it: `/test cv typographic hierarchy`
+- [ ] Review it (fresh model): `/check review cv typographic hierarchy`
+- [ ] Document it: `/document cv typographic hierarchy`
+
 ### 9. CV PDF download · needs a decision
 A visible download button on the CV page that gives a ready made PDF, always matching the web version.
 **Done when:** clicking the button downloads a one page Harvard style PDF whose content matches the CV page exactly; the button is hidden when printing.
@@ -215,6 +232,11 @@ spec [0010](../specs/0010-projects-page/index.md) · code in `src/pages/projects
 - [x] Test it: `/test projects page`
 - [x] Review it (fresh model): `/check review projects page`
 - [x] Document it: `/document projects page`
+
+### 16. Project links live · from spec 0010
+The TRACSUR ticket site is up at tracsurtruckraces.com, so its row on `/projects` and its CV entry flip from `building` to `live` and link to the site, the content edit spec 0010 scripted for this day (jorgergo.dev is already `live` and linked). Settle with the edit how the row is named (`cv.json` says TRACSUR Tickets, the site calls itself Truck Races 2026) and whether its one line still describes what a visitor opens; the repo sits one folder up in `tracsur-boletos`.
+**Done when:** `cv.json` gives the TRACSUR project `status: live` and `url: https://tracsurtruckraces.com`; `/projects` shows its name as a link with `live · 2026 – now`; the CV Projects entry links the same way; both live sites answer; and build, page tests, and the smoke check pass with no test edit (spec 0010 AC-11).
+- [ ] Build it: `/develop project links live`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
