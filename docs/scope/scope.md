@@ -210,7 +210,7 @@ spec [0012](../specs/0012-cv-typographic-hierarchy/index.md) · code in `src/com
 ### 9. CV PDF download · in-progress
 A visible download button on the CV page that gives a ready made PDF, always matching the web version. The CV itself is curated to two pages, in plainer words, so the page and the PDF show the same thing.
 **Done when:** clicking the button saves a two page Letter PDF, named after you, that the build printed from the CV page, so its content matches the page exactly; the build stops when the PDF would run to a third page; the button is hidden when printing.
-spec [0013](../specs/0013-cv-pdf-download/index.md)
+spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.ts`, `src/lib/render-pdf.ts`, `src/pages/cv.astro`, `src/lib/cv-format.ts`, `src/lib/cv-schema.ts`, `src/content/cv.json`, `src/styles/global.css`, `src/components/Button.astro`, `.github/scripts/smoke.sh`, `e2e/site.spec.ts`
 - [x] Design it (spec): `/architect cv pdf download`
 - [ ] Build it: `/develop cv pdf download`
   - [x] Content and schema: bullets on a CV project, three CV projects, the curated `cv.json`, and the project bullets on `/cv` (AC-1 to AC-3)
