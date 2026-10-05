@@ -3630,8 +3630,9 @@ test.describe('cv page', () => {
 
     expect(headings).toHaveLength(SECTIONS.length);
     for (const { text, lines, width } of headings) {
-      // The measured width goes into the report, so a CI run records the
-      // real tracked width on Linux.
+      // The measured width goes into the test's annotations, which a JSON
+      // report shows when run locally or in the Linux Playwright image; the
+      // list reporter CI uses does not print them (spec 0012 AC-3).
       test.info().annotations.push({
         type: 'heading width at 320px',
         description: `${text}: ${String(width)}px`,
