@@ -3548,6 +3548,98 @@ test.describe('cv page', () => {
     ]);
   });
 
+  // covers: spec 0012 AC-2
+  test('section headings are text-base capitals at 500 in accent, under the name, in light and dark', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const scheme of SCHEMES) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/cv');
+      const headings = page.locator('main section h2');
+
+      await expect(headings).toHaveCount(SECTIONS.length);
+      for (const heading of await headings.all()) {
+        await expect(heading).toHaveCSS('font-size', '16px');
+        await expect(heading).toHaveCSS('line-height', '25.6px');
+        await expect(heading).toHaveCSS('font-weight', '500');
+        await expect(heading).toHaveCSS('text-transform', 'uppercase');
+        await expect(heading).toHaveCSS('letter-spacing', '1.6px');
+        await expect(heading).toHaveCSS('color', rgb(scheme, 'accent'));
+        await expect(heading).toHaveCSS('border-bottom-width', '1px');
+        await expect(heading).toHaveCSS('border-bottom-style', 'solid');
+        await expect(heading).toHaveCSS(
+          'border-bottom-color',
+          rgb(scheme, 'line'),
+        );
+        await expect(heading).toHaveCSS('padding-bottom', '8px');
+        await expect(heading).toHaveCSS('break-after', 'avoid');
+      }
+
+      // The name stays the largest text on the page: no element under body
+      // is set above the h1, and every section heading (16px) sits below it.
+      const name = await page
+        .locator('h1')
+        .evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize));
+      const largest = await page.evaluate(() =>
+        Math.max(
+          ...[...document.querySelectorAll('body *')].map((el) =>
+            Number.parseFloat(getComputedStyle(el).fontSize),
+          ),
+        ),
+      );
+      expect(largest, `the largest font size in ${scheme}`).toBe(name);
+      expect(name, `the h1 in ${scheme}`).toBeGreaterThan(16);
+    }
+  });
+
+  // covers: spec 0012 AC-3
+  test('every section heading is one line of at most 23 characters at 320px', async ({
+    page,
+  }) => {
+    // At 320px the column's text area is 272px: the viewport less px-6 on
+    // each side (spec 0003 AC-5). A tracked capital advances 0.7em: 11.2px on
+    // macOS and 11.6px on the Linux runner, whose Chromium rounds the 9.6px
+    // Plex Mono glyph up to 10px. 272 / 11.6 is 23.4, so 23 characters fit on
+    // both and 24 wrap in CI. On macOS 24 are 268.8px, still one line, so the
+    // length is the check that fails a long heading on both platforms.
+    const HEADING_CAP = 23;
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/cv');
+    // A heading's lines are the distinct tops of its text fragments, and its
+    // width their sum, as in the date wrap case above.
+    const headings = await page.evaluate(() =>
+      [...document.querySelectorAll('main section h2')].map((heading) => {
+        const range = document.createRange();
+        range.selectNodeContents(heading);
+        const rects = [...range.getClientRects()].filter(
+          (rect) => rect.width > 0,
+        );
+        return {
+          text: (heading.textContent ?? '').trim(),
+          lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+          width: rects.reduce((sum, rect) => sum + rect.width, 0),
+        };
+      }),
+    );
+
+    expect(headings).toHaveLength(SECTIONS.length);
+    for (const { text, lines, width } of headings) {
+      // The measured width goes into the report, so a CI run records the
+      // real tracked width on Linux.
+      test.info().annotations.push({
+        type: 'heading width at 320px',
+        description: `${text}: ${String(width)}px`,
+      });
+      expect(lines, `${text} at 320px`).toBe(1);
+      expect(
+        text.length,
+        `${text} holds ${String(text.length)} characters`,
+      ).toBeLessThanOrEqual(HEADING_CAP);
+    }
+  });
+
   test.describe('print', () => {
     test.beforeEach(async ({ page }) => {
       await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
@@ -3648,6 +3740,26 @@ test.describe('cv page', () => {
       );
       if ((await keys.count()) > 0) {
         await expect(keys.first()).toHaveCSS('color', rgb('print', 'muted'));
+      }
+    });
+
+    // covers: spec 0012 AC-4
+    test('prints section headings at 11pt capitals in the paper accent with no print only rule', async ({
+      page,
+    }) => {
+      const headings = page.locator('main section h2');
+
+      await expect(headings).toHaveCount(SECTIONS.length);
+      for (const heading of await headings.all()) {
+        // 1rem and 0.1em at the 11pt root: the rem scale carries the heading
+        // to paper on its own, so its classes hold no print variant.
+        await expect(heading).toHaveCSS('font-size', '14.6667px');
+        await expect(heading).toHaveCSS('font-weight', '500');
+        await expect(heading).toHaveCSS('text-transform', 'uppercase');
+        await expect(heading).toHaveCSS('letter-spacing', '1.46667px');
+        await expect(heading).toHaveCSS('color', rgb('print', 'accent'));
+        await expect(heading).toHaveCSS('break-after', 'avoid');
+        await expect(heading).not.toHaveClass(/print:/);
       }
     });
   });
