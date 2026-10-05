@@ -114,11 +114,17 @@
       --color-accent: #4f5a2c;
       --color-accent-warm: #1a1815;
     }
+    /* Spec 0013: one paper scale for every page. Half inch margins, a 10pt
+       root, and a body line height that keeps Plex Sans easy to read at that
+       size; the CV fits its two Letter pages at these values. */
     @page {
-      margin: 18mm;
+      margin: 12.7mm;
     }
     html {
-      font-size: 11pt;
+      font-size: 10pt;
+    }
+    body {
+      line-height: 1.45;
     }
     a {
       color: inherit;

@@ -701,12 +701,19 @@ test.describe('print', () => {
     await expect(html).toHaveCSS('color', rgb('print', 'fg'));
   });
 
-  // covers: AC-11
-  test('sets the root size to 11pt and an 18mm page margin', async ({
+  // covers: AC-11, spec 0013 AC-9
+  test('sets the root size to 10pt, the body line height to 1.45, and a half inch page margin, and drops the column width', async ({
     page,
   }) => {
-    await expect(page.locator('html')).toHaveCSS('font-size', '14.6667px');
-    expect(await pageMargins(page)).toEqual(['18mm']);
+    // One paper scale for every page (spec 0013): 10pt is 13.3333px, and
+    // 1.45 of it is 19.3333px.
+    await expect(page.locator('html')).toHaveCSS('font-size', '13.3333px');
+    await expect(page.locator('body')).toHaveCSS('line-height', '19.3333px');
+    expect(await pageMargins(page)).toEqual(['12.7mm']);
+    await expect(page.locator('main').locator('..')).toHaveCSS(
+      'max-width',
+      'none',
+    );
   });
 
   // covers: AC-11
@@ -3738,14 +3745,56 @@ test.describe('cv page', () => {
       expect(hidden).toBe(0);
     });
 
-    // covers: spec 0005 AC-10
-    test('tightens the gaps to 1.5rem and 1rem at the 11pt root', async ({
+    // covers: spec 0005 AC-10, spec 0013 AC-9, AC-10
+    test('prints at the site paper scale and tightens every gap at the 10pt root', async ({
       page,
     }) => {
-      await expect(page.locator('html')).toHaveCSS('font-size', '14.6667px');
-      await expect(wrapper(page)).toHaveCSS('row-gap', '22px');
+      await expect(page.locator('html')).toHaveCSS('font-size', '13.3333px');
+      await expect(page.locator('body')).toHaveCSS('line-height', '19.3333px');
+      expect(await pageMargins(page)).toEqual(['12.7mm']);
+      await expect(page.locator('main').locator('..')).toHaveCSS(
+        'max-width',
+        'none',
+      );
+
+      // 1.25rem between the header and each section, 0.75rem inside a section.
+      await expect(wrapper(page)).toHaveCSS('row-gap', '16.6667px');
+      await expect(wrapper(page).locator(':scope > header')).toHaveCSS(
+        'row-gap',
+        '3.33333px',
+      );
       for (const { id } of SECTIONS) {
-        await expect(section(page, id)).toHaveCSS('row-gap', '14.6667px');
+        await expect(section(page, id)).toHaveCSS('row-gap', '10px');
+      }
+      // Every entry and every role is a CvEntry: 0.25rem between its lines and
+      // inside its own body (the flex one; a coursework line in the slot has
+      // no gap of its own), and 0.125rem between bullets.
+      for (const heading of await page
+        .locator('main section :is(h3, h4)')
+        .all()) {
+        const entry = entryOf(heading);
+        await expect(entry).toHaveCSS('row-gap', '3.33333px');
+        for (const prose of await entry
+          .locator(':scope > div.font-sans.flex')
+          .all()) {
+          await expect(prose).toHaveCSS('row-gap', '3.33333px');
+        }
+      }
+      for (const bullets of await page.locator('main section ul').all()) {
+        await expect(bullets).toHaveCSS('row-gap', '1.66667px');
+      }
+      // 0.5rem between the roles of a group, in both role sections.
+      for (const { id, groups } of ROLE_SECTIONS) {
+        const titles = section(page, id).getByRole('heading', { level: 3 });
+        for (const [index, { items }] of groups.entries()) {
+          if (items.length === 1) continue;
+          await expect(
+            entryOf(titles.nth(index)).locator(':scope > div').last(),
+          ).toHaveCSS('row-gap', '6.66667px');
+        }
+      }
+      for (const list of await page.locator('main section dl').all()) {
+        await expect(list).toHaveCSS('row-gap', '3.33333px');
       }
     });
 
@@ -3816,23 +3865,31 @@ test.describe('cv page', () => {
       }
     });
 
-    // covers: spec 0012 AC-4
-    test('prints section headings at 11pt capitals in the paper accent with no print only rule', async ({
+    // covers: spec 0012 AC-4, spec 0013 AC-10
+    test('prints section headings at 10pt capitals in the paper accent, tightened by two print classes', async ({
       page,
     }) => {
       const headings = page.locator('main section h2');
 
       await expect(headings).toHaveCount(SECTIONS.length);
       for (const heading of await headings.all()) {
-        // 1rem and 0.1em at the 11pt root: the rem scale carries the heading
-        // to paper on its own, so its classes hold no print variant.
-        await expect(heading).toHaveCSS('font-size', '14.6667px');
+        // 1rem and 0.1em at the 10pt root: the rem scale carries the size to
+        // paper on its own. The line height and the padding under the text
+        // tighten there, the two print classes the page passes (spec 0013).
+        await expect(heading).toHaveCSS('font-size', '13.3333px');
+        await expect(heading).toHaveCSS('line-height', '16.6667px');
         await expect(heading).toHaveCSS('font-weight', '500');
         await expect(heading).toHaveCSS('text-transform', 'uppercase');
-        await expect(heading).toHaveCSS('letter-spacing', '1.46667px');
+        await expect(heading).toHaveCSS('letter-spacing', '1.33333px');
+        await expect(heading).toHaveCSS('padding-bottom', '3.33333px');
         await expect(heading).toHaveCSS('color', rgb('print', 'accent'));
         await expect(heading).toHaveCSS('break-after', 'avoid');
-        await expect(heading).not.toHaveClass(/print:/);
+        const classes = ((await heading.getAttribute('class')) ?? '').split(
+          /\s+/,
+        );
+        expect(
+          new Set(classes.filter((name) => name.startsWith('print:'))),
+        ).toEqual(new Set(['print:pb-1', 'print:leading-tight']));
       }
     });
   });

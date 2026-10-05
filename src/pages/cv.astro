@@ -166,8 +166,8 @@ const rendered = sections.filter(hasContent);
 ---
 
 <BaseLayout {...pageMeta('cv', cv, Astro.site)} printFooter={false}>
-  <div class="flex flex-col gap-14 print:gap-6">
-    <header class="flex flex-col gap-2">
+  <div class="flex flex-col gap-14 print:gap-5">
+    <header class="flex flex-col gap-2 print:gap-1">
       <h1 class="text-lg font-medium">{basics.name}</h1>
       <p class="text-sm text-muted">
         {joinMeta(basics.label, formatLocation(basics.location))}
@@ -194,12 +194,12 @@ const rendered = sections.filter(hasContent);
     </header>
     {rendered.map((section) => (
       <section
-        class="flex flex-col gap-6 print:gap-4"
+        class="flex flex-col gap-6 print:gap-3"
         aria-labelledby={section.id}
       >
         <SectionHeading
           id={section.id}
-          class="border-b border-line pb-2 break-after-avoid"
+          class="border-b border-line pb-2 break-after-avoid print:pb-1 print:leading-tight"
         >
           {section.heading}
         </SectionHeading>
@@ -228,7 +228,7 @@ const rendered = sections.filter(hasContent);
                 href={firstUrl(group.items)}
                 meta={groupMeta(group)}
               >
-                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-4 print:gap-2">
                   {group.items.map((item) => (
                     <CvEntry
                       as="h4"
