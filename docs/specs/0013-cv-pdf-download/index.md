@@ -456,7 +456,7 @@ Skateboard: each step leaves something a visitor can use and the suite green. Th
 ## Follow-up
 
 - [ ] History page (enrolled in the scope as its own feature): tell the full path from student to now, and bring back the entries recorded under *What left the CV* in [rationale.md](rationale.md).
-- [ ] Content, yours, before the merge: the TRACSUR ticket count is the organizer's sales figure. Check that they are fine with it being public; if not, end that bullet at `page views.`
+- [x] Content, yours, before the merge: the TRACSUR ticket count is the organizer's sales figure. Check that they are fine with it being public; if not, end that bullet at `page views.` Done 2026-10-05: the organizer is fine with it, so the bullet stays.
 - [ ] Content, yours: after the race (about a month and a half from 2026-10-05), swap TRACSUR's first week bullet for the final totals. Still open for when you have them: the questions the assistant answers in a week, and Medipal's users once it has more than its first three. Each is a plain `cv.json` edit; the build tells you if it no longer fits.
 - [ ] Content, yours: when TRACSUR's offline scanner ships, the project line can say so again. Today it says gate check in, which is true now.
 - [ ] `/sync` after the build: record in `AGENTS.md` that `pnpm build` needs Chromium and writes `dist/cv.pdf`; the `cv-pdf.ts` and `render-pdf.ts` split and the import rule; the paper scale; `formatCvContacts`; three CV projects and project highlights; the `/cv.pdf` checks in `smoke.sh` (headers and signature, no bytes); `distBytes`.

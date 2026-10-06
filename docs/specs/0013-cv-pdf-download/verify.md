@@ -8,20 +8,20 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - [x] Hover the button, then reach it with Tab → text and border turn terracotta on hover and on focus; Tab also draws the 2px olive ring → AC-5
 - [x] Resize to 320, 375, 480, 525, 526, and 640px wide → with today's content, up to 525px the button has its own row under the role line, left aligned with your name; from 526px it sits at the right edge (your name block is 311px, the gap 16px, the button 151px, so the row needs 478px of the column); the role line is one line from 360px up at every width; nothing scrolls sideways → AC-6
 - [x] Press Tab from the top of `/cv` → skip link, `Download PDF`, the email, GitHub, LinkedIn, Ford Motor Company, TRACSUR Tickets, jorgergo.dev, Tecnológico de Monterrey, the EF SET certificate, then `← home`; every stop shows the ring → AC-8
-- [ ] Click `Download PDF` in Chrome, then in Safari and Firefox → a file named `Jorge-Gonzalez-Ozorno-CV.pdf` lands in Downloads and the page stays on `/cv` → AC-5
-- [ ] Tap the button on an iPhone (or in the iOS simulator) → Safari offers to download the file under the same name → AC-5
-- [ ] Open `/cv.pdf` in the address bar in Chrome, then Safari, then Firefox → each shows the PDF in its own viewer (the site sends `frame-ancestors 'none'` with every file, so confirm none of them blocks it) and the tab reads `CV · Jorge González Ozorno` → AC-14, AC-17
-- [ ] Open the downloaded file in Preview and in Chrome → two Letter pages; page one ends after the jorgergo.dev project and page two starts with Medipal, then `EDUCATION`; no entry is split across the pages; no heading is the last line of a page; the type is Plex Mono and Plex Sans → AC-10, AC-14
-- [ ] In the PDF, select the summary and the first Ford bullets, copy, and paste into a text editor → the text comes out whole and in reading order → AC-14
+- [x] Click `Download PDF` in Chrome, then in Safari and Firefox → a file named `Jorge-Gonzalez-Ozorno-CV.pdf` lands in Downloads and the page stays on `/cv` → AC-5
+- [x] Tap the button on an iPhone (or in the iOS simulator) → Safari offers to download the file under the same name → AC-5
+- [x] Open `/cv.pdf` in the address bar in Chrome, then Safari, then Firefox → each shows the PDF in its own viewer (the site sends `frame-ancestors 'none'` with every file, so confirm none of them blocks it) and the tab reads `CV · Jorge González Ozorno` → AC-14, AC-17
+- [x] Open the downloaded file in Preview and in Chrome → two Letter pages; page one ends after the jorgergo.dev project and page two starts with Medipal, then `EDUCATION`; no entry is split across the pages; no heading is the last line of a page; the type is Plex Mono and Plex Sans → AC-10, AC-14
+- [x] In the PDF, select the summary and the first Ford bullets, copy, and paste into a text editor → the text comes out whole and in reading order → AC-14
 - [x] In the PDF, hover each link (do not click the email, it would open Mail; read its target instead) → `mailto:` your address, `jorgergo.dev`, GitHub, LinkedIn, Ford, TRACSUR, the jorgergo.dev project, Tec, and the EF SET certificate each point where the page's links do → AC-14
-- [ ] In Preview's inspector (or Chrome's document properties) → the title is `CV · Jorge González Ozorno`; three fonts are embedded as subsets → AC-14
-- [ ] With VoiceOver on, read the PDF in Preview → it announces headings and lists and reads English; the section names come in capitals → AC-14
+- [x] In Preview's inspector (or Chrome's document properties) → the title is `CV · Jorge González Ozorno`; three fonts are embedded as subsets → AC-14
+- [x] With VoiceOver on, read the PDF in Preview → it announces headings and lists and reads English; the section names come in capitals → AC-14
 - [x] Print preview `/cv` in Chrome under a dark system setting, Letter → the same two pages as the PDF, on white paper with ink text; no button, no footer, no skip link; the contact line reads email, `jorgergo.dev`, GitHub, LinkedIn → AC-9, AC-10, AC-11
-- [ ] Print preview `/cv` in Safari and in Firefox → record the page counts here. A third page there is a known limit, not a failure → Consequences
+- [x] Print preview `/cv` in Safari and in Firefox → record the page counts here. A third page there is a known limit, not a failure → Consequences
 - [x] Print preview `/about` and `/projects` in Chrome → 10pt type, half inch margins, the text runs the full width, and the footer city line is still there → AC-9
-- [ ] Read the PDF top to bottom as a recruiter would → every line sounds like you; nothing reads as a template → AC-1
-- [ ] Check the three numbers against what you know today → Ford's first line says a team of 95 for the Portal and more than 7,000 people for the Knowledge Base; TRACSUR's second bullet says 200,000 page views and 5,000 tickets in its first week on sale; Medipal carries no number → AC-1
-- [ ] Before the merge, ask the TRACSUR organizer whether the ticket count may be public → a yes; with a no, end that bullet at `page views.` in `cv.json` and rebuild → AC-1
+- [x] Read the PDF top to bottom as a recruiter would → every line sounds like you; nothing reads as a template → AC-1
+- [x] Check the three numbers against what you know today → Ford's first line says a team of 95 for the Portal and more than 7,000 people for the Knowledge Base; TRACSUR's second bullet says 200,000 page views and 5,000 tickets in its first week on sale; Medipal carries no number → AC-1
+- [x] Before the merge, ask the TRACSUR organizer whether the ticket count may be public → a yes; with a no, end that bullet at `page views.` in `cv.json` and rebuild → AC-1. The organizer said yes on 2026-10-05, so the bullet stays.
 - [x] On `/projects` → TRACSUR Tickets is a link, reads `live`, and shows no bullets; the doctors app is spelled Medipal → AC-1, AC-3
 - [x] `pnpm dev`, open `/styleguide` → a `Download PDF` button with the icon appears beside the other two buttons in both panels → AC-20
 - [x] Emulate `forced-colors: active` and `prefers-contrast: more` on `/cv` → the button keeps a visible border and its icon; the role line turns ink under contrast more → AC-5
