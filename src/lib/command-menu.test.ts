@@ -70,6 +70,7 @@ describe('shortcutHint', () => {
     ['MacIntel', 'cmd k'],
     ['iPhone', 'cmd k'],
     ['iPad', 'cmd k'],
+    ['iPod touch', 'cmd k'],
     ['Win32', 'ctrl k'],
     ['Linux x86_64', 'ctrl k'],
     ['', 'ctrl k'],
@@ -113,6 +114,7 @@ describe('isMenuShortcut', () => {
     ['Ctrl+K', press({})],
     ['an uppercase K', press({ key: 'K' })],
     ['a Cyrillic к on the K key', press({ key: 'к' })],
+    ['a Greek κ on the K key', press({ key: 'κ' })],
   ])('accepts %s', (_name, event) => {
     expect(isMenuShortcut(event)).toBe(true);
   });
@@ -127,6 +129,9 @@ describe('isMenuShortcut', () => {
     ['keyCode 229', press({ keyCode: 229 })],
     ['another letter', press({ key: 'j', code: 'KeyJ' })],
     ['a Latin t on the K key (Dvorak)', press({ key: 't' })],
+    // The physical key counts only for K: a non Latin letter elsewhere stays
+    // with the page.
+    ['a Cyrillic к on another key', press({ key: 'к', code: 'KeyR' })],
   ])('refuses %s', (_name, event) => {
     expect(isMenuShortcut(event)).toBe(false);
   });
@@ -141,6 +146,7 @@ describe('nextFocus', () => {
     ['↑ moves to the row before', 4, 9, 'ArrowUp', 3],
     ['↑ from the first row goes to the field', 0, 9, 'ArrowUp', -1],
     ['↑ from the field stays in the field', -1, 9, 'ArrowUp', -1],
+    ['↓ on the only row left stays there', 0, 1, 'ArrowDown', 0],
     [
       '↓ from the field with no rows stays in the field',
       -1,

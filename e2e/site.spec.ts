@@ -4540,6 +4540,41 @@ test.describe('command menu', () => {
   const heightOf = async (target: Locator): Promise<number> =>
     (await target.boundingBox())?.height ?? 0;
 
+  // A browser without invoker commands (Safari before 26.2, Chrome before
+  // 135): the property the script checks is gone, and the browser's own
+  // handling of `commandfor` is cancelled, so only the script's wiring can
+  // open or close the menu.
+  const dropInvokerCommands = async (page: Page): Promise<void> => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(HTMLButtonElement.prototype, 'commandForElement');
+      window.addEventListener(
+        'command',
+        (event) => {
+          event.preventDefault();
+        },
+        { capture: true },
+      );
+    });
+  };
+
+  // Whether a fresh invoker button, which the script never wires, opens its
+  // dialog: false proves the simulation holds.
+  const invokerOpens = (page: Page): Promise<boolean> =>
+    page.evaluate(() => {
+      const probe = document.createElement('dialog');
+      probe.id = 'invoker-probe';
+      const button = document.createElement('button');
+      button.setAttribute('commandfor', probe.id);
+      button.setAttribute('command', 'show-modal');
+      document.body.append(probe, button);
+      button.click();
+      const opened = probe.open;
+      probe.close();
+      probe.remove();
+      button.remove();
+      return opened;
+    });
+
   for (const { path, route } of MENU_PAGES) {
     // covers: spec 0014 AC-1, AC-2, AC-3, AC-5, AC-6, AC-13
     test(`on ${path} Ctrl+K opens the named sheet with focus in the filter, every row, and the current page marked`, async ({
@@ -4763,6 +4798,24 @@ test.describe('command menu', () => {
     await expect(button).toBeFocused();
   });
 
+  // covers: spec 0014 AC-4, AC-6
+  test('without invoker commands the script wires the buttons: the footer button opens the menu with focus in the field, and close closes it', async ({
+    page,
+  }) => {
+    await dropInvokerCommands(page);
+    await page.goto('/about');
+    await pageHint(page);
+    expect(await invokerOpens(page)).toBe(false);
+
+    await footerButton(page).click();
+
+    await expect(dialog(page)).toBeVisible();
+    await expect(field(page)).toBeFocused();
+    await closeButton(page).click();
+    await expect(dialog(page)).toBeHidden();
+    await expect(footerButton(page)).toBeFocused();
+  });
+
   // covers: spec 0014 AC-4, AC-16
   test('on the home page the footer button comes before the city line, with no home link', async ({
     page,
@@ -4848,6 +4901,46 @@ test.describe('command menu', () => {
     // A Cyrillic layout types к on the K key; the physical key still counts.
     await dispatch({ key: 'к', code: 'KeyK', ctrlKey: true });
     await expect(dialog(page)).toBeVisible();
+  });
+
+  // covers: spec 0014 AC-6, AC-7, AC-8
+  test("what you type and pick right after the shortcut survives the dialog's late toggle event", async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await pageHint(page);
+    const query = 'page';
+    const names = ALL_NAMES.filter((name) => rowMatches(name, query));
+
+    // The shortcut, the typing, and ↓ land in one task, before the browser
+    // fires `toggle` for the open. The script's own `toggle` handler runs
+    // before this one, so once it resolves, the late open steps have run.
+    await dialog(page).evaluate(async (menu, typed) => {
+      const toggled = new Promise((resolve) => {
+        menu.addEventListener('toggle', resolve, { once: true });
+      });
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'k',
+          code: 'KeyK',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+      const input = menu.querySelector('input');
+      if (input === null) return;
+      input.value = typed;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+      );
+      await toggled;
+    }, query);
+
+    await expect(dialog(page)).toBeVisible();
+    await expect(field(page)).toHaveValue(query);
+    await expectRows(page, names);
+    await expect(focused(page)).toHaveAccessibleName(names[0] ?? 'missing');
   });
 
   // covers: spec 0014 AC-7
@@ -4937,6 +5030,27 @@ test.describe('command menu', () => {
     await expect(focused(page)).toHaveAccessibleName(pages.at(-1) ?? '');
   });
 
+  // covers: spec 0014 AC-8
+  test('Ctrl, Cmd, or Alt with a letter on a row keeps focus there, so Cmd+C still copies, while Shift types the letter', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await openMenu(page);
+    await page.keyboard.press('ArrowDown');
+    const first = rowLinks(page).first();
+    await expect(first).toBeFocused();
+
+    for (const keys of ['Control+c', 'Meta+c', 'Alt+l']) {
+      await page.keyboard.press(keys);
+      await expect(first, keys).toBeFocused();
+    }
+    await expect(field(page)).toHaveValue('');
+
+    await page.keyboard.press('Shift+P');
+    await expect(field(page)).toBeFocused();
+    await expect(field(page)).toHaveValue('P');
+  });
+
   // covers: spec 0014 AC-8, AC-9
   test('Enter in the field follows the first visible row, and with no row does nothing', async ({
     page,
@@ -4957,6 +5071,50 @@ test.describe('command menu', () => {
 
     await expect(page).toHaveURL(first?.href ?? 'missing');
     await expect(dialog(page)).toBeHidden();
+  });
+
+  // covers: spec 0014 AC-8
+  test('Enter that ends an IME composition in the field follows no row', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    await field(page).fill('page');
+
+    // The row clicks after each Enter, with the page kept in place. Safari
+    // reports the Enter that ends a composition as keyCode 229; the plain
+    // Enter last proves a click would have been counted.
+    const clicks = await field(page).evaluate((input) => {
+      let count = 0;
+      input
+        .closest('dialog')
+        ?.querySelector('ul')
+        ?.addEventListener(
+          'click',
+          (event) => {
+            count += 1;
+            event.preventDefault();
+          },
+          { capture: true },
+        );
+      const enters: readonly KeyboardEventInit[] = [
+        { isComposing: true },
+        { keyCode: 229 },
+        {},
+      ];
+      return enters.map((init) => {
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Enter',
+            bubbles: true,
+            ...init,
+          }),
+        );
+        return count;
+      });
+    });
+
+    expect(clicks).toEqual([0, 0, 1]);
   });
 
   // covers: spec 0014 AC-7, AC-9
@@ -5009,6 +5167,7 @@ test.describe('command menu', () => {
 
     const clicks: readonly Parameters<Locator['click']>[0][] = [
       { modifiers: ['ControlOrMeta'] },
+      { modifiers: ['Shift'] },
       { button: 'middle' },
     ];
     for (const click of clicks) {
@@ -5197,6 +5356,22 @@ test.describe('command menu', () => {
       await openMenu(page);
 
       await expect(field(page)).toBeFocused();
+    });
+
+    // covers: spec 0014 AC-4, AC-6
+    test('without invoker commands the corner button still opens the menu, with focus left on close', async ({
+      page,
+    }) => {
+      await dropInvokerCommands(page);
+      await page.goto('/about');
+      await pageHint(page);
+      expect(await invokerOpens(page)).toBe(false);
+
+      await cornerButton(page).tap();
+
+      await expect(dialog(page)).toBeVisible();
+      await expect(closeButton(page)).toBeFocused();
+      await expect(field(page)).not.toBeFocused();
     });
   });
 });
