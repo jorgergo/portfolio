@@ -220,8 +220,8 @@ spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.t
   - [ ] Deploy gate, style guide, and docs: the `/cv.pdf` checks in `smoke.sh`, the style guide button, `design.md`, the README, then the gate and the steps in `verify.md` (AC-16, AC-18, AC-20, AC-21)
 - [x] Verify it: `/check verify cv pdf download`
 - [x] Test it: `/test cv pdf download`
-- [ ] Review it (fresh model): `/check review cv pdf download`
-- [ ] Document it: `/document cv pdf download`
+- [x] Review it (fresh model): `/check review cv pdf download`
+- [x] Document it: `/document cv pdf download`
 
 ### 10. Command menu · needs a decision
 A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.jarocki.me.
