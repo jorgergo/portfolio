@@ -37,7 +37,18 @@ import {
   SHARE_PAGES,
   TWITTER_CARD,
 } from '@/lib/site-meta';
-import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
+import {
+  COMMAND_MENU_ID,
+  formatMatchCount,
+  rowMatches,
+  shortcutHint,
+} from '@/lib/command-menu';
+import {
+  commandMenuRows,
+  formatRowNumber,
+  SITE_NAV,
+  type MenuRow,
+} from '@/lib/site-nav';
 import {
   axeViolations,
   basics,
@@ -94,6 +105,12 @@ const groupUrl = (group: {
   readonly items: readonly { readonly url?: string | undefined }[];
 }): string | undefined => firstUrl(group.items);
 
+// Spec 0014 AC-16: the footer's menu button ends every page's Tab order. Its
+// text ends with the hint the script writes from the page's platform (`menu
+// cmd k` on a Mac, `menu ctrl k` elsewhere; its name stays `menu`), so the
+// stop holds a placeholder that `withHint` fills from the open page.
+const MENU_STOP = 'button "menu <hint>"';
+
 const DOWNLOAD_LABEL = 'Download PDF';
 const CV_STOPS: readonly string[] = [
   'a "Skip to content"',
@@ -126,6 +143,7 @@ const CV_STOPS: readonly string[] = [
     (certificate) => certificate.url,
   ),
   'a "← home"',
+  MENU_STOP,
 ];
 
 // Spec 0006 AC-3, AC-4: titles and descriptions come from cv.json through
@@ -145,6 +163,7 @@ const PROJECT_STOPS: readonly string[] = [
     ...(source === PRIVATE_SOURCE ? [] : [`a "code for ${name}"`]),
   ]),
   'a "← home"',
+  MENU_STOP,
 ];
 
 // Spec 0011 AC-7: each contact row, named by its key and its label, in the
@@ -154,6 +173,7 @@ const CONTACT_STOPS: readonly string[] = [
   'a "Skip to content"',
   ...CONTACT_ROWS.map(({ key, label }) => `a "${key} ${label}"`),
   'a "← home"',
+  MENU_STOP,
 ];
 
 // The home menu rows as they read, `01 about`, from SITE_NAV (spec 0009 AC-8).
@@ -167,9 +187,13 @@ const PAGES: readonly PageCase[] = [
     title: homeMeta.title,
     description: homeMeta.description,
     h1: basics.name,
-    // Spec 0008 AC-6: the menu rows, and nothing after (the footer has no
-    // link on the home page).
-    stops: ['a "Skip to content"', ...MENU_ROWS.map((row) => `a "${row}"`)],
+    // Spec 0008 AC-6: the menu rows, then the footer's menu button (the
+    // footer has no home link on the home page).
+    stops: [
+      'a "Skip to content"',
+      ...MENU_ROWS.map((row) => `a "${row}"`),
+      MENU_STOP,
+    ],
   },
   {
     path: '/about',
@@ -177,7 +201,12 @@ const PAGES: readonly PageCase[] = [
     description: aboutMeta.description,
     h1: 'about',
     // Spec 0009 AC-9: the closing's email is the page's one link.
-    stops: ['a "Skip to content"', `a "${basics.email}"`, 'a "← home"'],
+    stops: [
+      'a "Skip to content"',
+      `a "${basics.email}"`,
+      'a "← home"',
+      MENU_STOP,
+    ],
   },
   {
     path: '/cv',
@@ -205,11 +234,57 @@ const PAGES: readonly PageCase[] = [
     title: formatPageTitle(basics, 'Not found'),
     description: 'This page does not exist.',
     h1: 'Not found',
-    stops: ['a "Skip to content"', 'a "Back to the home page"', 'a "← home"'],
+    stops: [
+      'a "Skip to content"',
+      'a "Back to the home page"',
+      'a "← home"',
+      MENU_STOP,
+    ],
   },
 ];
 
 const SCHEMES = ['light', 'dark'] as const;
+
+// The shortcut hint the open page shows, once its script has written it.
+const pageHint = async (page: Page): Promise<string> => {
+  await expect(page.locator('footer [data-shortcut-hint]')).not.toBeEmpty();
+  return shortcutHint(await page.evaluate(() => navigator.platform));
+};
+
+// `stops` with MENU_STOP filled in from the open page.
+const withHint = async (
+  page: Page,
+  stops: readonly string[],
+): Promise<readonly string[]> => {
+  const hint = await pageHint(page);
+  return stops.map((stop) =>
+    stop === MENU_STOP ? `button "menu ${hint}"` : stop,
+  );
+};
+
+// Spec 0014 AC-13: every built page ships one script, the command menu's
+// module. Astro inlines it with its hash in the CSP, or writes it to /_astro/
+// by its size, so both cases are read from dist/: the one module tag, and the
+// file it loads, if any, which is then the page's only `.js` request.
+const scriptTags = (file: string): readonly string[] =>
+  distFile(file).match(/<script\b[^>]*>/gi) ?? [];
+
+const scriptRequests = (file: string): readonly string[] =>
+  scriptTags(file).flatMap((tag) => /\bsrc="([^"]+)"/.exec(tag)?.[1] ?? []);
+
+const expectOnlyMenuScript = (file: string): void => {
+  const tags = scriptTags(file);
+  expect(tags, file).toHaveLength(1);
+  expect(tags[0], file).toMatch(/^<script type="module"/);
+  const [src] = scriptRequests(file);
+  const code =
+    src === undefined
+      ? (/<script type="module">([\s\S]*?)<\/script>/.exec(
+          distFile(file),
+        )?.[1] ?? '')
+      : distFile(src.replace(/^\//, ''));
+  expect(code, file).toContain(COMMAND_MENU_ID);
+};
 
 // Every file an @font-face rule points at, as `family weight` with the
 // Fonts API hash dropped from the family (`IBM Plex Mono 500`).
@@ -458,15 +533,16 @@ for (const { path, title, description, h1, stops } of PAGES) {
       await expect(main).toHaveCSS('outline-style', 'none');
     });
 
-    // covers: AC-6, AC-8
+    // covers: AC-6, AC-8, spec 0014 AC-16
     test('Tab follows the visual order: skip link, main, footer', async ({
       page,
     }) => {
       await page.goto(path);
+      const expected = await withHint(page, stops);
 
       const order = await tabOrder(page);
 
-      expect(order.map(({ label }) => label)).toEqual(stops);
+      expect(order.map(({ label }) => label)).toEqual(expected);
     });
 
     // covers: AC-7
@@ -1610,11 +1686,11 @@ test.describe('home page', () => {
     });
   }
 
-  // covers: AC-7
-  test('ships no script and loads only the page, the stylesheet, and two Plex Mono files', async ({
+  // covers: AC-7, spec 0014 AC-13
+  test("ships one script, the menu's, and loads only the page, the stylesheet, and two Plex Mono files", async ({
     page,
   }) => {
-    expect(distFile('index.html')).not.toMatch(/<script/i);
+    expectOnlyMenuScript('index.html');
     const paths: string[] = [];
     page.on('request', (request) =>
       paths.push(new URL(request.url()).pathname),
@@ -1623,28 +1699,32 @@ test.describe('home page', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
-    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual(
+      scriptRequests('index.html'),
+    );
     expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
     expect(paths.filter((path) => path.endsWith('.woff2'))).toHaveLength(2);
     // Headless Chromium skips the favicon, so it is allowed, not required.
-    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
-      '/',
-    ]);
+    expect(paths.filter((path) => !/\.(css|woff2|svg|js)$/.test(path))).toEqual(
+      ['/'],
+    );
   });
 
-  // covers: AC-7
+  // covers: AC-7, spec 0014 AC-4, AC-16
   test('the footer keeps its hairline rule and its city line', async ({
     page,
   }) => {
     await page.goto('/');
     const footer = page.getByRole('contentinfo');
     const { city, countryCode } = basics.location;
+    const hint = await pageHint(page);
 
     await expect(footer).toHaveCSS('border-top-width', '1px');
     await expect(footer).toHaveCSS('border-top-style', 'solid');
     await expect(footer).toHaveCSS('border-top-color', rgb('light', 'line'));
+    // Spec 0014: the menu button, then the city line.
     await expect(footer).toHaveText(
-      `${city}, ${countryCode} · ${new Date().getUTCFullYear()}`,
+      `menu ${hint} ${city}, ${countryCode} · ${new Date().getUTCFullYear()}`,
     );
   });
 
@@ -1755,7 +1835,7 @@ test.describe('about page', () => {
   const colours = (locator: Locator): Promise<readonly string[]> =>
     locator.evaluateAll((els) => els.map((el) => getComputedStyle(el).color));
 
-  // covers: spec 0009 AC-5
+  // covers: spec 0009 AC-5, spec 0014 AC-13
   test('main holds one block: the h1, the intro, the list, and the closing, 24px apart', async ({
     page,
   }) => {
@@ -1779,7 +1859,7 @@ test.describe('about page', () => {
     await expect(
       main(page).locator('nav, img, video, h2, h3, dl, section'),
     ).toHaveCount(0);
-    expect(distFile('about.html')).not.toMatch(/<script/i);
+    expectOnlyMenuScript('about.html');
   });
 
   for (const scheme of SCHEMES) {
@@ -1965,7 +2045,7 @@ test.describe('about page', () => {
     await expect(page.locator('[style]')).toHaveCount(0);
   });
 
-  // covers: spec 0009 AC-9
+  // covers: spec 0009 AC-9, spec 0014 AC-13
   test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
     page,
   }) => {
@@ -1981,16 +2061,18 @@ test.describe('about page', () => {
       .filter((path) => path.endsWith('.woff2'))
       .map((path) => files[path] ?? path);
 
-    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual(
+      scriptRequests('about.html'),
+    );
     expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
     expect(fonts.toSorted()).toEqual([
       'IBM Plex Mono 400',
       'IBM Plex Mono 500',
     ]);
     // Headless Chromium skips the favicon, so it is allowed, not required.
-    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
-      '/about',
-    ]);
+    expect(paths.filter((path) => !/\.(css|woff2|svg|js)$/.test(path))).toEqual(
+      ['/about'],
+    );
   });
 
   test.describe('in print', () => {
@@ -2082,7 +2164,7 @@ test.describe('projects page', () => {
       ).size;
     });
 
-  // covers: spec 0010 AC-5
+  // covers: spec 0010 AC-5, spec 0014 AC-13
   test('main holds one block: the h1 and one list with a row per project, 24px apart', async ({
     page,
   }) => {
@@ -2101,7 +2183,7 @@ test.describe('projects page', () => {
     await expect(
       main(page).locator('nav, img, video, picture, h3, dl, section, article'),
     ).toHaveCount(0);
-    expect(distFile('projects.html')).not.toMatch(/<script/i);
+    expectOnlyMenuScript('projects.html');
   });
 
   // covers: spec 0013 AC-3
@@ -2415,7 +2497,7 @@ test.describe('projects page', () => {
     );
   });
 
-  // covers: spec 0010 AC-8
+  // covers: spec 0010 AC-8, spec 0014 AC-13
   test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
     page,
   }) => {
@@ -2431,16 +2513,18 @@ test.describe('projects page', () => {
       .filter((path) => path.endsWith('.woff2'))
       .map((path) => files[path] ?? path);
 
-    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual(
+      scriptRequests('projects.html'),
+    );
     expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
     expect(fonts.toSorted()).toEqual([
       'IBM Plex Mono 400',
       'IBM Plex Mono 500',
     ]);
     // Headless Chromium skips the favicon, so it is allowed, not required.
-    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
-      '/projects',
-    ]);
+    expect(paths.filter((path) => !/\.(css|woff2|svg|js)$/.test(path))).toEqual(
+      ['/projects'],
+    );
   });
 
   test.describe('in print', () => {
@@ -2528,7 +2612,7 @@ test.describe('contact page', () => {
   // formatContactRows puts the email row first (cv-format.test.ts).
   const [emailRow, ...profileRows] = CONTACT_ROWS;
 
-  // covers: spec 0011 AC-4
+  // covers: spec 0011 AC-4, spec 0014 AC-13
   test('main holds one block: the h1, then the address with one list, 24px apart', async ({
     page,
   }) => {
@@ -2555,7 +2639,7 @@ test.describe('contact page', () => {
     await expect(
       main(page).locator('nav, p, img, video, picture, button, form, input'),
     ).toHaveCount(0);
-    expect(distFile('contact.html')).not.toMatch(/<script/i);
+    expectOnlyMenuScript('contact.html');
   });
 
   // covers: spec 0011 AC-3, AC-5
@@ -2825,7 +2909,7 @@ test.describe('contact page', () => {
     await expect(page.locator('[style]')).toHaveCount(0);
   });
 
-  // covers: spec 0011 AC-7
+  // covers: spec 0011 AC-7, spec 0014 AC-13
   test('loads only the page, the stylesheet, and the Plex Mono 400 and 500 files', async ({
     page,
   }) => {
@@ -2841,16 +2925,18 @@ test.describe('contact page', () => {
       .filter((path) => path.endsWith('.woff2'))
       .map((path) => files[path] ?? path);
 
-    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual(
+      scriptRequests('contact.html'),
+    );
     expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
     expect(fonts.toSorted()).toEqual([
       'IBM Plex Mono 400',
       'IBM Plex Mono 500',
     ]);
     // Headless Chromium skips the favicon, so it is allowed, not required.
-    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
-      '/contact',
-    ]);
+    expect(paths.filter((path) => !/\.(css|woff2|svg|js)$/.test(path))).toEqual(
+      ['/contact'],
+    );
   });
 
   test.describe('in print', () => {
@@ -3782,10 +3868,12 @@ test.describe('cv page', () => {
   }) => {
     await page.goto('/cv');
 
+    // Rendered headings only: the closed command menu's `menu` heading is
+    // not part of the page's outline until it opens (spec 0014).
     const levels = await page.evaluate(() =>
-      [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((h) =>
-        Number(h.tagName.slice(1)),
-      ),
+      [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')]
+        .filter((h) => h.checkVisibility())
+        .map((h) => Number(h.tagName.slice(1))),
     );
     expect(levels[0]).toBe(1);
     expect(levels.filter((level) => level === 1)).toHaveLength(1);
@@ -3828,11 +3916,11 @@ test.describe('cv page', () => {
     }
   });
 
-  // covers: spec 0005 AC-10, AC-12
-  test('ships no script and loads only the page, the stylesheet, and three Plex files', async ({
+  // covers: spec 0005 AC-10, AC-12, spec 0014 AC-13
+  test("ships one script, the menu's, and loads only the page, the stylesheet, and three Plex files", async ({
     page,
   }) => {
-    expect(distFile('cv.html')).not.toMatch(/<script/i);
+    expectOnlyMenuScript('cv.html');
     const paths: string[] = [];
     page.on('request', (request) =>
       paths.push(new URL(request.url()).pathname),
@@ -3841,14 +3929,16 @@ test.describe('cv page', () => {
     await page.goto('/cv', { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
-    expect(paths.filter((path) => path.endsWith('.js'))).toEqual([]);
+    expect(paths.filter((path) => path.endsWith('.js'))).toEqual(
+      scriptRequests('cv.html'),
+    );
     expect(paths.filter((path) => path.endsWith('.css'))).toHaveLength(1);
     // Mono 400, Mono 500, and Sans 400; four files ship in dist/.
     expect(paths.filter((path) => path.endsWith('.woff2'))).toHaveLength(3);
     // Headless Chromium skips the favicon, so it is allowed, not required.
-    expect(paths.filter((path) => !/\.(css|woff2|svg)$/.test(path))).toEqual([
-      '/cv',
-    ]);
+    expect(paths.filter((path) => !/\.(css|woff2|svg|js)$/.test(path))).toEqual(
+      ['/cv'],
+    );
   });
 
   // covers: spec 0012 AC-2
@@ -4369,6 +4459,919 @@ test.describe('cv pdf', () => {
       stdout: '',
       stderr: 'no /cv.pdf block in dist/_headers\n',
       pauses: [],
+    });
+  });
+});
+
+// Spec 0014: the command menu on the built site. Every row comes from
+// commandMenuRows, cv.json, and SITE_NAV, so a new page or profile, or a
+// valid content edit, needs no test edit.
+test.describe('command menu', () => {
+  // The command menu's rows on a page (the home page's own list keeps
+  // MENU_ROWS), each named as it reads: `page cv`, `github @jorgergo`.
+  const COMMAND_ROWS = (routePattern: string): readonly MenuRow[] =>
+    commandMenuRows(basics, routePattern);
+  const rowName = ({ key, label }: MenuRow): string => `${key} ${label}`;
+  const ALL_NAMES = COMMAND_ROWS('/').map(rowName);
+
+  // Every built page and the route pattern its menu marks as current.
+  const MENU_PAGES: readonly {
+    readonly path: string;
+    readonly route: string;
+  }[] = [
+    { path: '/', route: '/' },
+    ...SITE_NAV.map(({ href }) => ({ path: href, route: href })),
+    { path: '/missing', route: '/404' },
+  ];
+
+  const dialog = (page: Page): Locator =>
+    page.locator(`dialog#${COMMAND_MENU_ID}`);
+  const field = (page: Page): Locator =>
+    dialog(page).getByRole('textbox', { name: 'filter' });
+  const rowLinks = (page: Page): Locator =>
+    dialog(page).getByRole('list').getByRole('link');
+  const rowLink = (page: Page, name: string): Locator =>
+    dialog(page).getByRole('link', { name, exact: true });
+  const closeButton = (page: Page): Locator =>
+    dialog(page).getByRole('button', { name: 'close', exact: true });
+  const status = (page: Page): Locator =>
+    dialog(page).locator('[aria-live="polite"]');
+  const noMatch = (page: Page): Locator =>
+    dialog(page).locator('p[aria-hidden="true"]');
+  const keyLine = (page: Page): Locator =>
+    dialog(page).getByText('↑ ↓ move · enter open · esc close');
+  const footerButton = (page: Page): Locator =>
+    page
+      .getByRole('contentinfo')
+      .locator(`button[commandfor="${COMMAND_MENU_ID}"]`);
+  const cornerButton = (page: Page): Locator =>
+    page.locator(`body > div > button[commandfor="${COMMAND_MENU_ID}"]`);
+  const focused = (page: Page): Locator => page.locator(':focus');
+
+  // Opens the menu with Ctrl+K once the script has bound (it writes the
+  // footer hint as it binds).
+  const openMenu = async (page: Page): Promise<void> => {
+    await pageHint(page);
+    await page.keyboard.press('Control+k');
+    await expect(dialog(page)).toBeVisible();
+  };
+
+  // The visible rows, by their link names, in order.
+  const expectRows = async (
+    page: Page,
+    names: readonly string[],
+  ): Promise<void> => {
+    await expect(rowLinks(page)).toHaveCount(names.length);
+    for (const [index, name] of names.entries()) {
+      await expect(rowLinks(page).nth(index)).toHaveAccessibleName(name);
+    }
+  };
+
+  const expectRing = async (target: Locator, label: string): Promise<void> => {
+    await expect(target, label).toHaveCSS('outline-style', 'solid');
+    await expect(target, label).toHaveCSS('outline-width', '2px');
+    await expect(target, label).toHaveCSS('outline-offset', '3px');
+    await expect(target, label).toHaveCSS(
+      'outline-color',
+      rgb('light', 'accent'),
+    );
+  };
+
+  const heightOf = async (target: Locator): Promise<number> =>
+    (await target.boundingBox())?.height ?? 0;
+
+  // A browser without invoker commands (Safari before 26.2, Chrome before
+  // 135): the property the script checks is gone, and the browser's own
+  // handling of `commandfor` is cancelled, so only the script's wiring can
+  // open or close the menu.
+  const dropInvokerCommands = async (page: Page): Promise<void> => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(HTMLButtonElement.prototype, 'commandForElement');
+      window.addEventListener(
+        'command',
+        (event) => {
+          event.preventDefault();
+        },
+        { capture: true },
+      );
+    });
+  };
+
+  // Whether a fresh invoker button, which the script never wires, opens its
+  // dialog: false proves the simulation holds.
+  const invokerOpens = (page: Page): Promise<boolean> =>
+    page.evaluate(() => {
+      const probe = document.createElement('dialog');
+      probe.id = 'invoker-probe';
+      const button = document.createElement('button');
+      button.setAttribute('commandfor', probe.id);
+      button.setAttribute('command', 'show-modal');
+      document.body.append(probe, button);
+      button.click();
+      const opened = probe.open;
+      probe.close();
+      probe.remove();
+      button.remove();
+      return opened;
+    });
+
+  for (const { path, route } of MENU_PAGES) {
+    // covers: spec 0014 AC-1, AC-2, AC-3, AC-5, AC-6, AC-13
+    test(`on ${path} Ctrl+K opens the named sheet with focus in the filter, every row, and the current page marked`, async ({
+      page,
+    }) => {
+      const cspErrors: string[] = [];
+      page.on('console', (message) => {
+        if (/content security policy/i.test(message.text()))
+          cspErrors.push(message.text());
+      });
+      await page.goto(path);
+      const rows = COMMAND_ROWS(route);
+
+      await openMenu(page);
+
+      await expect(page.getByRole('dialog', { name: 'menu' })).toBeVisible();
+      await expect(field(page)).toBeFocused();
+      await expectRows(page, rows.map(rowName));
+      const current = rows.filter((row) => row.current);
+      const marked = dialog(page).locator('a[aria-current]');
+      await expect(marked).toHaveCount(current.length);
+      for (const row of current) {
+        await expect(marked).toHaveAttribute('aria-current', 'page');
+        await expect(marked).toHaveAttribute('href', row.href);
+        await expect(marked.locator('span[aria-hidden="true"]')).toHaveText(
+          '· here',
+        );
+      }
+      await page.keyboard.press('Escape');
+      await expect(dialog(page)).toBeHidden();
+      expect(cspErrors).toEqual([]);
+    });
+
+    for (const scheme of SCHEMES) {
+      // covers: spec 0014 AC-14
+      test(`on ${path} passes axe WCAG 2.2 AA with the menu open in ${scheme}`, async ({
+        page,
+      }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.goto(path);
+        await openMenu(page);
+
+        expect(await axeViolations(page)).toEqual([]);
+      });
+    }
+  }
+
+  for (const scheme of SCHEMES) {
+    // covers: spec 0014 AC-2
+    test(`the sheet fills the viewport on the ${scheme} page ground, with no shadow, radius, or motion`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto('/cv');
+      await openMenu(page);
+      const sheet = dialog(page);
+      const column = sheet.locator(':scope > div');
+
+      expect(await sheet.boundingBox()).toEqual({
+        x: 0,
+        y: 0,
+        width: 1280,
+        height: 800,
+      });
+      await expect(sheet).toHaveCSS('background-color', rgb(scheme, 'bg'));
+      await expect(sheet).toHaveCSS('color', rgb(scheme, 'fg'));
+      expect(
+        await sheet.evaluate(
+          (el) => getComputedStyle(el, '::backdrop').backgroundColor,
+        ),
+      ).toBe(rgb(scheme, 'bg'));
+      await expect(sheet).toHaveCSS('box-shadow', 'none');
+      await expect(sheet).toHaveCSS('border-top-width', '0px');
+      await expect(sheet).toHaveCSS('border-radius', '0px');
+      await expect(sheet).toHaveCSS('overflow-y', 'auto');
+      await expect(sheet).toHaveCSS('overscroll-behavior-y', 'contain');
+      for (const target of [sheet, column]) {
+        await expect(target).toHaveCSS('transition-duration', '0s');
+        await expect(target).toHaveCSS('animation-name', 'none');
+      }
+      expect(await column.boundingBox()).toMatchObject({ x: 320, width: 640 });
+      await expect(column).toHaveCSS('padding-top', '40px');
+      await expect(column).toHaveCSS('padding-bottom', '80px');
+      await expect(column).toHaveCSS('row-gap', '24px');
+    });
+  }
+
+  // covers: spec 0014 AC-2, AC-14
+  test('the title, close, filter field, rows, and key line follow the design', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    const title = dialog(page).getByRole('heading', { level: 2 });
+    const filterWord = dialog(page).locator('label > span');
+
+    await expect(dialog(page)).toHaveAccessibleName('menu');
+    await expect(title).toHaveText('menu');
+    await expect(title).toHaveCSS('font-size', '18px');
+    await expect(title).toHaveCSS('font-weight', '500');
+    await expect(closeButton(page)).toHaveAttribute(
+      'commandfor',
+      COMMAND_MENU_ID,
+    );
+    await expect(closeButton(page)).toHaveAttribute('command', 'close');
+    await expect(closeButton(page)).toHaveCSS('font-size', '14px');
+    expect(await heightOf(closeButton(page))).toBeGreaterThanOrEqual(40);
+    await expect(filterWord).toHaveText('filter');
+    await expect(filterWord).toHaveCSS('color', rgb('light', 'muted'));
+    await expect(filterWord).toHaveCSS('width', '80px');
+    for (const [name, value] of [
+      ['type', 'text'],
+      ['autocomplete', 'off'],
+      ['spellcheck', 'false'],
+      ['autocapitalize', 'off'],
+      ['enterkeyhint', 'go'],
+    ] as const) {
+      await expect(field(page)).toHaveAttribute(name, value);
+    }
+    await expect(field(page)).toHaveCSS('font-size', '16px');
+    expect(await heightOf(field(page))).toBeGreaterThanOrEqual(40);
+    await expect(field(page)).toHaveCSS('border-bottom-width', '1px');
+    await expect(field(page)).toHaveCSS('border-bottom-style', 'solid');
+    await expect(field(page)).toHaveCSS(
+      'border-bottom-color',
+      rgb('light', 'muted'),
+    );
+    await expect(field(page)).toHaveCSS('border-top-width', '0px');
+    await expect(field(page)).toHaveCSS('border-left-width', '0px');
+    await expect(field(page)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(dialog(page).getByRole('list')).toHaveCSS('row-gap', '4px');
+    for (const link of await rowLinks(page).all()) {
+      expect(await heightOf(link)).toBeGreaterThanOrEqual(40);
+    }
+    await expect(keyLine(page)).toBeVisible();
+    await expect(keyLine(page)).toHaveCSS('font-size', '12px');
+    await expect(keyLine(page)).toHaveCSS('color', rgb('light', 'muted'));
+    await expect(noMatch(page)).toBeHidden();
+    await expect(status(page)).toHaveText('');
+    await expect(dialog(page)).not.toHaveAttribute('autofocus');
+  });
+
+  // covers: spec 0014 AC-3
+  test('the current row says here, the PDF row downloads with its icon, and the https rows end with the arrow', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+
+    for (const row of COMMAND_ROWS('/cv')) {
+      const link = rowLink(page, rowName(row));
+      const icon = link.locator('svg');
+      await expect(link, rowName(row)).toHaveAttribute('href', row.href);
+      if (row.current) {
+        const here = link.locator(':scope > span[aria-hidden="true"]');
+        await expect(here).toHaveText('· here');
+        await expect(here).toHaveCSS('color', rgb('light', 'muted'));
+        await expect(here).toHaveCSS('font-size', '14px');
+      } else {
+        await expect(link).not.toHaveAttribute('aria-current');
+      }
+      if (row.download !== undefined) {
+        await expect(link).toHaveAttribute('download', row.download);
+        expect(row.download).toBe(cvPdfFileName(basics.name));
+        await expect(icon).toHaveCount(1);
+        await expect(icon.locator('path').first()).toHaveAttribute(
+          'd',
+          'M12 15V3',
+        );
+      } else {
+        await expect(link).not.toHaveAttribute('download');
+        await expect(icon).toHaveCount(/^https:\/\//.test(row.href) ? 1 : 0);
+      }
+    }
+    // Every icon is hidden from assistive tech, so it never joins a name.
+    await expect(
+      dialog(page).locator('svg:not([aria-hidden="true"])'),
+    ).toHaveCount(0);
+  });
+
+  // covers: spec 0014 AC-4, AC-6, AC-11
+  test('on a computer the footer button opens the menu with focus in the field, and the corner button stays hidden', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    const hint = await pageHint(page);
+    const footer = page.getByRole('contentinfo');
+    const button = footerButton(page);
+
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAccessibleName('menu');
+    await expect(button).toHaveText(`menu ${hint}`);
+    await expect(button).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Meta+K Control+K',
+    );
+    await expect(button).toHaveAttribute('command', 'show-modal');
+    await expect(button.locator('[data-shortcut-hint]')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await expect(button.locator('[data-shortcut-hint]')).toHaveCSS(
+      'color',
+      rgb('light', 'muted'),
+    );
+    expect(await heightOf(button)).toBeGreaterThanOrEqual(24);
+    expect(
+      await footer
+        .locator(':scope > *')
+        .evaluateAll((els) => els.map((el) => el.tagName)),
+    ).toEqual(['A', 'BUTTON', 'SPAN']);
+    await expect(cornerButton(page)).toBeHidden();
+
+    await button.click();
+
+    await expect(dialog(page)).toBeVisible();
+    await expect(field(page)).toBeFocused();
+    await closeButton(page).click();
+    await expect(dialog(page)).toBeHidden();
+    await expect(button).toBeFocused();
+  });
+
+  // covers: spec 0014 AC-4, AC-6
+  test('without invoker commands the script wires the buttons: the footer button opens the menu with focus in the field, and close closes it', async ({
+    page,
+  }) => {
+    await dropInvokerCommands(page);
+    await page.goto('/about');
+    await pageHint(page);
+    expect(await invokerOpens(page)).toBe(false);
+
+    await footerButton(page).click();
+
+    await expect(dialog(page)).toBeVisible();
+    await expect(field(page)).toBeFocused();
+    await closeButton(page).click();
+    await expect(dialog(page)).toBeHidden();
+    await expect(footerButton(page)).toBeFocused();
+  });
+
+  // covers: spec 0014 AC-4, AC-16
+  test('on the home page the footer button comes before the city line, with no home link', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    expect(
+      await page
+        .getByRole('contentinfo')
+        .locator(':scope > *')
+        .evaluateAll((els) => els.map((el) => el.tagName)),
+    ).toEqual(['BUTTON', 'SPAN']);
+    await footerButton(page).click();
+    await expect(dialog(page)).toBeVisible();
+  });
+
+  // covers: spec 0014 AC-5, AC-6
+  test('Cmd+K or Ctrl+K toggles the menu and focus comes back; Shift, Alt, a key repeat, and composing text do not', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await pageHint(page);
+    await page.evaluate(() => {
+      window.addEventListener('keydown', (event) => {
+        document.documentElement.dataset['prevented'] = String(
+          event.defaultPrevented,
+        );
+      });
+    });
+    const home = page.getByRole('contentinfo').getByRole('link');
+    await home.focus();
+
+    for (const shortcut of ['Control+k', 'Meta+k', 'Control+K']) {
+      await page.keyboard.press(shortcut);
+      await expect(dialog(page), shortcut).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute(
+        'data-prevented',
+        'true',
+      );
+      await page.keyboard.press(shortcut);
+      await expect(dialog(page), shortcut).toBeHidden();
+      await expect(home, shortcut).toBeFocused();
+    }
+
+    for (const refused of ['Shift+Control+k', 'Alt+Control+k', 'k']) {
+      await page.keyboard.press(refused);
+      await expect(dialog(page), refused).toBeHidden();
+      await expect(page.locator('html'), refused).toHaveAttribute(
+        'data-prevented',
+        'false',
+      );
+    }
+
+    await page.keyboard.down('Control');
+    await page.keyboard.down('k');
+    await expect(dialog(page)).toBeVisible();
+    // A second keydown while k is held is a key repeat.
+    await page.keyboard.down('k');
+    await expect(dialog(page)).toBeVisible();
+    await page.keyboard.up('k');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toBeHidden();
+
+    const dispatch = (init: {
+      readonly key: string;
+      readonly code: string;
+      readonly ctrlKey: boolean;
+      readonly isComposing?: boolean;
+    }): Promise<void> =>
+      page.evaluate((options) => {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', { bubbles: true, ...options }),
+        );
+      }, init);
+    await dispatch({
+      key: 'k',
+      code: 'KeyK',
+      ctrlKey: true,
+      isComposing: true,
+    });
+    await expect(dialog(page)).toBeHidden();
+    // A Cyrillic layout types к on the K key; the physical key still counts.
+    await dispatch({ key: 'к', code: 'KeyK', ctrlKey: true });
+    await expect(dialog(page)).toBeVisible();
+  });
+
+  // covers: spec 0014 AC-6, AC-7, AC-8
+  test("what you type and pick right after the shortcut survives the dialog's late toggle event", async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await pageHint(page);
+    const query = 'page';
+    const names = ALL_NAMES.filter((name) => rowMatches(name, query));
+
+    // The shortcut, the typing, and ↓ land in one task, before the browser
+    // fires `toggle` for the open. The script's own `toggle` handler runs
+    // before this one, so once it resolves, the late open steps have run.
+    await dialog(page).evaluate(async (menu, typed) => {
+      const toggled = new Promise((resolve) => {
+        menu.addEventListener('toggle', resolve, { once: true });
+      });
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'k',
+          code: 'KeyK',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+      const input = menu.querySelector('input');
+      if (input === null) return;
+      input.value = typed;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+      );
+      await toggled;
+    }, query);
+
+    await expect(dialog(page)).toBeVisible();
+    await expect(field(page)).toHaveValue(query);
+    await expectRows(page, names);
+    await expect(focused(page)).toHaveAccessibleName(names[0] ?? 'missing');
+  });
+
+  // covers: spec 0014 AC-7
+  test('typing filters the rows, says the count, shows no match, and every open starts empty', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    const matching = (query: string): readonly string[] =>
+      ALL_NAMES.filter((name) => rowMatches(name, query));
+
+    for (const query of ['git', 'PAGE', 'here', 'zzz', '']) {
+      await field(page).fill(query);
+      const names = matching(query);
+      await expectRows(page, names);
+      await expect(status(page), query).toHaveText(
+        formatMatchCount(names.length, query),
+      );
+      await (names.length === 0
+        ? expect(noMatch(page), query).toBeVisible()
+        : expect(noMatch(page), query).toBeHidden());
+    }
+    await expect(noMatch(page)).toHaveText('no match');
+    await expect(noMatch(page)).toHaveCSS('color', rgb('light', 'muted'));
+
+    await field(page).fill('zzz');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+k');
+
+    await expect(field(page)).toHaveValue('');
+    await expectRows(page, ALL_NAMES);
+    await expect(noMatch(page)).toBeHidden();
+    await expect(status(page)).toHaveText('');
+  });
+
+  // covers: spec 0014 AC-8, AC-14
+  test('the arrow keys move between the field and the visible rows, and a letter on a row lands in the field', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await openMenu(page);
+    const links = rowLinks(page);
+    const count = ALL_NAMES.length;
+
+    await page.keyboard.press('ArrowUp');
+    await expect(field(page)).toBeFocused();
+    for (let index = 0; index < count; index += 1) {
+      await page.keyboard.press('ArrowDown');
+      await expect(links.nth(index)).toBeFocused();
+      await expectRing(links.nth(index), ALL_NAMES[index] ?? '');
+    }
+    await page.keyboard.press('ArrowDown');
+    await expect(links.nth(count - 1)).toBeFocused();
+    for (let index = count - 2; index >= 0; index -= 1) {
+      await page.keyboard.press('ArrowUp');
+      await expect(links.nth(index)).toBeFocused();
+    }
+    await page.keyboard.press('ArrowUp');
+    await expect(field(page)).toBeFocused();
+    await expectRing(field(page), 'filter');
+
+    await page.keyboard.press('Shift+Tab');
+    await expect(closeButton(page)).toBeFocused();
+    await expectRing(closeButton(page), 'close');
+    await page.keyboard.press('ArrowUp');
+    await expect(closeButton(page)).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(field(page)).toBeFocused();
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('l');
+    await expect(field(page)).toBeFocused();
+    await expect(field(page)).toHaveValue('l');
+    await expectRows(
+      page,
+      ALL_NAMES.filter((name) => rowMatches(name, 'l')),
+    );
+
+    // ↓ and ↑ move among the visible rows only.
+    await field(page).fill('page');
+    const pages = ALL_NAMES.filter((name) => rowMatches(name, 'page'));
+    for (const name of pages) {
+      await page.keyboard.press('ArrowDown');
+      await expect(focused(page)).toHaveAccessibleName(name);
+    }
+    await page.keyboard.press('ArrowDown');
+    await expect(focused(page)).toHaveAccessibleName(pages.at(-1) ?? '');
+  });
+
+  // covers: spec 0014 AC-8
+  test('Ctrl, Cmd, or Alt with a letter on a row keeps focus there, so Cmd+C still copies, while Shift types the letter', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await openMenu(page);
+    await page.keyboard.press('ArrowDown');
+    const first = rowLinks(page).first();
+    await expect(first).toBeFocused();
+
+    for (const keys of ['Control+c', 'Meta+c', 'Alt+l']) {
+      await page.keyboard.press(keys);
+      await expect(first, keys).toBeFocused();
+    }
+    await expect(field(page)).toHaveValue('');
+
+    await page.keyboard.press('Shift+P');
+    await expect(field(page)).toBeFocused();
+    await expect(field(page)).toHaveValue('P');
+  });
+
+  // covers: spec 0014 AC-8, AC-9
+  test('Enter in the field follows the first visible row, and with no row does nothing', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+
+    await field(page).fill('zzz');
+    await page.keyboard.press('Enter');
+    await expect(dialog(page)).toBeVisible();
+    await expect(page).toHaveURL('/cv');
+
+    const [first] = COMMAND_ROWS('/cv').filter((row) =>
+      rowMatches(rowName(row), 'proj'),
+    );
+    await field(page).fill('proj');
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(first?.href ?? 'missing');
+    await expect(dialog(page)).toBeHidden();
+  });
+
+  // covers: spec 0014 AC-8
+  test('Enter that ends an IME composition in the field follows no row', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    await field(page).fill('page');
+
+    // The row clicks after each Enter, with the page kept in place. Safari
+    // reports the Enter that ends a composition as keyCode 229; the plain
+    // Enter last proves a click would have been counted.
+    const clicks = await field(page).evaluate((input) => {
+      let count = 0;
+      input
+        .closest('dialog')
+        ?.querySelector('ul')
+        ?.addEventListener(
+          'click',
+          (event) => {
+            count += 1;
+            event.preventDefault();
+          },
+          { capture: true },
+        );
+      const enters: readonly KeyboardEventInit[] = [
+        { isComposing: true },
+        { keyCode: 229 },
+        {},
+      ];
+      return enters.map((init) => {
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Enter',
+            bubbles: true,
+            ...init,
+          }),
+        );
+        return count;
+      });
+    });
+
+    expect(clicks).toEqual([0, 0, 1]);
+  });
+
+  // covers: spec 0014 AC-7, AC-9
+  test('a plain click on a page row closes the menu and follows it, and Back shows the page with the menu closed and empty', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    await field(page).fill('about');
+
+    await rowLink(page, 'page about').click();
+
+    await expect(page).toHaveURL('/about');
+    await expect(dialog(page)).toBeHidden();
+    await page.goBack();
+    await expect(page).toHaveURL('/cv');
+    await expect(dialog(page)).toBeHidden();
+    await openMenu(page);
+    await expect(field(page)).toHaveValue('');
+    await expectRows(page, ALL_NAMES);
+  });
+
+  // covers: spec 0014 AC-9
+  test('the PDF row closes the menu, saves the CV under its file name, and leaves the page in place', async ({
+    page,
+  }) => {
+    await page.goto('/about');
+    await openMenu(page);
+    const pdf = COMMAND_ROWS('/about').find(
+      (row) => row.download !== undefined,
+    );
+
+    const download = page.waitForEvent('download');
+    await rowLink(page, pdf === undefined ? 'missing' : rowName(pdf)).click();
+
+    expect((await download).suggestedFilename()).toBe(
+      cvPdfFileName(basics.name),
+    );
+    await expect(dialog(page)).toBeHidden();
+    await expect(page).toHaveURL('/about');
+  });
+
+  // covers: spec 0014 AC-9
+  test('a modified or middle click opens the row elsewhere and keeps the menu open', async ({
+    page,
+    context,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+
+    const clicks: readonly Parameters<Locator['click']>[0][] = [
+      { modifiers: ['ControlOrMeta'] },
+      { modifiers: ['Shift'] },
+      { button: 'middle' },
+    ];
+    for (const click of clicks) {
+      const opened = context.waitForEvent('page');
+      await rowLink(page, 'page about').click(click);
+      const tab = await opened;
+      await tab.close();
+
+      await expect(dialog(page)).toBeVisible();
+      await expect(page).toHaveURL('/cv');
+    }
+  });
+
+  // covers: spec 0014 AC-10
+  test('while the menu is open the page behind does not scroll', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/cv');
+    await page.evaluate(() => window.scrollTo(0, 1000));
+    await openMenu(page);
+
+    await expect(page.locator('html')).toHaveCSS('overflow', 'hidden');
+    await page.mouse.move(640, 400);
+    await page.mouse.wheel(0, 800);
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => window.scrollY)).toBe(1000);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('html')).toHaveCSS('overflow', 'visible');
+  });
+
+  // covers: spec 0014 AC-10
+  test('a sheet taller than the viewport scrolls inside itself only', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 640, height: 300 });
+    await page.goto('/cv');
+    await openMenu(page);
+
+    expect(
+      await dialog(page).evaluate((el) => el.scrollHeight > el.clientHeight),
+    ).toBe(true);
+    await page.mouse.move(320, 150);
+    await page.mouse.wheel(0, 400);
+    await expect
+      .poll(() => dialog(page).evaluate((el) => el.scrollTop))
+      .toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  // covers: spec 0014 AC-12
+  test('in print the menu and both buttons never show', async ({ page }) => {
+    await page.goto('/about');
+    await openMenu(page);
+
+    await page.emulateMedia({ media: 'print' });
+
+    await expect(dialog(page)).toHaveCSS('display', 'none');
+    await expect(footerButton(page)).toHaveCSS('display', 'none');
+    await expect(cornerButton(page).locator('..')).toHaveCSS('display', 'none');
+  });
+
+  // covers: spec 0014 AC-14
+  test('with the menu open nothing carries a role, a target, or a style', async ({
+    page,
+  }) => {
+    await page.goto('/contact');
+    await openMenu(page);
+    await field(page).fill('e');
+
+    await expect(page.locator('body [role]')).toHaveCount(0);
+    await expect(page.locator('a[target]')).toHaveCount(0);
+    await expect(page.locator('[style]')).toHaveCount(0);
+  });
+
+  // covers: spec 0014 AC-14
+  test('at 320px the open menu does not scroll sideways and the email row wraps as on /contact', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/contact');
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const email = `email ${basics.email}`;
+    // Where the address sits in its row, measured from the row's top left.
+    const valueOffset = async (
+      link: Locator,
+    ): Promise<{ readonly x: number; readonly y: number }> => {
+      const row = await link.boundingBox();
+      const value = await link.locator(':scope > span').nth(1).boundingBox();
+      return {
+        x: (value?.x ?? Number.NaN) - (row?.x ?? 0),
+        y: (value?.y ?? Number.NaN) - (row?.y ?? 0),
+      };
+    };
+    const onPage = await valueOffset(
+      page.getByRole('main').getByRole('link', { name: email, exact: true }),
+    );
+
+    await openMenu(page);
+
+    expect(await scrollsSideways(page)).toBe(false);
+    expect(
+      await dialog(page).evaluate((el) => el.scrollWidth > el.clientWidth),
+    ).toBe(false);
+    expect(await valueOffset(rowLink(page, email))).toEqual(onPage);
+  });
+
+  test.describe('with JavaScript off', () => {
+    test.use({ javaScriptEnabled: false });
+
+    // covers: spec 0014 AC-4, AC-7
+    test('the footer button still opens the menu of links, with no field and no key line, and Esc closes it', async ({
+      page,
+    }) => {
+      await page.goto('/about');
+
+      await expect(footerButton(page)).toHaveText('menu');
+      await footerButton(page).click();
+
+      await expect(dialog(page)).toBeVisible();
+      await expect(dialog(page)).toHaveAccessibleName('menu');
+      await expect(closeButton(page)).toBeVisible();
+      await expectRows(page, COMMAND_ROWS('/about').map(rowName));
+      await expect(dialog(page).locator('label')).toBeHidden();
+      await expect(keyLine(page)).toBeHidden();
+      await expect(closeButton(page)).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(rowLinks(page).first()).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(dialog(page)).toBeHidden();
+    });
+  });
+
+  test.describe('on a touch screen', () => {
+    test.use({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    });
+
+    // covers: spec 0014 AC-4, AC-6, AC-11, AC-14
+    test('the corner button shows 24px from the edges, opens the menu with focus on close, and never covers the footer', async ({
+      page,
+    }) => {
+      await page.goto('/cv');
+      expect(
+        await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+      ).toBe(true);
+      await pageHint(page);
+      const corner = cornerButton(page);
+
+      await expect(footerButton(page)).toBeHidden();
+      await expect(corner).toBeVisible();
+      await expect(corner).toHaveAccessibleName('menu');
+      await expect(corner).toHaveCSS('background-color', rgb('light', 'bg'));
+      const box = await corner.boundingBox();
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeCloseTo(390 - 24, 0);
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(844 - 24, 0);
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(40);
+
+      await page.evaluate(() =>
+        window.scrollTo(0, document.documentElement.scrollHeight),
+      );
+      const footer = await page.getByRole('contentinfo').boundingBox();
+      const atEnd = await corner.boundingBox();
+      expect((footer?.y ?? 0) + (footer?.height ?? 0)).toBeLessThanOrEqual(
+        atEnd?.y ?? 0,
+      );
+
+      await corner.tap();
+
+      await expect(dialog(page)).toBeVisible();
+      await expect(closeButton(page)).toBeFocused();
+      await expect(field(page)).not.toBeFocused();
+      await expect(keyLine(page)).toBeHidden();
+      await expectRows(page, COMMAND_ROWS('/cv').map(rowName));
+    });
+
+    // covers: spec 0014 AC-6
+    test('the shortcut still puts focus in the field, as on an iPad with a keyboard', async ({
+      page,
+    }) => {
+      await page.goto('/about');
+
+      await openMenu(page);
+
+      await expect(field(page)).toBeFocused();
+    });
+
+    // covers: spec 0014 AC-4, AC-6
+    test('without invoker commands the corner button still opens the menu, with focus left on close', async ({
+      page,
+    }) => {
+      await dropInvokerCommands(page);
+      await page.goto('/about');
+      await pageHint(page);
+      expect(await invokerOpens(page)).toBe(false);
+
+      await cornerButton(page).tap();
+
+      await expect(dialog(page)).toBeVisible();
+      await expect(closeButton(page)).toBeFocused();
+      await expect(field(page)).not.toBeFocused();
     });
   });
 });

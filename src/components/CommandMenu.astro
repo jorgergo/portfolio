@@ -1,0 +1,280 @@
+---
+import NavRow from '@/components/NavRow.astro';
+import { COMMAND_MENU_ID } from '@/lib/command-menu';
+import { getCv } from '@/lib/cv';
+import { commandMenuRows } from '@/lib/site-nav';
+
+interface Props {
+  // The style guide's specimen: the same content in a plain <div>, with no
+  // ids, the field and key line shown, no live region, and a close button
+  // that controls nothing.
+  preview?: boolean;
+}
+
+// Spec 0014: a sheet that covers the page in the page's own colours, opened by
+// the footer and corner buttons through invoker commands, so it opens with no
+// script. The script below adds the shortcut, the filter, and the arrow keys;
+// it never builds markup. Like SiteFooter, the menu reads the CV itself, so
+// BaseLayout stays free of content, and routePattern (not the pathname, which
+// is `/index.html` at build time) marks the current page.
+const { preview = false } = Astro.props;
+const { basics } = await getCv();
+const rows = commandMenuRows(basics, Astro.routePattern);
+const titleId = `${COMMAND_MENU_ID}-title`;
+const Root = preview ? 'div' : 'dialog';
+---
+
+<Root
+  id={preview ? undefined : COMMAND_MENU_ID}
+  aria-labelledby={preview ? undefined : titleId}
+  class:list={[
+    'text-fg',
+    !preview &&
+      'm-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-bg p-0 backdrop:bg-bg print:hidden',
+  ]}
+>
+  <div
+    class:list={[
+      'flex flex-col gap-6',
+      !preview && 'mx-auto max-w-content px-6 pt-10 pb-20',
+    ]}
+  >
+    <div class="flex items-center justify-between gap-x-6">
+      <h2 id={preview ? undefined : titleId} class="text-lg font-medium">
+        menu
+      </h2>
+      <button
+        type="button"
+        commandfor={preview ? undefined : COMMAND_MENU_ID}
+        command={preview ? undefined : 'close'}
+        class="inline-flex min-h-10 cursor-pointer items-center text-sm transition-colors hover:text-accent-warm focus-visible:text-accent-warm"
+      >
+        close
+      </button>
+    </div>
+    <label hidden={!preview} data-menu-filter class="flex items-center gap-x-4">
+      <span class="w-20 shrink-0 text-muted">filter</span>
+      <input
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        autocapitalize="off"
+        enterkeyhint="go"
+        class="min-h-10 min-w-0 flex-1 border-b border-muted bg-transparent text-base text-fg"
+      />
+    </label>
+    <ul class="flex flex-col gap-1" data-menu-rows>
+      {rows.map((row) => (
+        <NavRow
+          kind="key"
+          href={row.href}
+          prefix={row.key}
+          label={row.label}
+          current={row.current}
+          download={row.download}
+        />
+      ))}
+    </ul>
+    <p hidden aria-hidden="true" data-menu-empty class="text-muted">
+      no match
+    </p>
+    {!preview && <p class="sr-only" aria-live="polite" data-menu-status />}
+    <p
+      hidden={!preview}
+      data-menu-keys
+      class="text-xs text-muted pointer-coarse:hidden"
+    >
+      ↑ ↓ move · enter open · esc close
+    </p>
+  </div>
+</Root>
+
+<script>
+  import {
+    COMMAND_MENU_ID,
+    formatMatchCount,
+    isComposingKey,
+    isMenuShortcut,
+    nextFocus,
+    rowMatches,
+    shortcutHint,
+  } from '@/lib/command-menu';
+
+  // An element's text without the parts hidden from assistive tech.
+  const readableText = (element: Element): string =>
+    element.getAttribute('aria-hidden') === 'true'
+      ? ''
+      : [...element.childNodes]
+          .map((node) =>
+            node instanceof Element
+              ? readableText(node)
+              : node instanceof Text
+                ? node.data
+                : '',
+          )
+          .join('');
+
+  // A row's filter text is its link's accessible name: each child's readable
+  // text joined with a space (`page cv`, `github @jorgergo`), so `· here` and
+  // the icons never match.
+  const rowText = (link: Element): string =>
+    [...link.children].map(readableText).join(' ').replace(/\s+/g, ' ').trim();
+
+  const bind = (dialog: HTMLDialogElement): void => {
+    const filter = dialog.querySelector<HTMLElement>('[data-menu-filter]');
+    const field = dialog.querySelector('input');
+    const list = dialog.querySelector<HTMLElement>('[data-menu-rows]');
+    const empty = dialog.querySelector<HTMLElement>('[data-menu-empty]');
+    const status = dialog.querySelector('[data-menu-status]');
+    const keys = dialog.querySelector<HTMLElement>('[data-menu-keys]');
+    const closeButton = dialog.querySelector('button[command="close"]');
+    if (
+      filter === null ||
+      field === null ||
+      list === null ||
+      empty === null ||
+      status === null ||
+      keys === null ||
+      closeButton === null
+    )
+      return;
+
+    const rows = [...list.querySelectorAll('li')].flatMap((item) => {
+      const link = item.querySelector('a');
+      return link === null ? [] : [{ item, link, text: rowText(link) }];
+    });
+    const shownRows = (): typeof rows =>
+      rows.filter(({ item }) => !item.hidden);
+
+    const applyFilter = (): void => {
+      const query = field.value;
+      rows.forEach((row) => {
+        row.item.hidden = !rowMatches(row.text, query);
+      });
+      const count = shownRows().length;
+      empty.hidden = count > 0;
+      status.textContent = formatMatchCount(count, query);
+    };
+
+    // An empty field and every row: the start of every open, and every close.
+    const reset = (): void => {
+      field.value = '';
+      applyFilter();
+    };
+
+    // A keyboard is there for the shortcut and on a fine pointer; on touch the
+    // dialog keeps focus on `close`, so no on screen keyboard opens.
+    const finePointer = (): boolean => matchMedia('(pointer: fine)').matches;
+
+    // Whether the open that `toggle` reports was the script's own.
+    let openedByScript = false;
+
+    const open = (focusField: boolean): void => {
+      if (dialog.open) return;
+      openedByScript = true;
+      reset();
+      dialog.showModal();
+      if (focusField) field.focus();
+    };
+
+    // An invoker button opens the dialog without the script: run the same
+    // open steps once the browser has. `toggle` fires a frame after any open,
+    // so an open the script made itself is skipped there; running its steps
+    // again would wipe what was typed since and pull focus back to the field.
+    dialog.addEventListener('toggle', (event) => {
+      const byScript = openedByScript;
+      openedByScript = false;
+      if (event.newState !== 'open' || byScript) return;
+      reset();
+      if (finePointer()) field.focus();
+    });
+    dialog.addEventListener('close', reset);
+
+    // Where invoker commands are missing, the script wires the buttons itself.
+    if (!('commandForElement' in HTMLButtonElement.prototype)) {
+      document
+        .querySelectorAll<HTMLButtonElement>(
+          `button[commandfor="${COMMAND_MENU_ID}"]`,
+        )
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            const command = button.getAttribute('command');
+            if (command === 'show-modal') open(finePointer());
+            if (command === 'close') dialog.close();
+          });
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (!isMenuShortcut(event)) return;
+      event.preventDefault();
+      if (dialog.open) dialog.close();
+      else open(true);
+    });
+
+    dialog.addEventListener('keydown', (event) => {
+      const { key, target } = event;
+      const shown = shownRows();
+      const index = shown.findIndex(({ link }) => link === target);
+
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        if (target === closeButton) {
+          if (key === 'ArrowDown') {
+            event.preventDefault();
+            field.focus();
+          }
+          return;
+        }
+        if (target !== field && index === -1) return;
+        event.preventDefault();
+        const next = nextFocus(
+          target === field ? -1 : index,
+          shown.length,
+          key,
+        );
+        (shown[next]?.link ?? field).focus();
+        return;
+      }
+
+      if (key === 'Enter' && target === field) {
+        if (!isComposingKey(event)) shown[0]?.link.click();
+        return;
+      }
+
+      // A letter typed on a row lands in the field.
+      if (
+        index !== -1 &&
+        key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      )
+        field.focus();
+    });
+
+    // A plain activation closes the menu, then the link runs; a modified
+    // click opens the link where the visitor asked and keeps the menu open.
+    list.addEventListener('click', (event) => {
+      if (
+        event.button !== 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      if (event.target instanceof Element && event.target.closest('a'))
+        dialog.close();
+    });
+
+    filter.hidden = false;
+    keys.hidden = false;
+    field.addEventListener('input', applyFilter);
+    document.querySelectorAll('[data-shortcut-hint]').forEach((hint) => {
+      hint.textContent = shortcutHint(navigator.platform);
+    });
+  };
+
+  const dialog = document.getElementById(COMMAND_MENU_ID);
+  if (dialog instanceof HTMLDialogElement) bind(dialog);
+</script>

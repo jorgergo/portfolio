@@ -1,9 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { shortcutHint } from '@/lib/command-menu';
 import { COLOR_ROLES, CONTRAST_PAIRS } from '@/lib/contrast';
 import { CV_PDF_PATH } from '@/lib/cv-pdf';
 import { SHARE_IMAGE, SHARE_PAGES } from '@/lib/site-meta';
+import { commandMenuRows } from '@/lib/site-nav';
 import {
   axeViolations,
+  basics,
   focusables,
   rgb,
   scrollsSideways,
@@ -599,18 +602,23 @@ test.describe('semantic HTML', () => {
 });
 
 test.describe('keyboard focus', () => {
-  // covers: AC-8
+  // covers: AC-8, spec 0014 AC-16
   test('Tab visits every link and button in document order, skip link first and footer last', async ({
     page,
   }) => {
     await open(page);
+    // The footer's menu button ends the order once the script has written
+    // its hint (spec 0014); the closed menu's controls are not rendered.
+    await expect(page.locator('footer [data-shortcut-hint]')).not.toBeEmpty();
+    const hint = shortcutHint(await page.evaluate(() => navigator.platform));
     const expected = await focusables(page);
 
     const order = await tabOrder(page);
 
     expect(order).toEqual(expected);
     expect(order.at(0)?.label).toBe('a "Skip to content"');
-    expect(order.at(-1)?.label).toBe('a "← home"');
+    expect(order.at(-2)?.label).toBe('a "← home"');
+    expect(order.at(-1)?.label).toBe(`button "menu ${hint}"`);
   });
 
   // covers: AC-8
@@ -1211,4 +1219,114 @@ test.describe('KeyedList', () => {
       rgb('dark', 'muted'),
     );
   });
+});
+
+// Spec 0014 AC-17: the command menu at rest, in its own section after the
+// others, with a light and a dark panel, so the per panel counts above never
+// change.
+test.describe('command menu', () => {
+  const SCHEMES = [
+    ['Light', 'light'],
+    ['Dark', 'dark'],
+  ] as const;
+  const section = (page: Page): Locator =>
+    page.locator('main > section').filter({
+      has: page.getByRole('heading', {
+        level: 2,
+        name: 'Command menu',
+        exact: true,
+      }),
+    });
+  const menuPanel = (page: Page, name: 'Light' | 'Dark'): Locator =>
+    section(page)
+      .locator('section')
+      .filter({
+        has: page.getByRole('heading', { level: 3, name, exact: true }),
+      });
+  // The preview: the panel's first list after the menu's own heading.
+  const preview = (panel: Locator): Locator =>
+    panel.locator(':scope > div').first();
+  // The style guide is no page of the menu, so no row is current.
+  const ROW_NAMES = commandMenuRows(basics, '/styleguide').map(
+    ({ key, label }) => `${key} ${label}`,
+  );
+
+  // covers: spec 0014 AC-17
+  test('comes after every other section', async ({ page }) => {
+    await open(page);
+
+    await expect(section(page)).toHaveCount(1);
+    await expect(page.locator('main > section').last()).toHaveText(
+      /^\s*Command menu/,
+    );
+  });
+
+  for (const [name, scheme] of SCHEMES) {
+    // covers: spec 0014 AC-2, AC-17
+    test(`the ${name} panel shows the sheet at rest: the title, close, the field, every row, and the key line`, async ({
+      page,
+    }) => {
+      await open(page);
+      const panel = menuPanel(page, name);
+      const sheet = preview(panel);
+      const links = sheet.getByRole('list').getByRole('link');
+
+      await expect(panel).toHaveCSS('background-color', rgb(scheme, 'bg'));
+      await expect(sheet).toHaveJSProperty('tagName', 'DIV');
+      await expect(
+        sheet.getByRole('heading', { level: 2, name: 'menu', exact: true }),
+      ).toBeVisible();
+      await expect(
+        sheet.getByRole('button', { name: 'close', exact: true }),
+      ).toBeVisible();
+      await expect(
+        sheet.getByRole('textbox', { name: 'filter' }),
+      ).toBeVisible();
+      await expect(links).toHaveCount(ROW_NAMES.length);
+      for (const [index, row] of ROW_NAMES.entries()) {
+        await expect(links.nth(index)).toHaveAccessibleName(row);
+      }
+      await expect(sheet.locator('[aria-current]')).toHaveCount(0);
+      await expect(
+        sheet.getByText('↑ ↓ move · enter open · esc close'),
+      ).toBeVisible();
+      await expect(sheet.getByText('no match')).toBeHidden();
+      // No ids, so the real dialog keeps the only `command-menu` ids, and
+      // no second live region.
+      await expect(sheet.locator('[id]')).toHaveCount(0);
+      await expect(sheet.locator('[aria-live]')).toHaveCount(0);
+      await expect(sheet.locator('[commandfor]')).toHaveCount(0);
+    });
+
+    // covers: spec 0014 AC-3, AC-17
+    test(`the ${name} panel shows a NavRow marked current and one that downloads`, async ({
+      page,
+    }) => {
+      await open(page);
+      const rows = menuPanel(page, name).locator(':scope > ul');
+      const current = rows.getByRole('link', { name: 'page cv', exact: true });
+      const download = rows.getByRole('link', {
+        name: 'download cv.pdf',
+        exact: true,
+      });
+      const here = current.locator(':scope > span[aria-hidden="true"]');
+
+      await expect(current).toHaveAttribute('aria-current', 'page');
+      await expect(here).toHaveText('· here');
+      await expect(here).toHaveCSS('color', rgb(scheme, 'muted'));
+      await expect(here).toHaveCSS('font-size', '14px');
+      await expect(current.locator('svg')).toHaveCount(0);
+      await expect(download).toHaveAttribute('href', CV_PDF_PATH);
+      await expect(download).toHaveAttribute('download', 'Example-CV.pdf');
+      await expect(download).not.toHaveAttribute('aria-current');
+      await expect(download.locator('svg')).toHaveCount(1);
+      await expect(download.locator('svg path').first()).toHaveAttribute(
+        'd',
+        'M12 15V3',
+      );
+      expect((await download.locator('svg').boundingBox())?.width ?? 0).toBe(
+        16,
+      );
+    });
+  }
 });

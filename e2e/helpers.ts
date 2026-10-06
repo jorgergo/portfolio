@@ -158,7 +158,9 @@ export const tabOrder = async (
     : tabOrder(page, [...seen, stop], limit - 1);
 };
 
-// Every element a keyboard user can reach, in document order.
+// Every element a keyboard user can reach, in document order. Only rendered
+// ones count, so the closed command menu's controls and a button hidden on
+// this device stay out (spec 0014).
 export const focusables = (page: Page): Promise<readonly Stop[]> =>
   page.evaluate(() => {
     const all = [...document.querySelectorAll('*')];
@@ -166,10 +168,12 @@ export const focusables = (page: Page): Promise<readonly Stop[]> =>
       ...document.querySelectorAll(
         'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
       ),
-    ].map((el) => ({
-      index: all.indexOf(el),
-      label: `${el.tagName.toLowerCase()} "${(el.textContent ?? '').replace(/\s+/g, ' ').trim()}"`,
-    }));
+    ]
+      .filter((el) => el.checkVisibility())
+      .map((el) => ({
+        index: all.indexOf(el),
+        label: `${el.tagName.toLowerCase()} "${(el.textContent ?? '').replace(/\s+/g, ' ').trim()}"`,
+      }));
   });
 
 // True when the page is wider than the viewport, the 320px failure (AC-5).
