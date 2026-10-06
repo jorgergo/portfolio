@@ -229,8 +229,8 @@ A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.ja
 spec [0014](../specs/0014-command-menu/index.md)
 - [x] Design it (spec): `/architect command menu`
 - [ ] Build it: `/develop command menu`
-  - [ ] Proof first: a dialog opened by `commandfor` with no script in Chromium, Firefox, and WebKit, its `toggle` event, and the bundled script under the hashed CSP (AC-4, AC-6, AC-13)
-  - [ ] Helpers: `src/lib/command-menu.ts` and `commandMenuRows` in `src/lib/site-nav.ts`, with their Vitest cases (AC-1, AC-5, AC-7, AC-8, AC-15)
+  - [x] Proof first: a dialog opened by `commandfor` with no script in Chromium, Firefox, and WebKit, its `toggle` event, and the bundled script under the hashed CSP (AC-4, AC-6, AC-13)
+  - [x] Helpers: `src/lib/command-menu.ts` and `commandMenuRows` in `src/lib/site-nav.ts`, with their Vitest cases (AC-1, AC-5, AC-7, AC-8, AC-15)
   - [ ] Components: `current` and `download` on `NavRow`, `command` on `Button`, `CommandMenu` with its script, the footer and corner buttons, and the scroll lock (AC-2 to AC-12)
   - [ ] Page tests: visible only `focusables`, the five script tests, the Tab stops, and the `command menu` block (AC-12 to AC-14, AC-16)
   - [ ] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
