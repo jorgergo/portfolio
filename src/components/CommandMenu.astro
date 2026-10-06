@@ -166,17 +166,25 @@ const Root = preview ? 'div' : 'dialog';
     // dialog keeps focus on `close`, so no on screen keyboard opens.
     const finePointer = (): boolean => matchMedia('(pointer: fine)').matches;
 
+    // Whether the open that `toggle` reports was the script's own.
+    let openedByScript = false;
+
     const open = (focusField: boolean): void => {
       if (dialog.open) return;
+      openedByScript = true;
       reset();
       dialog.showModal();
       if (focusField) field.focus();
     };
 
     // An invoker button opens the dialog without the script: run the same
-    // open steps once the browser has.
+    // open steps once the browser has. `toggle` fires a frame after any open,
+    // so an open the script made itself is skipped there; running its steps
+    // again would wipe what was typed since and pull focus back to the field.
     dialog.addEventListener('toggle', (event) => {
-      if (event.newState !== 'open') return;
+      const byScript = openedByScript;
+      openedByScript = false;
+      if (event.newState !== 'open' || byScript) return;
       reset();
       if (finePointer()) field.focus();
     });
