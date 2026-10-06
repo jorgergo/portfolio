@@ -20,7 +20,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Metadata & share cards | Release 1 | done |
 | 8 | Go live | Release 1 | done |
 | 9 | CV PDF download | Release 2 | done |
-| 10 | Command menu | Release 2 | planned |
+| 10 | Command menu | Release 2 | in-progress |
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | done |
@@ -223,10 +223,21 @@ spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.t
 - [x] Review it (fresh model): `/check review cv pdf download`
 - [x] Document it: `/document cv pdf download`
 
-### 10. Command menu · needs a decision
+### 10. Command menu · in-progress
 A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.jarocki.me.
 **Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
-- [ ] Design it (spec): `/architect command menu`
+spec [0014](../specs/0014-command-menu/index.md)
+- [x] Design it (spec): `/architect command menu`
+- [ ] Build it: `/develop command menu`
+  - [ ] Proof first: a dialog opened by `commandfor` with no script in Chromium, Firefox, and WebKit, its `toggle` event, and the bundled script under the hashed CSP (AC-4, AC-6, AC-13)
+  - [ ] Helpers: `src/lib/command-menu.ts` and `commandMenuRows` in `src/lib/site-nav.ts`, with their Vitest cases (AC-1, AC-5, AC-7, AC-8, AC-15)
+  - [ ] Components: `current` and `download` on `NavRow`, `command` on `Button`, `CommandMenu` with its script, the footer and corner buttons, and the scroll lock (AC-2 to AC-12)
+  - [ ] Page tests: visible only `focusables`, the five script tests, the Tab stops, and the `command menu` block (AC-12 to AC-14, AC-16)
+  - [ ] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
+- [ ] Verify it: `/check verify command menu`
+- [ ] Test it: `/test command menu`
+- [ ] Review it (fresh model): `/check review command menu`
+- [ ] Document it: `/document command menu`
 
 ### 17. History page · needs a decision · from spec 0013
 Your full path from student to now on its own page: every role, certificate, and project, including what the two page CV leaves out.
@@ -264,6 +275,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - **Sitemap and structured data**: a sitemap once the projects page brings more pages, and Person JSON-LD only if search results for your name show a need (it needs a `set:html` exception) · needs a decision · from spec 0006
 - **PR previews**: a Workers Preview URL per pull request, if visual reviews ever need a shared link · needs a decision · from spec 0007
 - **Email at the domain**: an address such as hello@jorgergo.dev through Cloudflare Email Routing, if you want one on the CV · needs a decision · from spec 0007
+- **CV section jumps in the command menu**: rows for `#experience` and the other `/cv` sections, left out of the first menu to keep it one phone screen tall · needs a decision · from spec 0014
 - **Footer arrow glyph**: Plex Mono's shipped `latin` file has no `←` or `→`, so the footer's `← home` arrow draws in the system fallback face; pick a glyph the font ships, or accept the fallback on record (spec 0003) · needs a decision · from spec 0009
 
 ## Legend
