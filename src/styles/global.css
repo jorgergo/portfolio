@@ -56,6 +56,12 @@
     overflow-wrap: anywhere;
   }
 
+  /* Spec 0014: the page behind the open command menu stays still; the sheet
+     scrolls inside itself. */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+
   /* Weight 500 is the only emphasis weight shipped; without this, browsers fake a bold. */
   b,
   strong {

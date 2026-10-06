@@ -2,8 +2,11 @@
 import '@/styles/global.css';
 import css from '@/styles/global.css?raw';
 import { Font } from 'astro:assets';
+import Button from '@/components/Button.astro';
+import CommandMenu from '@/components/CommandMenu.astro';
 import SiteFooter from '@/components/SiteFooter.astro';
 import SkipLink from '@/components/SkipLink.astro';
+import { COMMAND_MENU_ID } from '@/lib/command-menu';
 import { parseColorTokens } from '@/lib/contrast';
 import {
   OG_TYPE,
@@ -98,5 +101,14 @@ const { light, dark } = parseColorTokens(css);
       </main>
       <SiteFooter class={printFooter ? undefined : 'print:hidden'} />
     </div>
+    {/* Spec 0014: the command menu's button where touch is the main input, the
+    site's one fixed element. It takes the bottom 64px, inside the 80px of
+    padding under the footer, so it never covers the footer. */}
+    <div class="fixed right-6 bottom-6 z-10 hidden pointer-coarse:block print:hidden">
+      <Button class="bg-bg" commandfor={COMMAND_MENU_ID} command="show-modal">
+        menu
+      </Button>
+    </div>
+    <CommandMenu />
   </body>
 </html>

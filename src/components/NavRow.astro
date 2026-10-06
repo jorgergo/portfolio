@@ -1,11 +1,17 @@
 ---
 import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+import Download from '@/components/icons/Download.astro';
 
 interface Props {
   href: string;
   prefix: string;
   label: string;
   kind: 'number' | 'key';
+  // The page you are on (spec 0014): `aria-current` and a muted `· here`.
+  current?: boolean;
+  // The file name a row saves its link as (spec 0014); the download icon
+  // then takes the arrow's place.
+  download?: string | undefined;
   class?: string;
 }
 
@@ -15,8 +21,17 @@ interface Props {
 // the link's name (`github @jorgergo`), so it is not. Same tab always, and an
 // external link ends with the arrow (spec 0003, spec 0004). The gap is across
 // only, so a value that wraps sits right under its key, as its second line,
-// not nearer the next row (spec 0011).
-const { href, prefix, label, kind, class: className } = Astro.props;
+// not nearer the next row (spec 0011). The `· here` marker is hidden from
+// assistive tech, which hears `aria-current` instead (spec 0014).
+const {
+  href,
+  prefix,
+  label,
+  kind,
+  current = false,
+  download,
+  class: className,
+} = Astro.props;
 const external = /^https?:\/\//.test(href);
 const numbered = kind === 'number';
 ---
@@ -24,6 +39,8 @@ const numbered = kind === 'number';
 <li>
   <a
     href={href}
+    download={download}
+    aria-current={current ? 'page' : undefined}
     class:list={[
       'flex min-h-10 flex-wrap items-center gap-x-4 font-mono text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm',
       className,
@@ -37,7 +54,16 @@ const numbered = kind === 'number';
     </span>
     <span class="inline-flex shrink-0 items-center gap-2">
       {label}
-      {external && <ArrowUpRight class="size-4 shrink-0" />}
+      {download !== undefined ? (
+        <Download class="size-4 shrink-0" />
+      ) : (
+        external && <ArrowUpRight class="size-4 shrink-0" />
+      )}
     </span>
+    {current && (
+      <span class="text-sm text-muted" aria-hidden="true">
+        · here
+      </span>
+    )}
   </a>
 </li>
