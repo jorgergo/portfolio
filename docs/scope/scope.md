@@ -19,7 +19,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 6 | CV page | Release 1 | done |
 | 7 | Metadata & share cards | Release 1 | done |
 | 8 | Go live | Release 1 | done |
-| 9 | CV PDF download | Release 2 | in-progress |
+| 9 | CV PDF download | Release 2 | done |
 | 10 | Command menu | Release 2 | planned |
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
@@ -207,17 +207,17 @@ spec [0012](../specs/0012-cv-typographic-hierarchy/index.md) · code in `src/com
 - [x] Review it (fresh model): `/check review cv typographic hierarchy`
 - [x] Document it: `/document cv typographic hierarchy`
 
-### 9. CV PDF download · in-progress
+### 9. CV PDF download · done
 A visible download button on the CV page that gives a ready made PDF, always matching the web version. The CV itself is curated to two pages, in plainer words, so the page and the PDF show the same thing.
 **Done when:** clicking the button saves a two page Letter PDF, named after you, that the build printed from the CV page, so its content matches the page exactly; the build stops when the PDF would run to a third page; the button is hidden when printing.
 spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.ts`, `src/lib/render-pdf.ts`, `src/pages/cv.astro`, `src/lib/cv-format.ts`, `src/lib/cv-schema.ts`, `src/content/cv.json`, `src/styles/global.css`, `src/components/Button.astro`, `.github/scripts/smoke.sh`, `e2e/site.spec.ts`
 - [x] Design it (spec): `/architect cv pdf download`
-- [ ] Build it: `/develop cv pdf download`
+- [x] Build it: `/develop cv pdf download`
   - [x] Content and schema: bullets on a CV project, three CV projects, the curated `cv.json`, and the project bullets on `/cv` (AC-1 to AC-3)
   - [x] Paper: the site's paper scale (10pt, half inch margins, full width) and the CV's tighter gaps and headings, with the edited print tests (AC-9, AC-10)
   - [x] The file: `cv-pdf.ts`, the `render-pdf.ts` build step, Chromium before the build in CI, the `noindex` header, and the page tests for the PDF (AC-12 to AC-15, AC-17, AC-19)
   - [x] Button and contact line: `download` on `Button`, `formatCvContacts`, the new header, and the edited header, Tab order, and contact tests (AC-4 to AC-8, AC-11)
-  - [ ] Deploy gate, style guide, and docs: the `/cv.pdf` checks in `smoke.sh`, the style guide button, `design.md`, the README, then the gate and the steps in `verify.md` (AC-16, AC-18, AC-20, AC-21)
+  - [x] Deploy gate, style guide, and docs: the `/cv.pdf` checks in `smoke.sh`, the style guide button, `design.md`, the README, then the gate and the steps in `verify.md` (AC-16, AC-18, AC-20, AC-21)
 - [x] Verify it: `/check verify cv pdf download`
 - [x] Test it: `/test cv pdf download`
 - [x] Review it (fresh model): `/check review cv pdf download`

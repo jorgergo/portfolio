@@ -34,10 +34,10 @@ Page steps run on `pnpm preview` (the built site with real headers) unless a ste
 - [x] `pnpm lint`, `pnpm format:check` → clean → AC-21
 - [x] With `pnpm preview` running, `curl -sI http://localhost:8787/cv.pdf` → `200`, `content-type: application/pdf`, `x-robots-tag: noindex`, the five `/*` headers, and a cache header without `immutable` → AC-17
 - [x] `SMOKE_ORIGIN=http://localhost:8787 bash .github/scripts/smoke.sh pages` → `every check passed` → AC-18
-- [ ] After the deploy, on your Mac: `pnpm build`, then `bash .github/scripts/smoke.sh pages` with no `SMOKE_ORIGIN` → `every check passed` against the live site, although your local `cv.pdf` and the live one differ in bytes → AC-18
+- [x] After the deploy, on your Mac: `pnpm build`, then `bash .github/scripts/smoke.sh pages` with no `SMOKE_ORIGIN` → `every check passed` against the live site, although your local `cv.pdf` and the live one differ in bytes → AC-18. Passed on 2026-10-05 against the deploy of `0268cad`: `attempt 1/10: every check passed`.
 - [x] Linux comparison: build the branch inside `mcr.microsoft.com/playwright:v1.63.0-noble` (Node 26 and `pnpm install --frozen-lockfile` in the container, then `pnpm build`), copy its `dist/cv.pdf` out, and compare it with the macOS build's file using PyMuPDF: page count, and `page.get_text()` line by line for each page → the same count and the same lines → AC-16
 - [x] Open a draft pull request and read the `check` job → Chromium installs before `pnpm build`, the build logs `cv.pdf: 2 pages`, and every step is green → AC-16, AC-19
-- [ ] After the merge, read the `deploy` job → `smoke.sh pages` passes with the `/cv.pdf` checks, and `https://jorgergo.dev/cv.pdf` downloads the same two pages → AC-18
+- [x] After the merge, read the `deploy` job → `smoke.sh pages` passes with the `/cv.pdf` checks, and `https://jorgergo.dev/cv.pdf` downloads the same two pages → AC-18. Passed on 2026-10-05: the job's `smoke.sh pages` passed on attempt 2, and the live file is two Letter pages with the same 46 and 51 lines of text as a local build (66,160 bytes live, 66,020 local).
 
 ## Break steps
 - [x] In the `@media print` block of `src/styles/global.css` set `html { font-size: 11pt; }`, run `pnpm build` → it stops with `cv.pdf has 3 pages, over the cap of 2; shorten src/content/cv.json; see spec 0013`, exits with a failing code, and `dist/cv.pdf` does not exist; restore → AC-15
