@@ -1,5 +1,6 @@
 ---
 import Button from '@/components/Button.astro';
+import CommandMenu from '@/components/CommandMenu.astro';
 import CvEntry from '@/components/CvEntry.astro';
 import IconLink from '@/components/IconLink.astro';
 import KeyedList from '@/components/KeyedList.astro';
@@ -461,6 +462,38 @@ const printValues = COLOR_ROLES.map(
         height="60"
         alt="Apple touch icon at 60px"
       />
+    </div>
+  </section>
+  <section class="flex flex-col gap-6">
+    <SectionHeading>Command menu</SectionHeading>
+    <p class="text-sm text-muted">
+      The command menu at rest (spec 0014): the sheet's content in place, with
+      the filter field and the key line the script reveals, then a NavRow marked
+      current and one that downloads. Press Cmd+K or Ctrl+K, or use the footer
+      button, for the real one.
+    </p>
+    <div class="grid gap-6 sm:grid-cols-2">
+      {PANELS.map(({ label, panel }) => (
+        <section
+          class:list={[
+            panel,
+            'flex min-w-0 flex-col gap-6 rounded-xs border border-line bg-bg p-6 text-fg',
+          ]}
+        >
+          <SectionHeading as="h3">{label}</SectionHeading>
+          <CommandMenu preview />
+          <ul class="flex flex-col gap-1">
+            <NavRow kind="key" href="/cv" prefix="page" label="cv" current />
+            <NavRow
+              kind="key"
+              href={CV_PDF_PATH}
+              prefix="download"
+              label="cv.pdf"
+              download="Example-CV.pdf"
+            />
+          </ul>
+        </section>
+      ))}
     </div>
   </section>
 </BaseLayout>
