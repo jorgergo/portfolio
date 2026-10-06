@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { shortcutHint } from '@/lib/command-menu';
 import { COLOR_ROLES, CONTRAST_PAIRS } from '@/lib/contrast';
 import { CV_PDF_PATH } from '@/lib/cv-pdf';
 import { SHARE_IMAGE, SHARE_PAGES } from '@/lib/site-meta';
@@ -599,18 +600,23 @@ test.describe('semantic HTML', () => {
 });
 
 test.describe('keyboard focus', () => {
-  // covers: AC-8
+  // covers: AC-8, spec 0014 AC-16
   test('Tab visits every link and button in document order, skip link first and footer last', async ({
     page,
   }) => {
     await open(page);
+    // The footer's menu button ends the order once the script has written
+    // its hint (spec 0014); the closed menu's controls are not rendered.
+    await expect(page.locator('footer [data-shortcut-hint]')).not.toBeEmpty();
+    const hint = shortcutHint(await page.evaluate(() => navigator.platform));
     const expected = await focusables(page);
 
     const order = await tabOrder(page);
 
     expect(order).toEqual(expected);
     expect(order.at(0)?.label).toBe('a "Skip to content"');
-    expect(order.at(-1)?.label).toBe('a "← home"');
+    expect(order.at(-2)?.label).toBe('a "← home"');
+    expect(order.at(-1)?.label).toBe(`button "menu ${hint}"`);
   });
 
   // covers: AC-8
