@@ -236,8 +236,8 @@ spec [0014](../specs/0014-command-menu/index.md) · code in `src/components/Comm
   - [x] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
 - [x] Verify it: `/check verify command menu`
 - [x] Test it: `/test command menu`
-- [ ] Review it (fresh model): `/check review command menu`
-- [ ] Document it: `/document command menu`
+- [x] Review it (fresh model): `/check review command menu`
+- [x] Document it: `/document command menu`
 
 ### 17. History page · needs a decision · from spec 0013
 Your full path from student to now on its own page: every role, certificate, and project, including what the two page CV leaves out.
