@@ -290,6 +290,18 @@ describe('cvPdf', () => {
   });
 
   // covers: spec 0013 AC-13
+  it('answers 404 to a path with a broken percent escape, and still writes the file', async () => {
+    await writeCv('<img alt="" src="/%E0%A4%A.png">');
+    const watch = watchChromium();
+
+    await run();
+
+    expect(watch.statuses.get(`${ORIGIN}/%E0%A4%A.png`)).toBe(404);
+    expect(watch.failures.size).toBe(0);
+    expect(existsSync(output())).toBe(true);
+  });
+
+  // covers: spec 0013 AC-13
   it('aborts every request to another origin, so the print never touches the network', async () => {
     await writeCv(
       '<img alt="" src="https://example.com/dot.png"><img alt="" src="http://127.0.0.1:9/dot.png">',

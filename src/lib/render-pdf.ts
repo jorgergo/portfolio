@@ -19,12 +19,26 @@ import { checkCvPdf, CV_PDF_PATH, readPdfFacts } from './cv-pdf.ts';
 const ORIGIN = 'http://cv.localhost';
 const PAGE = '/cv';
 
+// A request path decoded, or undefined when one of its escapes is broken
+// (such as `%E0%A4%A`), which `decodeURIComponent` throws on. Left to throw
+// inside the route handler, it would leave the request unanswered and the
+// print waiting until Playwright gives up.
+const decodePath = (pathname: string): string | undefined => {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
+};
+
 // The built file a request path names, or undefined when there is none. A
 // path with no extension is a page: build.format is 'file', so /cv is cv.html.
 // A decoded path could climb out with `../`, so a file outside the build
-// folder counts as missing: the hook reads files under dist/ only.
+// folder counts as missing: the hook reads files under dist/ only, and a path
+// that does not decode counts as missing too.
 const builtFile = (pathname: string, dir: URL): string | undefined => {
-  const path = decodeURIComponent(pathname);
+  const path = decodePath(pathname);
+  if (path === undefined) return undefined;
   const file = fileURLToPath(
     new URL(`.${extname(path) === '' ? `${path}.html` : path}`, dir),
   );
