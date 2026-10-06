@@ -234,7 +234,7 @@ spec [0014](../specs/0014-command-menu/index.md) · code in `src/components/Comm
   - [x] Components: `current` and `download` on `NavRow`, `command` on `Button`, `CommandMenu` with its script, the footer and corner buttons, and the scroll lock (AC-2 to AC-12)
   - [x] Page tests: visible only `focusables`, the five script tests, the Tab stops, and the `command menu` block (AC-12 to AC-14, AC-16)
   - [x] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
-- [ ] Verify it: `/check verify command menu`
+- [x] Verify it: `/check verify command menu`
 - [ ] Test it: `/test command menu`
 - [ ] Review it (fresh model): `/check review command menu`
 - [ ] Document it: `/document command menu`
