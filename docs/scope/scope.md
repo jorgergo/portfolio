@@ -226,14 +226,14 @@ spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.t
 ### 10. Command menu · in-progress
 A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.jarocki.me.
 **Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
-spec [0014](../specs/0014-command-menu/index.md)
+spec [0014](../specs/0014-command-menu/index.md) · code in `src/components/CommandMenu.astro`, `src/lib/command-menu.ts`, `src/lib/site-nav.ts`, `src/components/NavRow.astro`, `src/components/SiteFooter.astro`, `src/layouts/BaseLayout.astro`
 - [x] Design it (spec): `/architect command menu`
-- [ ] Build it: `/develop command menu`
+- [x] Build it: `/develop command menu`
   - [x] Proof first: a dialog opened by `commandfor` with no script in Chromium, Firefox, and WebKit, its `toggle` event, and the bundled script under the hashed CSP (AC-4, AC-6, AC-13)
   - [x] Helpers: `src/lib/command-menu.ts` and `commandMenuRows` in `src/lib/site-nav.ts`, with their Vitest cases (AC-1, AC-5, AC-7, AC-8, AC-15)
-  - [ ] Components: `current` and `download` on `NavRow`, `command` on `Button`, `CommandMenu` with its script, the footer and corner buttons, and the scroll lock (AC-2 to AC-12)
-  - [ ] Page tests: visible only `focusables`, the five script tests, the Tab stops, and the `command menu` block (AC-12 to AC-14, AC-16)
-  - [ ] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
+  - [x] Components: `current` and `download` on `NavRow`, `command` on `Button`, `CommandMenu` with its script, the footer and corner buttons, and the scroll lock (AC-2 to AC-12)
+  - [x] Page tests: visible only `focusables`, the five script tests, the Tab stops, and the `command menu` block (AC-12 to AC-14, AC-16)
+  - [x] Style guide, `design.md`, and the gate: the `Command menu` section, the docs, and the steps in `verify.md` (AC-16, AC-17)
 - [ ] Verify it: `/check verify command menu`
 - [ ] Test it: `/test command menu`
 - [ ] Review it (fresh model): `/check review command menu`
