@@ -22,7 +22,7 @@ interface Props {
 // One dated entry of the CV as two Harvard pairs (left text, right meta), an
 // optional sans body, and a slot for nested roles or a coursework line. The
 // title is the entry's one medium line; an h4 role and a position stay at 400
-// (spec 0005).
+// (spec 0005). On paper its gaps tighten one step (spec 0013).
 const {
   title,
   href,
@@ -48,7 +48,7 @@ const hasBody = summary !== undefined || highlights.length > 0;
 
 <div
   class:list={[
-    'flex flex-col gap-2',
+    'flex flex-col gap-2 print:gap-1',
     !splittable && 'break-inside-avoid',
     className,
   ]}
@@ -74,10 +74,10 @@ const hasBody = summary !== undefined || highlights.length > 0;
     </div>
   )}
   {hasBody && (
-    <Prose class="flex flex-col gap-2">
+    <Prose class="flex flex-col gap-2 print:gap-1">
       {summary !== undefined && <p>{summary}</p>}
       {highlights.length > 0 && (
-        <ul class="flex list-disc flex-col gap-1 pl-5 marker:text-muted">
+        <ul class="flex list-disc flex-col gap-1 pl-5 marker:text-muted print:gap-0.5">
           {highlights.map((highlight) => (
             <li>{highlight}</li>
           ))}

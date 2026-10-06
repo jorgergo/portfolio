@@ -1,5 +1,8 @@
 import { defineConfig, fontProviders } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
+// Spec 0013: Node loads this file itself, outside Vite, so the import is a
+// relative path with its extension and no `@/` alias.
+import { cvPdf } from './src/lib/render-pdf.ts';
 
 // Spec 0003: one Fontsource file per variant, resolved as a package import and
 // copied into dist/ by the local provider, so the build never touches the network.
@@ -43,7 +46,8 @@ export default defineConfig({
   build: { format: 'file' },
   security: { csp: true },
   markdown: { syntaxHighlight: false },
-  integrations: [devStyleguide],
+  // cvPdf prints the built /cv to dist/cv.pdf at the end of every build.
+  integrations: [devStyleguide, cvPdf()],
   fonts: [
     {
       ...plex('mono', ['ui-monospace', 'Menlo', 'Consolas', 'monospace']),

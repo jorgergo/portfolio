@@ -15,7 +15,9 @@ import { FONT_SUBSET, missingGlyphs } from '@/lib/share-card';
 // cap (spec 0011) keeps the /contact row's address on one line in that 272px
 // column, since the label never shrinks: Plex Mono is 10px per glyph in CI,
 // so 27 characters is the most that fits. The tagline cap (spec 0008) keeps
-// the home tagline on one line in the same column, by the same count.
+// the home tagline on one line in the same column, by the same count. The CV
+// takes three projects, and a project three bullets (spec 0013): what fits
+// the two Letter pages the build prints.
 export const CV_LIMITS = {
   name: 30,
   namePart: 24,
@@ -37,7 +39,8 @@ export const CV_LIMITS = {
   projectKeyword: 20,
   projectKeywords: 6,
   projects: 8,
-  cvProjectsMax: 2,
+  cvProjectsMax: 3,
+  projectHighlights: 3,
   email: 27,
   tagline: 27,
 } as const;
@@ -286,7 +289,9 @@ const projectSource = z
   );
 
 // The /projects list (spec 0010), also the CV's Projects section through the
-// cv flag. Not card text, so the glyph rule does not apply.
+// cv flag. Not card text, so the glyph rule does not apply. The bullets show
+// on the CV alone (spec 0013), so on a project without the flag they would be
+// data that renders nowhere.
 const project = z
   .strictObject({
     name: text(CV_LIMITS.projectName),
@@ -301,6 +306,10 @@ const project = z
       .min(1)
       .max(CV_LIMITS.projectKeywords),
     cv: z.boolean().optional(),
+    highlights: z
+      .array(text(CV_LIMITS.highlight))
+      .max(CV_LIMITS.projectHighlights)
+      .optional(),
   })
   .superRefine(endNotBeforeStart)
   .superRefine((entry, ctx) => {
@@ -310,6 +319,14 @@ const project = z
         path: ['url'],
         message:
           'a live project needs a url, the site a visitor can open; see spec 0010',
+      });
+    }
+    if (entry.highlights !== undefined && entry.cv !== true) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['highlights'],
+        message:
+          'highlights show only on the CV, so the project must set cv; see spec 0013',
       });
     }
   });

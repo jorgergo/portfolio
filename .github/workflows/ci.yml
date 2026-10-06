@@ -30,11 +30,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
+      # Spec 0013: the build prints the CV to dist/cv.pdf with this Chromium,
+      # so it installs before the build; the page tests use it too.
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       # Needs no Cloudflare values, so pull requests from forks run it too.
       - run: pnpm exec wrangler deploy --dry-run
       - run: pnpm test
-      - run: pnpm exec playwright install --with-deps chromium
       # Its web server runs astro build again, so dist/ now holds the build the
       # page tests saw, and that is the one deploy ships.
       - run: pnpm exec playwright test

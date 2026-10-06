@@ -269,6 +269,59 @@ export const cvProjects = <
 ): readonly T[] =>
   sortByStart(projects.filter((project) => project.cv === true));
 
+// Spec 0013: the CV's contact line. Pure.
+
+// One link of the CV's contact line. `paperOnly` marks the item that shows in
+// print alone: the site's own address, which a visitor already on the site
+// has no use for. `separator` says where the dot after the item shows:
+// `always`, on `paper` alone, or `none`.
+export type CvContact = {
+  readonly href: string;
+  readonly text: string;
+  readonly paperOnly: boolean;
+  readonly separator: 'always' | 'paper' | 'none';
+};
+
+// The email, then the site when `site` is set (paper only), then one item per
+// profile in cv.json order. The last item has no dot. An item followed only
+// by paper only items shows its dot on paper alone, so a CV with no profiles
+// never ends its screen line with a dot.
+export const formatCvContacts = (
+  basics: {
+    readonly email: string;
+    readonly profiles?: readonly { readonly url: string }[] | undefined;
+  },
+  site: URL | undefined,
+): readonly CvContact[] => {
+  const items = [
+    { href: `mailto:${basics.email}`, text: basics.email, paperOnly: false },
+    ...(site === undefined
+      ? []
+      : [
+          {
+            href: site.href,
+            text: formatProfilePath(site.href),
+            paperOnly: true,
+          },
+        ]),
+    ...(basics.profiles ?? []).map(({ url }) => ({
+      href: url,
+      text: formatProfilePath(url),
+      paperOnly: false,
+    })),
+  ];
+  return items.map((item, index) => {
+    const rest = items.slice(index + 1);
+    const separator: CvContact['separator'] =
+      rest.length === 0
+        ? 'none'
+        : rest.every(({ paperOnly }) => paperOnly)
+          ? 'paper'
+          : 'always';
+    return { ...item, separator };
+  });
+};
+
 // Spec 0011: the contact page rows. Pure.
 
 // One contact channel: a lower case key, where it links, and what it shows.

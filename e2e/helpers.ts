@@ -73,6 +73,11 @@ export const distFiles = (): readonly string[] =>
 export const distFile = (name: string): string =>
   readFileSync(new URL(`../dist/${name}`, import.meta.url), 'utf8');
 
+// One built file as bytes, by its path under dist/: `distFile` decodes as
+// text, which a PDF is not (spec 0013).
+export const distBytes = (name: string): Uint8Array =>
+  readFileSync(new URL(`../dist/${name}`, import.meta.url));
+
 export type Header = { readonly name: string; readonly value: string };
 
 // The blocks of a `_headers` file by path (spec 0007): a line starting with `/`

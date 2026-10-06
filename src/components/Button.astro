@@ -1,12 +1,16 @@
 ---
 interface Props {
   href?: string;
+  // The file name a link offers when it saves a file (spec 0013). Written on
+  // the link only: without `href` it does nothing.
+  download?: string;
   type?: 'button' | 'submit';
   class?: string;
 }
 
-// One variant. A link when `href` is given, a real button otherwise.
-const { href, type = 'button', class: className } = Astro.props;
+// One variant. A link when `href` is given, a real button otherwise. It may
+// hold one icon before its label.
+const { href, download, type = 'button', class: className } = Astro.props;
 const classes = [
   'inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xs border border-muted px-3 font-mono text-sm text-fg transition-colors hover:border-accent-warm hover:text-accent-warm focus-visible:border-accent-warm focus-visible:text-accent-warm print:hidden',
   className,
@@ -14,7 +18,7 @@ const classes = [
 ---
 
 {href !== undefined ? (
-  <a href={href} class:list={classes}>
+  <a href={href} download={download} class:list={classes}>
     <slot />
   </a>
 ) : (

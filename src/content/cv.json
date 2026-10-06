@@ -6,7 +6,7 @@
       "label": "Full Stack Developer",
       "tagline": "build things, from scratch",
       "bio": "Full Stack Developer building web platforms, AI assistants, and release automation.",
-      "summary": "Full Stack Developer building scalable web platforms, AI assistants, and automated release pipelines. Led the modernization of Ford's PDPO Portal and Knowledge Base, delivering a production RAG assistant used across both platforms and removing manual versioning and release work. Computer Science graduate of Tecnológico de Monterrey with a 4.0 GPA and winner of a national hackathon.",
+      "summary": "Full stack developer. I'm a computer science and technology engineer who builds things for the web, from scratch and all the way to the cloud. I bring problem solving, creativity, and clear communication to every project, and I'm quick to pick up whatever it needs next. Lately that has meant a lot of AI.",
       "email": "jorgergo@icloud.com",
       "location": {
         "city": "Toluca",
@@ -41,16 +41,28 @@
     "projects": [
       {
         "name": "TRACSUR Tickets",
-        "description": "Ticket sales and gate check in for a trailer drag race, with signed QR tickets and an offline scanner.",
+        "description": "Ticket sales and gate check in for a trailer drag race in Yucatán, paid by card, OXXO, or bank transfer.",
         "startDate": "2026-09",
-        "status": "building",
+        "status": "live",
+        "url": "https://tracsurtruckraces.com",
         "source": "private",
-        "keywords": ["Next.js", "PostgreSQL", "Cloud Run", "Mercado Pago"],
-        "cv": true
+        "keywords": [
+          "Next.js",
+          "PostgreSQL",
+          "Cloud Run",
+          "Cloudflare",
+          "Mercado Pago"
+        ],
+        "cv": true,
+        "highlights": [
+          "Built alone in three weeks, from first commit to open sale, with AI coding agents and specs I write and review.",
+          "In its first week on sale it passed 200,000 page views and sold 5,000 tickets.",
+          "Payments run through Mercado Pago, and each ticket is a QR code signed with Ed25519 that gets in exactly once."
+        ]
       },
       {
         "name": "jorgergo.dev",
-        "description": "Personal site and CV, built from written specs, with a CI gate that rolls back a bad deploy.",
+        "description": "My site and CV, built with AI coding agents from specs I write and review. A failed check rolls the deploy back.",
         "startDate": "2026-09",
         "status": "live",
         "url": "https://jorgergo.dev",
@@ -67,12 +79,19 @@
         "keywords": ["Next.js", "Prisma", "SQLite", "Recharts"]
       },
       {
-        "name": "Medpal",
-        "description": "A medical concierge app that helps independent doctors run their agenda, notes, and prescriptions.",
+        "name": "Medipal",
+        "description": "An app for independent doctors in Mexico, built with a partner: agenda, notes, prescriptions, WhatsApp reminders.",
         "startDate": "2026-03",
         "status": "building",
         "source": "private",
-        "keywords": ["Flutter", "TypeScript", "Google Cloud"]
+        "keywords": [
+          "Flutter",
+          "TypeScript",
+          "Fastify",
+          "PostgreSQL",
+          "Google Cloud"
+        ],
+        "cv": true
       }
     ],
     "work": [
@@ -82,13 +101,12 @@
         "url": "https://www.ford.com",
         "location": "Remote",
         "startDate": "2025-08",
-        "summary": "Owned the PDPO Portal and Knowledge Base, internal platforms serving Ford's 3DEXPERIENCE product development users.",
+        "summary": "I own two internal sites for the teams that use 3DEXPERIENCE at Ford: the PDPO Portal, used by a team of 95, and the Knowledge Base, used by more than 7,000 people all over the world.",
         "highlights": [
-          "Designed and launched a production AI assistant and RAG agent platform with Google ADK and Vertex AI, now used in both the Portal and Knowledge Base and planned for reuse by other teams.",
-          "Migrated the Knowledge Base from MkDocs to Zensical and added a FastAPI and Uvicorn runtime, turning a static site into a platform with authentication, sessions, and APIs.",
-          "Automated calendar versioning and releases for 2 applications with GitHub Actions, shipping 5 monthly and 3 patch releases with zero manual versioning or release notes.",
-          "Rebuilt the Portal from legacy HTML into a Next.js and Spring Boot application with live LDAP team directories and an Elastic Synthetics health dashboard for 3 environments.",
-          "Enforced repository standards and strict build validation, eliminating about 1 hour per week of broken link cleanup, and mentored contributors through 18+ support issues."
+          "Built an AI assistant that answers from our own docs (a RAG agent on Google ADK and Vertex AI) and took it to production. Both sites use it now, and other teams plan to reuse it.",
+          "Rebuilt the Portal from old HTML pages into a Next.js and Spring Boot app, with team directories read live from LDAP and a health dashboard for 3 environments on Elastic Synthetics.",
+          "Moved the Knowledge Base from MkDocs to Zensical and added a FastAPI backend, which turned a static site into an app with sign in, sessions, and its own APIs.",
+          "Automated versioning and releases for both apps with GitHub Actions: 5 monthly and 3 patch releases so far, none with a version number or release note written by hand."
         ]
       },
       {
@@ -99,10 +117,9 @@
         "startDate": "2025-01",
         "endDate": "2025-07",
         "highlights": [
-          "Migrated legacy financial applications from Linux shell and SQL scripts to Google Cloud Platform, rebuilding them with Spring Boot and Angular.",
-          "Maintained code quality and security with Tekton, SonarQube, and FOSSA through testing, change approval, and production deployment."
-        ],
-        "summary": "Completed Ford's IT Academy program in Java full stack development on Google Cloud."
+          "Moved old finance tools from shell and SQL scripts to Google Cloud, rebuilt with Spring Boot and Angular.",
+          "Kept quality and security in check with Tekton, SonarQube, and FOSSA, from tests to approval to production."
+        ]
       },
       {
         "name": "El Puerto de Liverpool",
@@ -111,18 +128,8 @@
         "startDate": "2023-05",
         "endDate": "2024-03",
         "highlights": [
-          "Automated financial processes with UiPath and Visual Basic robots, reducing processing time by up to 60%.",
-          "Automated SAP ECC and S/4HANA data extraction and Excel data management."
-        ]
-      },
-      {
-        "name": "Daimler Truck Mexico",
-        "position": "Logistics Intern",
-        "location": "Santiago Tianguistenco, Mexico",
-        "startDate": "2023-03",
-        "endDate": "2023-05",
-        "highlights": [
-          "Built dynamic SQL and Microsoft Report Builder reports tailored to materials analysts and expeditors."
+          "Built UiPath and Visual Basic robots for finance processes that cut processing time by up to 60%.",
+          "Automated data extraction from SAP ECC and S/4HANA and the Excel work that came after it."
         ]
       }
     ],
@@ -133,8 +140,8 @@
         "startDate": "2025-10",
         "endDate": "2025-12",
         "highlights": [
-          "Led the frontend rebuild of the gift drive app with React and Tailwind, adding QR code scanning that tracked 1,341 gifts for 450 children.",
-          "Automated extraction of children's wishlists from PDFs with Python, replacing manual data entry for volunteers."
+          "Led the React and Tailwind rebuild of the gift drive app, with QR scanning that tracked 1,341 gifts for 450 children.",
+          "Wrote a Python script that pulls children's wishlists out of PDFs, so volunteers no longer type them in by hand."
         ]
       }
     ],
@@ -147,16 +154,7 @@
         "location": "Toluca, Mexico",
         "startDate": "2020-08",
         "endDate": "2024-06",
-        "score": "GPA 4.0/4.0 (97/100)",
-        "courses": [
-          "Object Oriented Programming in C++",
-          "Data Structures and Algorithms",
-          "Advanced Algorithms",
-          "Web Development",
-          "Android Programming",
-          "Artificial Intelligence",
-          "Cybersecurity Essentials"
-        ]
+        "score": "GPA 4.0/4.0 (97/100)"
       }
     ],
     "awards": [
@@ -180,11 +178,6 @@
     ],
     "certificates": [
       {
-        "name": "Catia 3DEXPERIENCE (Catia V6) for Beginners and Catia V5 Users",
-        "issuer": "Udemy",
-        "date": "2026-05"
-      },
-      {
         "name": "EF SET English Certificate, C2 Proficient (73/100)",
         "issuer": "EF SET",
         "date": "2026-01",
@@ -199,55 +192,49 @@
         "name": "CCNA: Enterprise Networking, Security, and Automation",
         "issuer": "Cisco Networking Academy",
         "date": "2024-06"
-      },
-      {
-        "name": "IT Specialist: Python",
-        "issuer": "Certiport, Pearson",
-        "date": "2023-07"
-      },
-      {
-        "name": "Google Cloud Computing Foundations: Cloud Computing Fundamentals",
-        "issuer": "Google Cloud Skills Boost",
-        "date": "2023-03"
-      }
-    ],
-    "skills": [
-      {
-        "name": "Additional skills",
-        "keywords": [
-          "Full stack web platforms, from interface to cloud deployment",
-          "AI assistants and retrieval augmented generation (RAG)",
-          "Release automation and CI/CD",
-          "Technical documentation and teammate mentoring",
-          "Process automation (RPA)"
-        ]
       }
     ],
     "technologies": [
       {
-        "name": "Technologies",
+        "name": "Frontend",
         "keywords": [
           "TypeScript",
           "JavaScript",
-          "Python",
-          "Java",
-          "SQL",
           "React",
           "Next.js",
           "Angular",
-          "Tailwind CSS",
-          "Spring Boot",
+          "Tailwind CSS"
+        ]
+      },
+      {
+        "name": "Backend",
+        "keywords": [
+          "Python",
           "FastAPI",
+          "Java",
+          "Spring Boot",
           "Node.js",
           "PostgreSQL",
-          "Google Cloud",
-          "Vertex AI",
+          "SQL"
+        ]
+      },
+      {
+        "name": "AI",
+        "keywords": [
+          "RAG",
           "Google ADK",
-          "GitHub Actions",
+          "Vertex AI",
+          "AI coding agents (Claude Code)"
+        ]
+      },
+      {
+        "name": "Cloud & DevOps",
+        "keywords": [
+          "Google Cloud",
+          "Cloud Run",
+          "Cloudflare",
           "Docker",
-          "Tekton",
-          "SonarQube",
-          "Elastic"
+          "GitHub Actions"
         ]
       }
     ],
@@ -268,19 +255,9 @@
       }
     ],
     "interests": [
-      {
-        "name": "Sports",
-        "keywords": [
-          "Basketball (team captain, 2013 to 2018)",
-          "Tennis",
-          "Weightlifting",
-          "CrossFit"
-        ]
-      },
-      {
-        "name": "Music",
-        "keywords": ["Guitar"]
-      }
+      { "name": "Basketball (team captain, 2013 to 2018)" },
+      { "name": "Tennis" },
+      { "name": "Guitar" }
     ]
   }
 }

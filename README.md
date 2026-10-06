@@ -15,6 +15,12 @@ pnpm build     # type and content check, then static build into dist/
 pnpm preview   # serve dist/ with wrangler, including _headers
 ```
 
+`pnpm build` also prints the CV page to `dist/cv.pdf` with headless Chromium, so it needs that browser once on each machine:
+
+```bash
+pnpm exec playwright install chromium
+```
+
 ## Deploy
 
 A push to `main` deploys on its own once CI passes: the `deploy` job in `.github/workflows/ci.yml` uploads the `dist/` that the page tests passed. It then checks the live site with `.github/scripts/smoke.sh`, and if the pages are wrong it rolls back to the previous version by itself and the job goes red.

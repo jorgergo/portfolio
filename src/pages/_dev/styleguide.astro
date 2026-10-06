@@ -24,6 +24,7 @@ import {
   type ColorScheme,
 } from '@/lib/contrast';
 import { getCv } from '@/lib/cv';
+import { CV_PDF_PATH } from '@/lib/cv-pdf';
 import css from '@/styles/global.css?raw';
 
 // Development only. The dev-styleguide integration in astro.config.mjs injects
@@ -326,6 +327,10 @@ const printValues = COLOR_ROLES.map(
             <div class="flex flex-wrap gap-2">
               <Button href="/cv">Button as a link</Button>
               <Button>Button as a button</Button>
+              <Button href={CV_PDF_PATH} download="Example-CV.pdf">
+                <Download class="size-4 shrink-0" />
+                Download PDF
+              </Button>
             </div>
             <div class="flex flex-wrap gap-2">
               <TagChip>TypeScript</TagChip>

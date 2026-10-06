@@ -1,5 +1,7 @@
 ---
+import Button from '@/components/Button.astro';
 import CvEntry from '@/components/CvEntry.astro';
+import Download from '@/components/icons/Download.astro';
 import KeyedList from '@/components/KeyedList.astro';
 import Prose from '@/components/Prose.astro';
 import SectionHeading from '@/components/SectionHeading.astro';
@@ -14,10 +16,10 @@ import {
 import {
   cvProjects,
   firstUrl,
+  formatCvContacts,
   formatDateRange,
   formatLocation,
   formatMonth,
-  formatProfilePath,
   formatSkillRows,
   groupConsecutive,
   joinMeta,
@@ -28,24 +30,24 @@ import {
   type Group,
   type KeyedRow,
 } from '@/lib/cv-format';
+import { CV_PDF_PATH, cvPdfFileName } from '@/lib/cv-pdf';
 import { pageMeta } from '@/lib/site-meta';
 
 // Spec 0005: the whole CV as a Harvard style document from cv.json, read once.
 // Header and contact line, then one section per non empty source in a fixed
 // order; consecutive roles at one company group under one company line. The
-// head comes from the `cv` row (spec 0006).
+// head comes from the `cv` row (spec 0006). Spec 0013: the build prints this
+// page to cv.pdf, and the button in the header saves that file. The header's
+// first row wraps by fit, with no breakpoint: the button sits beside the name
+// block when the row has room for both and under it when it does not, and it
+// follows the name block in the markup, so Tab order is reading order.
 const cv = await getCv();
 const { basics } = cv;
 
-const contacts = [
-  { href: `mailto:${basics.email}`, text: basics.email },
-  ...(basics.profiles ?? []).map(({ url }) => ({
-    href: url,
-    text: formatProfilePath(url),
-  })),
-];
-// Every contact item but the last ends with a muted dot that wraps with it.
-const last = contacts.length - 1;
+// The email, the site (on paper only), then each profile. Which items show
+// where, and where a muted dot follows one, is the helper's rule; the dot
+// sits inside its item, so it wraps with it.
+const contacts = formatCvContacts(basics, Astro.site);
 const DOT = '·';
 
 type Role = {
@@ -123,7 +125,8 @@ const sections: readonly Section[] = [
     heading: 'Experience',
     groups: experience,
   },
-  // The projects flagged `cv` in cv.json, in the /projects order (spec 0010).
+  // The projects flagged `cv` in cv.json, in the /projects order (spec 0010),
+  // each with its bullets when it has any (spec 0013).
   {
     kind: 'projects',
     id: 'projects',
@@ -165,24 +168,47 @@ const rendered = sections.filter(hasContent);
 ---
 
 <BaseLayout {...pageMeta('cv', cv, Astro.site)} printFooter={false}>
-  <div class="flex flex-col gap-14 print:gap-6">
-    <header class="flex flex-col gap-2">
-      <h1 class="text-lg font-medium">{basics.name}</h1>
-      <p class="text-sm text-muted">
-        {joinMeta(basics.label, formatLocation(basics.location))}
-      </p>
+  <div class="flex flex-col gap-14 print:gap-5">
+    <header class="flex flex-col gap-2 print:gap-1">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div class="flex flex-col gap-2 print:gap-1">
+          <h1 class="text-lg font-medium">{basics.name}</h1>
+          <p class="text-sm text-muted">
+            {joinMeta(basics.label, formatLocation(basics.location))}
+          </p>
+        </div>
+        <Button
+          href={CV_PDF_PATH}
+          download={cvPdfFileName(basics.name)}
+          class="shrink-0"
+        >
+          <Download class="size-4 shrink-0" />
+          Download PDF
+        </Button>
+      </div>
       <address class="not-italic">
         <ul class="flex flex-wrap text-sm text-muted">
-          {contacts.map(({ href, text }, index) => (
-            <li class="flex items-center">
+          {contacts.map(({ href, text, paperOnly, separator }) => (
+            <li
+              class:list={[
+                paperOnly ? 'hidden print:flex' : 'flex',
+                'items-center',
+              ]}
+            >
               <a
                 href={href}
                 class="inline-flex min-h-6 items-center text-fg transition-colors hover:text-accent-warm focus-visible:text-accent-warm"
               >
                 {text}
               </a>
-              {index < last && (
-                <span aria-hidden="true" class="mx-2">
+              {separator !== 'none' && (
+                <span
+                  aria-hidden="true"
+                  class:list={[
+                    'mx-2',
+                    separator === 'paper' && 'hidden print:inline',
+                  ]}
+                >
                   {DOT}
                 </span>
               )}
@@ -193,12 +219,12 @@ const rendered = sections.filter(hasContent);
     </header>
     {rendered.map((section) => (
       <section
-        class="flex flex-col gap-6 print:gap-4"
+        class="flex flex-col gap-6 print:gap-3"
         aria-labelledby={section.id}
       >
         <SectionHeading
           id={section.id}
-          class="border-b border-line pb-2 break-after-avoid"
+          class="border-b border-line pb-2 break-after-avoid print:pb-1 print:leading-tight"
         >
           {section.heading}
         </SectionHeading>
@@ -227,7 +253,7 @@ const rendered = sections.filter(hasContent);
                 href={firstUrl(group.items)}
                 meta={groupMeta(group)}
               >
-                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-4 print:gap-2">
                   {group.items.map((item) => (
                     <CvEntry
                       as="h4"
@@ -249,6 +275,7 @@ const rendered = sections.filter(hasContent);
               href={projectHref(project)}
               meta={formatDateRange(project.startDate, project.endDate)}
               summary={project.description}
+              highlights={project.highlights}
             >
               <p class="text-sm text-muted">{joinMeta(...project.keywords)}</p>
             </CvEntry>

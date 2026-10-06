@@ -226,5 +226,5 @@ The scaffold is structure only; real content and design come from later specs. W
 - [ ] Content model spec: evaluate a single JSON file for the CV (JSON Resume style), as in midudev's `minimalist-portfolio-json` Astro template (github.com/midudev/minimalist-portfolio-json).
 - [ ] Command menu spec: evaluate `hotkeypad` (the framework free palette that template uses) against a hand built `<dialog>`.
 - [ ] Design system spec: when fonts are added, confirm Astro's CSP hashes the inline style the Fonts API emits.
-- [ ] CV PDF spec: confirm how the PDF is generated at build time (a headless browser in the build, which since spec 0007 runs in GitHub Actions and on your machine, never in Cloudflare, vs a JS PDF renderer).
+- [x] CV PDF spec: confirm how the PDF is generated at build time (a headless browser in the build, which since spec 0007 runs in GitHub Actions and on your machine, never in Cloudflare, vs a JS PDF renderer). Done in [0013](../0013-cv-pdf-download/index.md): a headless browser, the Chromium that Playwright installs, with the install step moved before the build in CI.
 - [ ] When `@astrojs/check` adds TypeScript 7 to its peer range, update this spec to move `typescript` to `^7` (a small in place update).
