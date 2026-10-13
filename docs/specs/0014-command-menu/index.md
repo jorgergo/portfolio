@@ -1,7 +1,7 @@
 # 0014. Command menu as a full page sheet of keyed links
 
 **Date**: 2026-10-05
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
