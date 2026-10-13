@@ -20,7 +20,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Metadata & share cards | Release 1 | done |
 | 8 | Go live | Release 1 | done |
 | 9 | CV PDF download | Release 2 | done |
-| 10 | Command menu | Release 2 | in-progress |
+| 10 | Command menu | Release 2 | done |
 | 11 | Projects page | Release 3 | done |
 | 12 | About page | Release 1 | done |
 | 13 | Contact page | Release 1 | done |
@@ -223,7 +223,7 @@ spec [0013](../specs/0013-cv-pdf-download/index.md) · code in `src/lib/cv-pdf.t
 - [x] Review it (fresh model): `/check review cv pdf download`
 - [x] Document it: `/document cv pdf download`
 
-### 10. Command menu · in-progress
+### 10. Command menu · done
 A Cmd+K / Ctrl+K menu for quick jumps (pages, socials, PDF download), like cv.jarocki.me.
 **Done when:** the shortcut opens the menu, it works fully by keyboard, phone visitors have a small button to open it, and it never shows in print.
 spec [0014](../specs/0014-command-menu/index.md) · code in `src/components/CommandMenu.astro`, `src/lib/command-menu.ts`, `src/lib/site-nav.ts`, `src/components/NavRow.astro`, `src/components/SiteFooter.astro`, `src/layouts/BaseLayout.astro`
