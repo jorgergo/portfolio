@@ -253,7 +253,7 @@ spec [0015](../specs/0015-command-menu-panel/index.md) · code in `src/component
   - [x] Page tests, style guide, docs, and the gate, with the iPhone and Android checks in `verify.md` (AC-4, AC-13, AC-14, AC-16, AC-17)
 - [x] Verify it: `/check verify command menu redesign`
 - [x] Test it: `/test command menu redesign`
-- [ ] Review it (fresh model): `/check review command menu redesign`
+- [x] Review it (fresh model): `/check review command menu redesign`
 - [ ] Document it: `/document command menu redesign`
 
 ### 17. History page · needs a decision · from spec 0013
