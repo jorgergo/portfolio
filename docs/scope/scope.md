@@ -246,11 +246,11 @@ The command menu opens as a sheet that hides the whole page, with a large title,
 **Note:** the design bench at https://claude.ai/artifact/TRQWNGcKHCNyzmWPNPFJH5 (private, built 13 Oct 2026) holds the candidates, cv.jarocki.me's menu as measured, and the contrast numbers. Its recommended panel bends rules from specs 0003 and 0014 (a scrim colour, the focus ring inside the menu, motion, group headings), so `/architect` settles each one in a new spec.
 spec [0015](../specs/0015-command-menu-panel/index.md) · code in `src/components/CommandMenu.astro`, `src/lib/command-menu.ts`, `src/lib/site-nav.ts`, `src/lib/contrast.ts`, `src/styles/global.css`, `src/components/NavRow.astro`
 - [x] Design it (spec): `/architect command menu redesign`
-- [ ] Build it: `/develop command menu redesign`
+- [x] Build it: `/develop command menu redesign`
   - [x] Proof first: the open fade and the backdrop fade, the backdrop click target, and the field's focus line in Chromium, Firefox, and WebKit (AC-11, AC-12)
   - [x] Helpers and tokens: `commandMenuGroups`, the new `nextFocus` and `formatMatchCount`, the `scrim` token, the `selected row: fg on line` pair, and the reduced motion and scrollbar gutter rules (AC-1 to AC-3, AC-7, AC-9, AC-10)
   - [x] Components: the panel and the bottom sheet in `CommandMenu` with its script (selection, hover, arrows, Enter, announcements, click outside), and `NavRow` without `current` and `download` (AC-2, AC-4 to AC-8, AC-10 to AC-13, AC-15)
-  - [ ] Page tests, style guide, docs, and the gate, with the iPhone and Android checks in `verify.md` (AC-4, AC-13, AC-14, AC-16, AC-17)
+  - [x] Page tests, style guide, docs, and the gate, with the iPhone and Android checks in `verify.md` (AC-4, AC-13, AC-14, AC-16, AC-17)
 - [ ] Verify it: `/check verify command menu redesign`
 - [ ] Test it: `/test command menu redesign`
 - [ ] Review it (fresh model): `/check review command menu redesign`
