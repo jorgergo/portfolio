@@ -4916,10 +4916,15 @@ test.describe('command menu', () => {
       await expect(panel).not.toHaveAttribute('autofocus');
       await expect(panel.locator('[data-menu-keys]')).toHaveCount(0);
 
-      // A row with a detail and an icon, selected by typing, then focused by
-      // ↓: the same look, with no ring.
-      const [match = ''] = matching('git');
-      await field(page).fill('git');
+      // A row with a detail and an icon (a profile, or the PDF row when there
+      // is none), selected by typing its name, then focused by ↓: the same
+      // look, with no ring.
+      const iconRow = ROWS('/').find(
+        ({ detail, external, download }) =>
+          detail !== '' && (external || download !== undefined),
+      );
+      const match = iconRow === undefined ? '' : rowName(iconRow);
+      await field(page).fill(match);
       await expectSelectedLook(rowLink(page, match), scheme, match);
       await page.keyboard.press('ArrowDown');
       await expect(rowLink(page, match)).toBeFocused();
@@ -5566,6 +5571,25 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeHidden();
   });
 
+  // covers: spec 0015 AC-11
+  test('the press before a backdrop click is heard on the document, since iOS Safari sends a touch only inside the box of an element that listens for it', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await pageHint(page);
+    const cdp = await page.context().newCDPSession(page);
+    const { result } = await cdp.send('Runtime.evaluate', {
+      expression: 'document',
+    });
+    const { listeners } = await cdp.send('DOMDebugger.getEventListeners', {
+      objectId: result.objectId ?? '',
+    });
+
+    expect(listeners.filter(({ type }) => type === 'pointerdown')).toEqual([
+      expect.objectContaining({ passive: true }),
+    ]);
+  });
+
   // covers: spec 0015 AC-12
   test('the panel and its backdrop fade in over 150ms from the built @starting-style rules, and closing is instant', async ({
     page,
@@ -5884,6 +5908,26 @@ test.describe('command menu', () => {
       await page.touchscreen.tap(195, 8);
 
       await expect(dialog(page)).toBeHidden();
+    });
+
+    // covers: spec 0015 AC-11
+    test('a tap inside the sheet, on the padding beside a heading, keeps it open', async ({
+      page,
+    }) => {
+      await page.goto('/about');
+      await pageHint(page);
+      await cornerButton(page).tap();
+      await settled(page);
+      const sheet = await dialog(page).boundingBox();
+      const heading = await headings(page).first().boundingBox();
+
+      // The list padding beside the first heading, inside the sheet's border.
+      await page.touchscreen.tap(
+        (sheet?.x ?? 0) + 4,
+        (heading?.y ?? 0) + (heading?.height ?? 0) / 2,
+      );
+
+      await expect(dialog(page)).toBeVisible();
     });
 
     // covers: spec 0014 AC-6, spec 0015 AC-8, AC-13

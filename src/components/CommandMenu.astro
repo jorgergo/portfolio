@@ -402,11 +402,17 @@ const Root = preview ? 'div' : 'dialog';
     // A click on the dimmed page closes the menu. A backdrop click targets
     // the dialog itself, while a click on the panel targets a child; the
     // press must land there too, so a text selection dragged from the field
-    // out to the page keeps the menu open.
+    // out to the page keeps the menu open. The press is heard on the
+    // document: iOS Safari sends a touch only inside the box of an element
+    // that listens for it, and the backdrop lies outside the dialog's box.
     let pressedOutside = false;
-    dialog.addEventListener('pointerdown', (event) => {
-      pressedOutside = event.target === dialog;
-    });
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        pressedOutside = event.target === dialog;
+      },
+      { passive: true },
+    );
     dialog.addEventListener('click', (event) => {
       if (pressedOutside && event.target === dialog) dialog.close();
     });
