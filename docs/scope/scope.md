@@ -251,8 +251,8 @@ spec [0015](../specs/0015-command-menu-panel/index.md) · code in `src/component
   - [x] Helpers and tokens: `commandMenuGroups`, the new `nextFocus` and `formatMatchCount`, the `scrim` token, the `selected row: fg on line` pair, and the reduced motion and scrollbar gutter rules (AC-1 to AC-3, AC-7, AC-9, AC-10)
   - [x] Components: the panel and the bottom sheet in `CommandMenu` with its script (selection, hover, arrows, Enter, announcements, click outside), and `NavRow` without `current` and `download` (AC-2, AC-4 to AC-8, AC-10 to AC-13, AC-15)
   - [x] Page tests, style guide, docs, and the gate, with the iPhone and Android checks in `verify.md` (AC-4, AC-13, AC-14, AC-16, AC-17)
-- [ ] Verify it: `/check verify command menu redesign`
-- [ ] Test it: `/test command menu redesign`
+- [x] Verify it: `/check verify command menu redesign`
+- [x] Test it: `/test command menu redesign`
 - [ ] Review it (fresh model): `/check review command menu redesign`
 - [ ] Document it: `/document command menu redesign`
 
