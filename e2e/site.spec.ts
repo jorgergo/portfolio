@@ -44,9 +44,10 @@ import {
   shortcutHint,
 } from '@/lib/command-menu';
 import {
-  commandMenuRows,
+  commandMenuGroups,
   formatRowNumber,
   SITE_NAV,
+  type MenuGroup,
   type MenuRow,
 } from '@/lib/site-nav';
 import {
@@ -64,6 +65,7 @@ import {
   rgb,
   runSmoke,
   scratchDist,
+  scrim,
   scrollsSideways,
   site,
   tabOrder,
@@ -1780,13 +1782,17 @@ test.describe('home page', () => {
     }
   });
 
-  // covers: AC-7
-  test('nothing animates, and every transition moves only colours', async ({
+  // covers: AC-7, spec 0015 AC-12
+  test("nothing animates, and every transition moves only colours, but the command menu's fade", async ({
     page,
   }) => {
     await page.goto('/');
-    const found = await page.evaluate(() => {
-      const elements = [...document.querySelectorAll('*')];
+    // The command menu's open fade is the site's one motion beyond colour
+    // (spec 0015); its own tests prove it.
+    const found = await page.evaluate((menuId) => {
+      const elements = [...document.querySelectorAll('*')].filter(
+        (el) => el.id !== menuId,
+      );
       return {
         running: document.getAnimations().length,
         keyframes: elements
@@ -1806,7 +1812,7 @@ test.describe('home page', () => {
             : [];
         }),
       };
-    });
+    }, COMMAND_MENU_ID);
     // What `transition-colors` lists: the colour properties, fill, stroke,
     // and the gradient stops.
     const colour = /\s(\S*color|fill|stroke|--tw-gradient-\S+)$/;
@@ -4463,16 +4469,36 @@ test.describe('cv pdf', () => {
   });
 });
 
-// Spec 0014: the command menu on the built site. Every row comes from
-// commandMenuRows, cv.json, and SITE_NAV, so a new page or profile, or a
-// valid content edit, needs no test edit.
+// Spec 0015: the command menu on the built site, a panel over the dimmed page
+// on a computer and a sheet on the bottom edge on touch. Every group and row
+// comes from commandMenuGroups, cv.json, and SITE_NAV, so a new page or
+// profile, or a valid content edit, needs no test edit. The shortcut, the two
+// buttons, the script, and print keep spec 0014's rules (spec 0015 AC-13).
 test.describe('command menu', () => {
-  // The command menu's rows on a page (the home page's own list keeps
-  // MENU_ROWS), each named as it reads: `page cv`, `github @jorgergo`.
-  const COMMAND_ROWS = (routePattern: string): readonly MenuRow[] =>
-    commandMenuRows(basics, routePattern);
-  const rowName = ({ key, label }: MenuRow): string => `${key} ${label}`;
-  const ALL_NAMES = COMMAND_ROWS('/').map(rowName);
+  type MenuScheme = (typeof SCHEMES)[number];
+
+  const GROUPS = (routePattern: string): readonly MenuGroup[] =>
+    commandMenuGroups(basics, routePattern);
+  const ROWS = (routePattern: string): readonly MenuRow[] =>
+    GROUPS(routePattern).flatMap(({ rows }) => rows);
+  // A row's link name and filter text: its name, then its detail (`github
+  // @jorgergo`); the mark and `here` are hidden from assistive tech.
+  const rowName = ({ name, detail }: MenuRow): string =>
+    detail === '' ? name : `${name} ${detail}`;
+  const ALL_NAMES = ROWS('/').map(rowName);
+  const matching = (query: string): readonly string[] =>
+    ALL_NAMES.filter((name) => rowMatches(name, query));
+  // The groups a query leaves, each with only its matching rows.
+  const filteredGroups = (
+    routePattern: string,
+    query: string,
+  ): readonly MenuGroup[] =>
+    GROUPS(routePattern)
+      .map((group) => ({
+        ...group,
+        rows: group.rows.filter((row) => rowMatches(rowName(row), query)),
+      }))
+      .filter(({ rows }) => rows.length > 0);
 
   // Every built page and the route pattern its menu marks as current.
   const MENU_PAGES: readonly {
@@ -4487,19 +4513,25 @@ test.describe('command menu', () => {
   const dialog = (page: Page): Locator =>
     page.locator(`dialog#${COMMAND_MENU_ID}`);
   const field = (page: Page): Locator =>
-    dialog(page).getByRole('textbox', { name: 'filter' });
+    dialog(page).getByRole('textbox', { name: 'search pages and links' });
+  const label = (page: Page): Locator =>
+    dialog(page).locator('[data-menu-filter]');
+  const list = (page: Page): Locator =>
+    dialog(page).locator('[data-menu-list]');
+  const headings = (page: Page): Locator =>
+    dialog(page).getByRole('heading', { level: 3 });
   const rowLinks = (page: Page): Locator =>
     dialog(page).getByRole('list').getByRole('link');
   const rowLink = (page: Page, name: string): Locator =>
     dialog(page).getByRole('link', { name, exact: true });
+  const selected = (page: Page): Locator =>
+    dialog(page).locator('a[data-selected]');
   const closeButton = (page: Page): Locator =>
-    dialog(page).getByRole('button', { name: 'close', exact: true });
+    dialog(page).locator('button[command="close"]');
   const status = (page: Page): Locator =>
     dialog(page).locator('[aria-live="polite"]');
   const noMatch = (page: Page): Locator =>
-    dialog(page).locator('p[aria-hidden="true"]');
-  const keyLine = (page: Page): Locator =>
-    dialog(page).getByText('↑ ↓ move · enter open · esc close');
+    dialog(page).locator('[data-menu-empty]');
   const footerButton = (page: Page): Locator =>
     page
       .getByRole('contentinfo')
@@ -4508,12 +4540,25 @@ test.describe('command menu', () => {
     page.locator(`body > div > button[commandfor="${COMMAND_MENU_ID}"]`);
   const focused = (page: Page): Locator => page.locator(':focus');
 
+  // Waits for the open fade to end (AC-12), so boxes and colours read at
+  // rest rather than mid fade.
+  const settled = async (page: Page): Promise<void> => {
+    await expect(dialog(page)).toBeVisible();
+    await expect
+      .poll(() =>
+        dialog(page).evaluate(
+          (menu) => menu.getAnimations({ subtree: true }).length,
+        ),
+      )
+      .toBe(0);
+  };
+
   // Opens the menu with Ctrl+K once the script has bound (it writes the
   // footer hint as it binds).
   const openMenu = async (page: Page): Promise<void> => {
     await pageHint(page);
     await page.keyboard.press('Control+k');
-    await expect(dialog(page)).toBeVisible();
+    await settled(page);
   };
 
   // The visible rows, by their link names, in order.
@@ -4527,14 +4572,144 @@ test.describe('command menu', () => {
     }
   };
 
-  const expectRing = async (target: Locator, label: string): Promise<void> => {
-    await expect(target, label).toHaveCSS('outline-style', 'solid');
-    await expect(target, label).toHaveCSS('outline-width', '2px');
-    await expect(target, label).toHaveCSS('outline-offset', '3px');
-    await expect(target, label).toHaveCSS(
-      'outline-color',
-      rgb('light', 'accent'),
+  // The visible groups: each heading in order, and the list it names holding
+  // its rows.
+  const expectGroups = async (
+    page: Page,
+    groups: readonly MenuGroup[],
+  ): Promise<void> => {
+    await expect(headings(page)).toHaveText(
+      groups.map(({ heading }) => heading),
     );
+    for (const { heading, rows } of groups) {
+      const links = dialog(page)
+        .getByRole('list', { name: heading, exact: true })
+        .getByRole('link');
+      await expect(links, heading).toHaveCount(rows.length);
+      for (const [index, row] of rows.entries()) {
+        await expect(links.nth(index)).toHaveAccessibleName(rowName(row));
+      }
+    }
+  };
+
+  // The one selected row, by its link name, or none.
+  const expectSelected = async (
+    page: Page,
+    name: string | undefined,
+  ): Promise<void> => {
+    await expect(selected(page)).toHaveCount(name === undefined ? 0 : 1);
+    if (name !== undefined)
+      await expect(selected(page)).toHaveAccessibleName(name);
+  };
+
+  // The selected look (AC-7): the line ground, the mark shown, every part in
+  // fg, and no ring.
+  const expectSelectedLook = async (
+    link: Locator,
+    scheme: MenuScheme,
+    name: string,
+  ): Promise<void> => {
+    await expect(link, name).toHaveCSS('background-color', rgb(scheme, 'line'));
+    await expect(link, name).toHaveCSS('outline-style', 'none');
+    await expect(link.locator(':scope > span').first(), name).toHaveCSS(
+      'visibility',
+      'visible',
+    );
+    for (const part of await link.locator('span, svg').all()) {
+      await expect(part, name).toHaveCSS('color', rgb(scheme, 'fg'));
+    }
+  };
+
+  // A row at rest: no ground, the mark hidden, the detail muted.
+  const expectRestLook = async (
+    link: Locator,
+    scheme: MenuScheme,
+    name: string,
+  ): Promise<void> => {
+    await expect(link, name).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(link.locator(':scope > span').first(), name).toHaveCSS(
+      'visibility',
+      'hidden',
+    );
+    await expect(link.locator(':scope > span').last(), name).toHaveCSS(
+      'color',
+      rgb(scheme, 'muted'),
+    );
+  };
+
+  // The field's focus line: the label's ::after.
+  const focusLine = (
+    page: Page,
+  ): Promise<{
+    readonly opacity: string;
+    readonly width: string;
+    readonly color: string;
+    readonly span: string;
+    readonly top: string;
+    readonly bottom: string;
+  }> =>
+    label(page).evaluate((el) => {
+      const after = getComputedStyle(el, '::after');
+      return {
+        opacity: after.opacity,
+        width: after.borderTopWidth,
+        color: after.borderTopColor,
+        span: after.width,
+        top: after.top,
+        bottom: after.bottom,
+      };
+    });
+
+  // Where the panel's text starts and ends, from its inner edges (AC-6): the
+  // field's text and every heading and name start, every detail and the esc
+  // key end.
+  const textEdges = (
+    page: Page,
+  ): Promise<{
+    readonly field: number;
+    readonly starts: readonly number[];
+    readonly ends: readonly number[];
+  }> =>
+    dialog(page).evaluate((menu) => {
+      const left = menu.getBoundingClientRect().left + menu.clientLeft;
+      const right = left + menu.clientWidth;
+      const textLeft = (el: Element): number => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const first = [...range.getClientRects()].find(
+          (rect) => rect.width > 0,
+        );
+        return Math.round((first?.left ?? Number.NaN) - left);
+      };
+      const end = (el: Element): number =>
+        Math.round(right - el.getBoundingClientRect().right);
+      const details = [...menu.querySelectorAll('a > span:last-child')].filter(
+        (el) =>
+          el.textContent.trim() !== '' || el.querySelector('svg') !== null,
+      );
+      return {
+        field: Math.round(
+          (menu.querySelector('input')?.getBoundingClientRect().left ??
+            Number.NaN) - left,
+        ),
+        starts: [...menu.querySelectorAll('h3, [data-menu-name]')].map(
+          textLeft,
+        ),
+        ends: [
+          ...details,
+          ...menu.querySelectorAll('button[command="close"]'),
+        ].map(end),
+      };
+    });
+
+  // A computed `rgba(r, g, b, a)` as the `#rrggbbaa` it stands for.
+  const toHex8 = (color: string): string => {
+    const [r = 0, g = 0, b = 0, a = 1] = (color.match(/[\d.]+/g) ?? []).map(
+      Number,
+    );
+    return `#${[r, g, b, Math.round(a * 255)]
+      .map((channel) => channel.toString(16).padStart(2, '0'))
+      .join('')}`;
   };
 
   const heightOf = async (target: Locator): Promise<number> =>
@@ -4576,8 +4751,8 @@ test.describe('command menu', () => {
     });
 
   for (const { path, route } of MENU_PAGES) {
-    // covers: spec 0014 AC-1, AC-2, AC-3, AC-5, AC-6, AC-13
-    test(`on ${path} Ctrl+K opens the named sheet with focus in the filter, every row, and the current page marked`, async ({
+    // covers: spec 0015 AC-1, AC-2, AC-6, AC-8, AC-13
+    test(`on ${path} Ctrl+K opens the named panel with focus in the field, the first row selected, every group, and the current page marked`, async ({
       page,
     }) => {
       const cspErrors: string[] = [];
@@ -4586,22 +4761,23 @@ test.describe('command menu', () => {
           cspErrors.push(message.text());
       });
       await page.goto(path);
-      const rows = COMMAND_ROWS(route);
+      const groups = GROUPS(route);
 
       await openMenu(page);
 
       await expect(page.getByRole('dialog', { name: 'menu' })).toBeVisible();
       await expect(field(page)).toBeFocused();
-      await expectRows(page, rows.map(rowName));
-      const current = rows.filter((row) => row.current);
+      await expectGroups(page, groups);
+      await expectSelected(page, ALL_NAMES[0]);
+      const current = ROWS(route).filter((row) => row.current);
       const marked = dialog(page).locator('a[aria-current]');
       await expect(marked).toHaveCount(current.length);
       for (const row of current) {
         await expect(marked).toHaveAttribute('aria-current', 'page');
         await expect(marked).toHaveAttribute('href', row.href);
-        await expect(marked.locator('span[aria-hidden="true"]')).toHaveText(
-          '· here',
-        );
+        await expect(
+          marked.locator(':scope > span:last-child > span[aria-hidden="true"]'),
+        ).toHaveText('here');
       }
       await page.keyboard.press('Escape');
       await expect(dialog(page)).toBeHidden();
@@ -4609,7 +4785,7 @@ test.describe('command menu', () => {
     });
 
     for (const scheme of SCHEMES) {
-      // covers: spec 0014 AC-14
+      // covers: spec 0015 AC-14
       test(`on ${path} passes axe WCAG 2.2 AA with the menu open in ${scheme}`, async ({
         page,
       }) => {
@@ -4623,131 +4799,183 @@ test.describe('command menu', () => {
   }
 
   for (const scheme of SCHEMES) {
-    // covers: spec 0014 AC-2
-    test(`the sheet fills the viewport on the ${scheme} page ground, with no shadow, radius, or motion`, async ({
+    // covers: spec 0015 AC-2, AC-3, AC-5, AC-6, AC-7, AC-14
+    test(`in ${scheme} the panel sits a seventh of the way down over the scrim, 512px wide, with its field row, its text lines, and the selected look`, async ({
       page,
     }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto('/cv');
       await openMenu(page);
-      const sheet = dialog(page);
-      const column = sheet.locator(':scope > div');
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const panel = dialog(page);
+      const fieldRow = label(page).locator('..');
+      const clientWidth = await page.evaluate(
+        () => document.documentElement.clientWidth,
+      );
 
-      expect(await sheet.boundingBox()).toEqual({
-        x: 0,
-        y: 0,
-        width: 1280,
-        height: 800,
-      });
-      await expect(sheet).toHaveCSS('background-color', rgb(scheme, 'bg'));
-      await expect(sheet).toHaveCSS('color', rgb(scheme, 'fg'));
+      const box = await panel.boundingBox();
+      expect(box?.width).toBe(512);
+      expect(box?.x).toBeCloseTo((clientWidth - 512) / 2, 0);
+      expect(box?.y).toBeCloseTo(800 / 7, 0);
+      expect(box?.height ?? 0).toBeLessThanOrEqual(800 * 0.75);
+      // The panel's height follows its rows, so the list does not scroll.
       expect(
-        await sheet.evaluate(
-          (el) => getComputedStyle(el, '::backdrop').backgroundColor,
+        await list(page).evaluate((el) => el.scrollHeight <= el.clientHeight),
+      ).toBe(true);
+      await expect(panel).toHaveCSS('background-color', rgb(scheme, 'bg'));
+      await expect(panel).toHaveCSS('color', rgb(scheme, 'fg'));
+      await expect(panel).toHaveCSS('border-top-width', '1px');
+      await expect(panel).toHaveCSS('border-top-color', rgb(scheme, 'line'));
+      await expect(panel).toHaveCSS('border-radius', '2px');
+      await expect(panel).toHaveCSS('box-shadow', 'none');
+      await expect(panel).toHaveCSS('overflow-y', 'hidden');
+      await expect(list(page)).toHaveCSS('overflow-y', 'auto');
+      await expect(list(page)).toHaveCSS('overscroll-behavior-y', 'contain');
+      expect(
+        toHex8(
+          await panel.evaluate(
+            (el) => getComputedStyle(el, '::backdrop').backgroundColor,
+          ),
         ),
-      ).toBe(rgb(scheme, 'bg'));
-      await expect(sheet).toHaveCSS('box-shadow', 'none');
-      await expect(sheet).toHaveCSS('border-top-width', '0px');
-      await expect(sheet).toHaveCSS('border-radius', '0px');
-      await expect(sheet).toHaveCSS('overflow-y', 'auto');
-      await expect(sheet).toHaveCSS('overscroll-behavior-y', 'contain');
-      for (const target of [sheet, column]) {
-        await expect(target).toHaveCSS('transition-duration', '0s');
-        await expect(target).toHaveCSS('animation-name', 'none');
+      ).toBe(scrim[scheme]);
+
+      // The field row: a 48px field on a line rule, the esc key on the right,
+      // and the 2px accent line over the rule while the field has focus.
+      await expect(field(page)).toBeFocused();
+      expect(await heightOf(field(page))).toBe(48);
+      await expect(fieldRow).toHaveCSS('border-bottom-width', '1px');
+      await expect(fieldRow).toHaveCSS(
+        'border-bottom-color',
+        rgb(scheme, 'line'),
+      );
+      for (const [name, value] of [
+        ['type', 'text'],
+        ['placeholder', 'search pages and links'],
+        ['autocomplete', 'off'],
+        ['spellcheck', 'false'],
+        ['autocapitalize', 'off'],
+        ['enterkeyhint', 'go'],
+      ] as const) {
+        await expect(field(page)).toHaveAttribute(name, value);
       }
-      expect(await column.boundingBox()).toMatchObject({ x: 320, width: 640 });
-      await expect(column).toHaveCSS('padding-top', '40px');
-      await expect(column).toHaveCSS('padding-bottom', '80px');
-      await expect(column).toHaveCSS('row-gap', '24px');
+      await expect(field(page)).toHaveCSS('font-size', '16px');
+      await expect(field(page)).toHaveCSS('outline-style', 'none');
+      await expect(field(page)).toHaveCSS('border-bottom-width', '0px');
+      await expect(field(page)).toHaveCSS(
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+      );
+      const rowWidth = await fieldRow.evaluate((el) => el.clientWidth);
+      expect(await focusLine(page)).toMatchObject({
+        opacity: '1',
+        width: '2px',
+        color: rgb(scheme, 'accent'),
+        span: `${String(rowWidth)}px`,
+        bottom: '-1px',
+      });
+      // `esc` shows; ` close` joins the name only.
+      await expect(closeButton(page).locator('span').first()).toHaveText('esc');
+      await expect(closeButton(page).locator('span').last()).toHaveCSS(
+        'position',
+        'absolute',
+      );
+      await expect(closeButton(page)).toHaveAccessibleName('esc close');
+      await expect(closeButton(page)).toHaveCSS('font-size', '12px');
+      await expect(closeButton(page)).toHaveCSS('color', rgb(scheme, 'muted'));
+      await expect(closeButton(page)).toHaveCSS(
+        'border-top-color',
+        rgb(scheme, 'line'),
+      );
+      const esc = await closeButton(page).boundingBox();
+      expect(esc?.width ?? 0).toBeGreaterThanOrEqual(24);
+      expect(esc?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+      // Every text start on the 32px line, every right end 16px in.
+      const edges = await textEdges(page);
+      expect(edges.field).toBe(32);
+      expect(new Set(edges.starts)).toEqual(new Set([32]));
+      expect(new Set(edges.ends)).toEqual(new Set([16]));
+      for (const link of await rowLinks(page).all()) {
+        expect(await heightOf(link)).toBeGreaterThanOrEqual(40);
+        await expect(link).toHaveCSS('font-size', '14px');
+      }
+      for (const heading of await headings(page).all()) {
+        await expect(heading).toHaveCSS('font-size', '12px');
+        await expect(heading).toHaveCSS('color', rgb(scheme, 'muted'));
+      }
+
+      // The first row selected, the rest at rest.
+      const [first = '', ...rest] = ALL_NAMES;
+      await expectSelectedLook(rowLink(page, first), scheme, first);
+      for (const name of rest) {
+        await expectRestLook(rowLink(page, name), scheme, name);
+      }
+      await expect(noMatch(page)).toBeHidden();
+      await expect(status(page)).toHaveText('');
+      await expect(panel).not.toHaveAttribute('autofocus');
+      await expect(panel.locator('[data-menu-keys]')).toHaveCount(0);
+
+      // A row with a detail and an icon, selected by typing, then focused by
+      // ↓: the same look, with no ring.
+      const [match = ''] = matching('git');
+      await field(page).fill('git');
+      await expectSelectedLook(rowLink(page, match), scheme, match);
+      await page.keyboard.press('ArrowDown');
+      await expect(rowLink(page, match)).toBeFocused();
+      await expectSelectedLook(rowLink(page, match), scheme, match);
     });
   }
 
-  // covers: spec 0014 AC-2, AC-14
-  test('the title, close, filter field, rows, and key line follow the design', async ({
-    page,
-  }) => {
-    await page.goto('/cv');
-    await openMenu(page);
-    const title = dialog(page).getByRole('heading', { level: 2 });
-    const filterWord = dialog(page).locator('label > span');
-
-    await expect(dialog(page)).toHaveAccessibleName('menu');
-    await expect(title).toHaveText('menu');
-    await expect(title).toHaveCSS('font-size', '18px');
-    await expect(title).toHaveCSS('font-weight', '500');
-    await expect(closeButton(page)).toHaveAttribute(
-      'commandfor',
-      COMMAND_MENU_ID,
-    );
-    await expect(closeButton(page)).toHaveAttribute('command', 'close');
-    await expect(closeButton(page)).toHaveCSS('font-size', '14px');
-    expect(await heightOf(closeButton(page))).toBeGreaterThanOrEqual(40);
-    await expect(filterWord).toHaveText('filter');
-    await expect(filterWord).toHaveCSS('color', rgb('light', 'muted'));
-    await expect(filterWord).toHaveCSS('width', '80px');
-    for (const [name, value] of [
-      ['type', 'text'],
-      ['autocomplete', 'off'],
-      ['spellcheck', 'false'],
-      ['autocapitalize', 'off'],
-      ['enterkeyhint', 'go'],
-    ] as const) {
-      await expect(field(page)).toHaveAttribute(name, value);
-    }
-    await expect(field(page)).toHaveCSS('font-size', '16px');
-    expect(await heightOf(field(page))).toBeGreaterThanOrEqual(40);
-    await expect(field(page)).toHaveCSS('border-bottom-width', '1px');
-    await expect(field(page)).toHaveCSS('border-bottom-style', 'solid');
-    await expect(field(page)).toHaveCSS(
-      'border-bottom-color',
-      rgb('light', 'muted'),
-    );
-    await expect(field(page)).toHaveCSS('border-top-width', '0px');
-    await expect(field(page)).toHaveCSS('border-left-width', '0px');
-    await expect(field(page)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(dialog(page).getByRole('list')).toHaveCSS('row-gap', '4px');
-    for (const link of await rowLinks(page).all()) {
-      expect(await heightOf(link)).toBeGreaterThanOrEqual(40);
-    }
-    await expect(keyLine(page)).toBeVisible();
-    await expect(keyLine(page)).toHaveCSS('font-size', '12px');
-    await expect(keyLine(page)).toHaveCSS('color', rgb('light', 'muted'));
-    await expect(noMatch(page)).toBeHidden();
-    await expect(status(page)).toHaveText('');
-    await expect(dialog(page)).not.toHaveAttribute('autofocus');
-  });
-
-  // covers: spec 0014 AC-3
-  test('the current row says here, the PDF row downloads with its icon, and the https rows end with the arrow', async ({
+  // covers: spec 0015 AC-1, AC-6
+  test('each group is a heading naming its list, and each row carries its link, its detail, here, and its icon', async ({
     page,
   }) => {
     await page.goto('/cv');
     await openMenu(page);
 
-    for (const row of COMMAND_ROWS('/cv')) {
-      const link = rowLink(page, rowName(row));
-      const icon = link.locator('svg');
-      await expect(link, rowName(row)).toHaveAttribute('href', row.href);
-      if (row.current) {
-        const here = link.locator(':scope > span[aria-hidden="true"]');
-        await expect(here).toHaveText('· here');
-        await expect(here).toHaveCSS('color', rgb('light', 'muted'));
-        await expect(here).toHaveCSS('font-size', '14px');
-      } else {
-        await expect(link).not.toHaveAttribute('aria-current');
-      }
-      if (row.download !== undefined) {
-        await expect(link).toHaveAttribute('download', row.download);
-        expect(row.download).toBe(cvPdfFileName(basics.name));
-        await expect(icon).toHaveCount(1);
-        await expect(icon.locator('path').first()).toHaveAttribute(
-          'd',
-          'M12 15V3',
+    for (const { heading, rows } of GROUPS('/cv')) {
+      const id = `${COMMAND_MENU_ID}-${heading}`;
+      await expect(
+        dialog(page).getByRole('heading', { level: 3, name: heading }),
+      ).toHaveAttribute('id', id);
+      await expect(
+        dialog(page).getByRole('list', { name: heading, exact: true }),
+      ).toHaveAttribute('aria-labelledby', id);
+      for (const row of rows) {
+        const link = rowLink(page, rowName(row));
+        const detail = link.locator(':scope > span:last-child');
+        const icon = link.locator('svg');
+        await expect(link, row.name).toHaveAttribute('href', row.href);
+        await expect(link.locator('[data-menu-name]')).toHaveText(row.name);
+        await expect(link.locator(':scope > span').first()).toHaveText('›');
+        await expect(link.locator(':scope > span').first()).toHaveAttribute(
+          'aria-hidden',
+          'true',
         );
-      } else {
-        await expect(link).not.toHaveAttribute('download');
-        await expect(icon).toHaveCount(/^https:\/\//.test(row.href) ? 1 : 0);
+        if (row.current) {
+          await expect(link).toHaveAttribute('aria-current', 'page');
+          await expect(detail).toHaveText('here');
+          await expect(detail.locator('span')).toHaveAttribute(
+            'aria-hidden',
+            'true',
+          );
+        } else {
+          await expect(link).not.toHaveAttribute('aria-current');
+          await expect(detail).toHaveText(row.detail);
+        }
+        if (row.download !== undefined) {
+          await expect(link).toHaveAttribute('download', row.download);
+          expect(row.download).toBe(cvPdfFileName(basics.name));
+          await expect(icon).toHaveCount(1);
+          await expect(icon.locator('path').first()).toHaveAttribute(
+            'd',
+            'M12 15V3',
+          );
+        } else {
+          await expect(link).not.toHaveAttribute('download');
+          await expect(icon).toHaveCount(row.external ? 1 : 0);
+        }
       }
     }
     // Every icon is hidden from assistive tech, so it never joins a name.
@@ -4756,8 +4984,22 @@ test.describe('command menu', () => {
     ).toHaveCount(0);
   });
 
-  // covers: spec 0014 AC-4, AC-6, AC-11
-  test('on a computer the footer button opens the menu with focus in the field, and the corner button stays hidden', async ({
+  // covers: spec 0015 AC-2
+  test('the panel keeps its top while rows filter out', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/cv');
+    await openMenu(page);
+    const before = await dialog(page).boundingBox();
+
+    await field(page).fill('git');
+
+    const after = await dialog(page).boundingBox();
+    expect(after?.y).toBe(before?.y);
+    expect(after?.height ?? 0).toBeLessThan(before?.height ?? 0);
+  });
+
+  // covers: spec 0014 AC-4, AC-6, AC-11, spec 0015 AC-8, AC-13
+  test('on a computer the footer button opens the menu with focus in the field and the first row selected, and the corner button stays hidden', async ({
     page,
   }) => {
     await page.goto('/about');
@@ -4793,13 +5035,14 @@ test.describe('command menu', () => {
 
     await expect(dialog(page)).toBeVisible();
     await expect(field(page)).toBeFocused();
+    await expectSelected(page, ALL_NAMES[0]);
     await closeButton(page).click();
     await expect(dialog(page)).toBeHidden();
     await expect(button).toBeFocused();
   });
 
-  // covers: spec 0014 AC-4, AC-6
-  test('without invoker commands the script wires the buttons: the footer button opens the menu with focus in the field, and close closes it', async ({
+  // covers: spec 0014 AC-4, AC-6, spec 0015 AC-13
+  test('without invoker commands the script wires the buttons: the footer button opens the menu with focus in the field, and esc closes it', async ({
     page,
   }) => {
     await dropInvokerCommands(page);
@@ -4811,12 +5054,13 @@ test.describe('command menu', () => {
 
     await expect(dialog(page)).toBeVisible();
     await expect(field(page)).toBeFocused();
+    await expectSelected(page, ALL_NAMES[0]);
     await closeButton(page).click();
     await expect(dialog(page)).toBeHidden();
     await expect(footerButton(page)).toBeFocused();
   });
 
-  // covers: spec 0014 AC-4, AC-16
+  // covers: spec 0014 AC-4, AC-16, spec 0015 AC-13
   test('on the home page the footer button comes before the city line, with no home link', async ({
     page,
   }) => {
@@ -4832,7 +5076,7 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeVisible();
   });
 
-  // covers: spec 0014 AC-5, AC-6
+  // covers: spec 0014 AC-5, AC-6, spec 0015 AC-13
   test('Cmd+K or Ctrl+K toggles the menu and focus comes back; Shift, Alt, a key repeat, and composing text do not', async ({
     page,
   }) => {
@@ -4903,14 +5147,14 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeVisible();
   });
 
-  // covers: spec 0014 AC-6, AC-7, AC-8
+  // covers: spec 0014 AC-6, spec 0015 AC-8, AC-9, AC-13
   test("what you type and pick right after the shortcut survives the dialog's late toggle event", async ({
     page,
   }) => {
     await page.goto('/cv');
     await pageHint(page);
-    const query = 'page';
-    const names = ALL_NAMES.filter((name) => rowMatches(name, query));
+    const query = 'o';
+    const names = matching(query);
 
     // The shortcut, the typing, and ↓ land in one task, before the browser
     // fires `toggle` for the open. The script's own `toggle` handler runs
@@ -4940,24 +5184,26 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeVisible();
     await expect(field(page)).toHaveValue(query);
     await expectRows(page, names);
-    await expect(focused(page)).toHaveAccessibleName(names[0] ?? 'missing');
+    // Typing selected the first row, so ↓ went on to the second.
+    await expect(focused(page)).toHaveAccessibleName(names[1] ?? 'missing');
+    await expectSelected(page, names[1]);
   });
 
-  // covers: spec 0014 AC-7
-  test('typing filters the rows, says the count, shows no match, and every open starts empty', async ({
+  // covers: spec 0015 AC-8, AC-10
+  test('typing filters the rows, hides empty groups, selects the first row left, and says what Enter opens; every open starts empty', async ({
     page,
   }) => {
     await page.goto('/cv');
     await openMenu(page);
-    const matching = (query: string): readonly string[] =>
-      ALL_NAMES.filter((name) => rowMatches(name, query));
 
-    for (const query of ['git', 'PAGE', 'here', 'zzz', '']) {
+    for (const query of ['git', 'CV', 'here', 'zzz', 'o', '']) {
       await field(page).fill(query);
-      const names = matching(query);
-      await expectRows(page, names);
+      const groups = filteredGroups('/cv', query);
+      const names = groups.flatMap(({ rows }) => rows).map(rowName);
+      await expectGroups(page, groups);
+      await expectSelected(page, names[0]);
       await expect(status(page), query).toHaveText(
-        formatMatchCount(names.length, query),
+        formatMatchCount(names.length, query, groups[0]?.rows[0]?.name ?? ''),
       );
       await (names.length === 0
         ? expect(noMatch(page), query).toBeVisible()
@@ -4966,18 +5212,27 @@ test.describe('command menu', () => {
     await expect(noMatch(page)).toHaveText('no match');
     await expect(noMatch(page)).toHaveCSS('color', rgb('light', 'muted'));
 
+    // The arrow keys and the mouse announce nothing; the focus move speaks.
+    await field(page).fill('o');
+    const said = await status(page).textContent();
+    await page.keyboard.press('ArrowDown');
+    const row = await focused(page).boundingBox();
+    await page.mouse.move((row?.x ?? 0) + 40, (row?.y ?? 0) + 60);
+    await expect(status(page)).toHaveText(said ?? 'missing');
+
     await field(page).fill('zzz');
     await page.keyboard.press('Escape');
     await page.keyboard.press('Control+k');
 
     await expect(field(page)).toHaveValue('');
     await expectRows(page, ALL_NAMES);
+    await expectSelected(page, ALL_NAMES[0]);
     await expect(noMatch(page)).toBeHidden();
     await expect(status(page)).toHaveText('');
   });
 
-  // covers: spec 0014 AC-8, AC-14
-  test('the arrow keys move between the field and the visible rows, and a letter on a row lands in the field', async ({
+  // covers: spec 0015 AC-7, AC-9, AC-14
+  test('the arrow keys walk from the field past the selected row, stop at the ends, come back to the field, and a letter on a row lands in the field', async ({
     page,
   }) => {
     await page.goto('/about');
@@ -4987,10 +5242,13 @@ test.describe('command menu', () => {
 
     await page.keyboard.press('ArrowUp');
     await expect(field(page)).toBeFocused();
-    for (let index = 0; index < count; index += 1) {
+    await expectSelected(page, ALL_NAMES[0]);
+    // ↓ from the field goes past the selected first row.
+    for (let index = 1; index < count; index += 1) {
       await page.keyboard.press('ArrowDown');
       await expect(links.nth(index)).toBeFocused();
-      await expectRing(links.nth(index), ALL_NAMES[index] ?? '');
+      await expectSelected(page, ALL_NAMES[index]);
+      await expect(links.nth(index)).toHaveCSS('outline-style', 'none');
     }
     await page.keyboard.press('ArrowDown');
     await expect(links.nth(count - 1)).toBeFocused();
@@ -5000,11 +5258,16 @@ test.describe('command menu', () => {
     }
     await page.keyboard.press('ArrowUp');
     await expect(field(page)).toBeFocused();
-    await expectRing(field(page), 'filter');
+    await expectSelected(page, ALL_NAMES[0]);
 
+    // esc comes before the field: ↑ there does nothing, ↓ returns.
     await page.keyboard.press('Shift+Tab');
     await expect(closeButton(page)).toBeFocused();
-    await expectRing(closeButton(page), 'close');
+    await expect(closeButton(page)).toHaveCSS('outline-style', 'solid');
+    await expect(closeButton(page)).toHaveCSS(
+      'outline-color',
+      rgb('light', 'accent'),
+    );
     await page.keyboard.press('ArrowUp');
     await expect(closeButton(page)).toBeFocused();
     await page.keyboard.press('ArrowDown');
@@ -5014,35 +5277,32 @@ test.describe('command menu', () => {
     await page.keyboard.press('l');
     await expect(field(page)).toBeFocused();
     await expect(field(page)).toHaveValue('l');
-    await expectRows(
-      page,
-      ALL_NAMES.filter((name) => rowMatches(name, 'l')),
-    );
+    await expectRows(page, matching('l'));
 
     // ↓ and ↑ move among the visible rows only.
-    await field(page).fill('page');
-    const pages = ALL_NAMES.filter((name) => rowMatches(name, 'page'));
-    for (const name of pages) {
+    await field(page).fill('o');
+    const shown = matching('o');
+    for (const name of shown.slice(1)) {
       await page.keyboard.press('ArrowDown');
       await expect(focused(page)).toHaveAccessibleName(name);
     }
     await page.keyboard.press('ArrowDown');
-    await expect(focused(page)).toHaveAccessibleName(pages.at(-1) ?? '');
+    await expect(focused(page)).toHaveAccessibleName(shown.at(-1) ?? '');
   });
 
-  // covers: spec 0014 AC-8
+  // covers: spec 0014 AC-8, spec 0015 AC-13
   test('Ctrl, Cmd, or Alt with a letter on a row keeps focus there, so Cmd+C still copies, while Shift types the letter', async ({
     page,
   }) => {
     await page.goto('/about');
     await openMenu(page);
     await page.keyboard.press('ArrowDown');
-    const first = rowLinks(page).first();
-    await expect(first).toBeFocused();
+    const row = rowLinks(page).nth(1);
+    await expect(row).toBeFocused();
 
     for (const keys of ['Control+c', 'Meta+c', 'Alt+l']) {
       await page.keyboard.press(keys);
-      await expect(first, keys).toBeFocused();
+      await expect(row, keys).toBeFocused();
     }
     await expect(field(page)).toHaveValue('');
 
@@ -5051,8 +5311,102 @@ test.describe('command menu', () => {
     await expect(field(page)).toHaveValue('P');
   });
 
-  // covers: spec 0014 AC-8, AC-9
-  test('Enter in the field follows the first visible row, and with no row does nothing', async ({
+  // covers: spec 0015 AC-8
+  test('a real mouse move selects the row under it while focus stays in the field, Enter follows it, and ↓ goes on from it', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    const [, second = '', third = '', fourth = ''] = ALL_NAMES;
+    const at = async (name: string): Promise<[number, number]> => {
+      const box = await rowLink(page, name).boundingBox();
+      return [(box?.x ?? 0) + 60, (box?.y ?? 0) + (box?.height ?? 0) / 2];
+    };
+
+    await page.mouse.move(...(await at(third)));
+    await expectSelected(page, third);
+    await expect(field(page)).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(rowLink(page, fourth)).toBeFocused();
+
+    // With focus on a row, the mouse takes focus along with the selection.
+    await page.mouse.move(...(await at(second)));
+    await expectSelected(page, second);
+    await expect(rowLink(page, second)).toBeFocused();
+
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
+    await expect(field(page)).toBeFocused();
+    const [secondX, secondY] = await at(second);
+    await page.mouse.move(secondX + 1, secondY + 1);
+    await expectSelected(page, second);
+    await page.keyboard.press('Enter');
+
+    const target = ROWS('/cv').find((row) => rowName(row) === second);
+    await expect(page).toHaveURL(target?.href ?? 'missing');
+  });
+
+  // covers: spec 0015 AC-8
+  test('a still mouse over the list keeps the typed selection as rows slide under it, until it moves', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    const query = 'o';
+    const shown = matching(query);
+    // A row the filter removes, so the rows below it slide up.
+    const gone = ALL_NAMES.findIndex((name) => !rowMatches(name, query));
+    const resting = await rowLinks(page)
+      .nth(gone + 1)
+      .boundingBox();
+    const x = (resting?.x ?? 0) + 60;
+    const y = (resting?.y ?? 0) + (resting?.height ?? 0) / 2;
+    await page.mouse.move(x, y);
+    await field(page).focus();
+
+    await page.keyboard.type(query);
+
+    await expectRows(page, shown);
+    await expectSelected(page, shown[0]);
+    await page.mouse.move(x, y + 1);
+    const under = await page.evaluate(
+      ([px, py]) =>
+        document
+          .elementFromPoint(px ?? 0, py ?? 0)
+          ?.closest('a')
+          ?.querySelector('[data-menu-name]')
+          ?.textContent.trim(),
+      [x, y + 1],
+    );
+    await expect(selected(page).locator('[data-menu-name]')).toHaveText(
+      under ?? 'missing',
+    );
+  });
+
+  // covers: spec 0015 AC-8
+  test('a mouse resting where the panel opens leaves the first row selected', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    const row = await rowLinks(page).nth(3).boundingBox();
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toBeHidden();
+    // The pointer comes to rest over the closed menu's fourth row, then the
+    // panel opens under it.
+    await page.mouse.move(
+      (row?.x ?? 0) + 60,
+      (row?.y ?? 0) + (row?.height ?? 0) / 2,
+    );
+
+    await page.keyboard.press('Control+k');
+    await settled(page);
+
+    await expectSelected(page, ALL_NAMES[0]);
+  });
+
+  // covers: spec 0015 AC-8, spec 0014 AC-9
+  test('Enter in the field follows the selected row, and with no row does nothing', async ({
     page,
   }) => {
     await page.goto('/cv');
@@ -5063,7 +5417,7 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeVisible();
     await expect(page).toHaveURL('/cv');
 
-    const [first] = COMMAND_ROWS('/cv').filter((row) =>
+    const [first] = ROWS('/cv').filter((row) =>
       rowMatches(rowName(row), 'proj'),
     );
     await field(page).fill('proj');
@@ -5073,13 +5427,13 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeHidden();
   });
 
-  // covers: spec 0014 AC-8
+  // covers: spec 0015 AC-8
   test('Enter that ends an IME composition in the field follows no row', async ({
     page,
   }) => {
     await page.goto('/cv');
     await openMenu(page);
-    await field(page).fill('page');
+    await field(page).fill(ALL_NAMES[0] ?? '');
 
     // The row clicks after each Enter, with the page kept in place. Safari
     // reports the Enter that ends a composition as keyCode 229; the plain
@@ -5088,7 +5442,7 @@ test.describe('command menu', () => {
       let count = 0;
       input
         .closest('dialog')
-        ?.querySelector('ul')
+        ?.querySelector('[data-menu-list]')
         ?.addEventListener(
           'click',
           (event) => {
@@ -5117,7 +5471,7 @@ test.describe('command menu', () => {
     expect(clicks).toEqual([0, 0, 1]);
   });
 
-  // covers: spec 0014 AC-7, AC-9
+  // covers: spec 0014 AC-7, AC-9, spec 0015 AC-13
   test('a plain click on a page row closes the menu and follows it, and Back shows the page with the menu closed and empty', async ({
     page,
   }) => {
@@ -5125,7 +5479,7 @@ test.describe('command menu', () => {
     await openMenu(page);
     await field(page).fill('about');
 
-    await rowLink(page, 'page about').click();
+    await rowLink(page, 'about').click();
 
     await expect(page).toHaveURL('/about');
     await expect(dialog(page)).toBeHidden();
@@ -5137,15 +5491,13 @@ test.describe('command menu', () => {
     await expectRows(page, ALL_NAMES);
   });
 
-  // covers: spec 0014 AC-9
+  // covers: spec 0014 AC-9, spec 0015 AC-13
   test('the PDF row closes the menu, saves the CV under its file name, and leaves the page in place', async ({
     page,
   }) => {
     await page.goto('/about');
     await openMenu(page);
-    const pdf = COMMAND_ROWS('/about').find(
-      (row) => row.download !== undefined,
-    );
+    const pdf = ROWS('/about').find((row) => row.download !== undefined);
 
     const download = page.waitForEvent('download');
     await rowLink(page, pdf === undefined ? 'missing' : rowName(pdf)).click();
@@ -5157,7 +5509,7 @@ test.describe('command menu', () => {
     await expect(page).toHaveURL('/about');
   });
 
-  // covers: spec 0014 AC-9
+  // covers: spec 0014 AC-9, spec 0015 AC-13
   test('a modified or middle click opens the row elsewhere and keeps the menu open', async ({
     page,
     context,
@@ -5172,7 +5524,7 @@ test.describe('command menu', () => {
     ];
     for (const click of clicks) {
       const opened = context.waitForEvent('page');
-      await rowLink(page, 'page about').click(click);
+      await rowLink(page, 'about').click(click);
       const tab = await opened;
       await tab.close();
 
@@ -5181,16 +5533,136 @@ test.describe('command menu', () => {
     }
   });
 
-  // covers: spec 0014 AC-10
-  test('while the menu is open the page behind does not scroll', async ({
+  // covers: spec 0015 AC-11
+  test('a click on the dimmed page closes the menu, while a drag out of the field or a click in the panel padding does not', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/cv');
+    await openMenu(page);
+    const panel = await dialog(page).boundingBox();
+    const heading = await headings(page).first().boundingBox();
+
+    // The list padding beside the first heading, inside the panel's border.
+    await page.mouse.click(
+      (panel?.x ?? 0) + 4,
+      (heading?.y ?? 0) + (heading?.height ?? 0) / 2,
+    );
+    await expect(dialog(page)).toBeVisible();
+
+    // A text selection dragged from the field out onto the dimmed page.
+    await field(page).fill('selection');
+    const input = await field(page).boundingBox();
+    await page.mouse.move(
+      (input?.x ?? 0) + 40,
+      (input?.y ?? 0) + (input?.height ?? 0) / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(8, 8, { steps: 5 });
+    await page.mouse.up();
+    await expect(dialog(page)).toBeVisible();
+
+    await page.mouse.click(8, 8);
+    await expect(dialog(page)).toBeHidden();
+  });
+
+  // covers: spec 0015 AC-12
+  test('the panel and its backdrop fade in over 150ms from the built @starting-style rules, and closing is instant', async ({
+    page,
+  }) => {
+    const css = distFiles()
+      .filter((file) => file.endsWith('.css'))
+      .map((file) => distFile(file))
+      .join('');
+    const starting = [
+      ...css.matchAll(/@starting-style\{((?:[^{}]*\{[^{}]*\})*)\}/g),
+    ]
+      .map(([, body]) => body ?? '')
+      .join('');
+    expect(starting).toMatch(/\.starting\\:open\\:opacity-0:is\([^)]*\)/);
+    expect(starting).toMatch(
+      /\.starting\\:open\\:backdrop\\:opacity-0:is\([^)]*\)::backdrop/,
+    );
+
+    await page.goto('/cv');
+    await pageHint(page);
+    const opened = await dialog(page).evaluate((menu) => {
+      if (!(menu instanceof HTMLDialogElement)) return undefined;
+      menu.showModal();
+      const style = getComputedStyle(menu);
+      return {
+        opacity: style.opacity,
+        backdrop: getComputedStyle(menu, '::backdrop').opacity,
+        // The dialog's own transitions, its backdrop's among them.
+        running: document
+          .getAnimations()
+          .flatMap(({ effect }) =>
+            effect instanceof KeyframeEffect && effect.target === menu
+              ? [effect.pseudoElement ?? '']
+              : [],
+          )
+          .toSorted(),
+      };
+    });
+    expect(opened).toEqual({
+      opacity: '0',
+      backdrop: '0',
+      running: ['', '', '::backdrop'],
+    });
+    await expect(dialog(page)).toHaveCSS('transition-duration', '0.15s');
+    expect(
+      await dialog(page).evaluate(
+        (el) => getComputedStyle(el, '::backdrop').transitionDuration,
+      ),
+    ).toBe('0.15s');
+    await expect(dialog(page)).toHaveCSS('opacity', '1');
+
+    const closed = await dialog(page).evaluate((menu) => {
+      if (!(menu instanceof HTMLDialogElement)) return undefined;
+      menu.close();
+      return {
+        display: getComputedStyle(menu).display,
+        running: document
+          .getAnimations()
+          .filter(
+            ({ effect }) =>
+              effect instanceof KeyframeEffect && effect.target === menu,
+          ).length,
+      };
+    });
+    expect(closed).toEqual({ display: 'none', running: 0 });
+  });
+
+  // covers: spec 0015 AC-12
+  test('under reduced motion the panel and its backdrop appear at once', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/cv');
+    await openMenu(page);
+
+    const durations = await dialog(page).evaluate((el) => [
+      getComputedStyle(el).transitionDuration,
+      getComputedStyle(el, '::backdrop').transitionDuration,
+    ]);
+    for (const duration of durations) {
+      expect(Number.parseFloat(duration) * 1000).toBeCloseTo(0.01, 5);
+    }
+  });
+
+  // covers: spec 0014 AC-10, spec 0015 AC-2, AC-13
+  test('while the menu is open the page behind neither scrolls nor shifts', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/cv');
     await page.evaluate(() => window.scrollTo(0, 1000));
+    await expect(page.locator('html')).toHaveCSS('scrollbar-gutter', 'stable');
+    const before = await page.getByRole('main').boundingBox();
     await openMenu(page);
 
     await expect(page.locator('html')).toHaveCSS('overflow', 'hidden');
+    expect(await page.getByRole('main').boundingBox()).toEqual(before);
     await page.mouse.move(640, 400);
     await page.mouse.wheel(0, 800);
     await page.waitForTimeout(200);
@@ -5200,26 +5672,30 @@ test.describe('command menu', () => {
     await expect(page.locator('html')).toHaveCSS('overflow', 'visible');
   });
 
-  // covers: spec 0014 AC-10
-  test('a sheet taller than the viewport scrolls inside itself only', async ({
+  // covers: spec 0015 AC-2
+  test('a panel taller than three quarters of the window scrolls its rows only', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 640, height: 300 });
     await page.goto('/cv');
     await openMenu(page);
+    const fieldTop = (await field(page).boundingBox())?.y;
 
+    expect(await heightOf(dialog(page))).toBeLessThanOrEqual(300 * 0.75);
     expect(
-      await dialog(page).evaluate((el) => el.scrollHeight > el.clientHeight),
+      await list(page).evaluate((el) => el.scrollHeight > el.clientHeight),
     ).toBe(true);
-    await page.mouse.move(320, 150);
+    const rows = await list(page).boundingBox();
+    await page.mouse.move(320, (rows?.y ?? 0) + 20);
     await page.mouse.wheel(0, 400);
     await expect
-      .poll(() => dialog(page).evaluate((el) => el.scrollTop))
+      .poll(() => list(page).evaluate((el) => el.scrollTop))
       .toBeGreaterThan(0);
+    expect((await field(page).boundingBox())?.y).toBe(fieldTop);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
-  // covers: spec 0014 AC-12
+  // covers: spec 0014 AC-12, spec 0015 AC-13
   test('in print the menu and both buttons never show', async ({ page }) => {
     await page.goto('/about');
     await openMenu(page);
@@ -5231,7 +5707,7 @@ test.describe('command menu', () => {
     await expect(cornerButton(page).locator('..')).toHaveCSS('display', 'none');
   });
 
-  // covers: spec 0014 AC-14
+  // covers: spec 0015 AC-14
   test('with the menu open nothing carries a role, a target, or a style', async ({
     page,
   }) => {
@@ -5244,43 +5720,51 @@ test.describe('command menu', () => {
     await expect(page.locator('[style]')).toHaveCount(0);
   });
 
-  // covers: spec 0014 AC-14
-  test('at 320px the open menu does not scroll sideways and the email row wraps as on /contact', async ({
+  // The email row's address: on one line, its end 16px in from the panel's
+  // inner right edge (AC-6, AC-14).
+  const expectWholeEmail = async (page: Page): Promise<void> => {
+    const detail = rowLink(page, `email ${basics.email}`).locator(
+      ':scope > span:last-child',
+    );
+    const facts = await detail.evaluate((el) => {
+      const menu = el.closest('dialog');
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const right =
+        (menu?.getBoundingClientRect().left ?? 0) +
+        (menu?.clientLeft ?? 0) +
+        (menu?.clientWidth ?? 0);
+      return {
+        lines: [...range.getClientRects()].filter(({ width }) => width > 0)
+          .length,
+        end: Math.round(right - el.getBoundingClientRect().right),
+      };
+    });
+    expect(facts).toEqual({ lines: 1, end: 16 });
+  };
+
+  // covers: spec 0015 AC-6, AC-14
+  test('at 320px the open panel does not scroll sideways and the email address stays whole', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/contact');
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    const email = `email ${basics.email}`;
-    // Where the address sits in its row, measured from the row's top left.
-    const valueOffset = async (
-      link: Locator,
-    ): Promise<{ readonly x: number; readonly y: number }> => {
-      const row = await link.boundingBox();
-      const value = await link.locator(':scope > span').nth(1).boundingBox();
-      return {
-        x: (value?.x ?? Number.NaN) - (row?.x ?? 0),
-        y: (value?.y ?? Number.NaN) - (row?.y ?? 0),
-      };
-    };
-    const onPage = await valueOffset(
-      page.getByRole('main').getByRole('link', { name: email, exact: true }),
-    );
 
     await openMenu(page);
 
     expect(await scrollsSideways(page)).toBe(false);
     expect(
-      await dialog(page).evaluate((el) => el.scrollWidth > el.clientWidth),
+      await list(page).evaluate((el) => el.scrollWidth > el.clientWidth),
     ).toBe(false);
-    expect(await valueOffset(rowLink(page, email))).toEqual(onPage);
+    await expectWholeEmail(page);
   });
 
   test.describe('with JavaScript off', () => {
     test.use({ javaScriptEnabled: false });
 
-    // covers: spec 0014 AC-4, AC-7
-    test('the footer button still opens the menu of links, with no field and no key line, and Esc closes it', async ({
+    // covers: spec 0015 AC-5, AC-7, AC-13
+    test('the footer button still opens the panel of links, with no field and focus on esc; a focused row shows the selected look, and Esc closes it', async ({
       page,
     }) => {
       await page.goto('/about');
@@ -5290,13 +5774,13 @@ test.describe('command menu', () => {
 
       await expect(dialog(page)).toBeVisible();
       await expect(dialog(page)).toHaveAccessibleName('menu');
-      await expect(closeButton(page)).toBeVisible();
-      await expectRows(page, COMMAND_ROWS('/about').map(rowName));
-      await expect(dialog(page).locator('label')).toBeHidden();
-      await expect(keyLine(page)).toBeHidden();
+      await expectGroups(page, GROUPS('/about'));
+      await expect(label(page)).toBeHidden();
       await expect(closeButton(page)).toBeFocused();
       await page.keyboard.press('Tab');
-      await expect(rowLinks(page).first()).toBeFocused();
+      const [first = ''] = ALL_NAMES;
+      await expect(rowLink(page, first)).toBeFocused();
+      await expectSelectedLook(rowLink(page, first), 'light', first);
       await page.keyboard.press('Escape');
       await expect(dialog(page)).toBeHidden();
     });
@@ -5309,8 +5793,8 @@ test.describe('command menu', () => {
       viewport: { width: 390, height: 844 },
     });
 
-    // covers: spec 0014 AC-4, AC-6, AC-11, AC-14
-    test('the corner button shows 24px from the edges, opens the menu with focus on close, and never covers the footer', async ({
+    // covers: spec 0014 AC-4, AC-11, spec 0015 AC-4, AC-5, AC-8, AC-13, AC-14
+    test('the corner button opens a bottom sheet with its field at the foot, focus on close, and nothing selected until the field has focus', async ({
       page,
     }) => {
       await page.goto('/cv');
@@ -5340,15 +5824,70 @@ test.describe('command menu', () => {
 
       await corner.tap();
 
-      await expect(dialog(page)).toBeVisible();
+      const sheet = dialog(page);
+      await settled(page);
+      const at = await sheet.boundingBox();
+      expect(at?.x).toBe(0);
+      expect(at?.width).toBe(390);
+      expect((at?.y ?? 0) + (at?.height ?? 0)).toBeCloseTo(844, 0);
+      expect(at?.height ?? 0).toBeLessThanOrEqual((844 * 5) / 6);
+      await expect(sheet).toHaveCSS('border-bottom-width', '0px');
+      await expect(sheet).toHaveCSS('border-bottom-left-radius', '0px');
+      await expect(sheet).toHaveCSS('border-top-left-radius', '2px');
+      await expectGroups(page, GROUPS('/cv'));
+      // The field row sits under the last row, its rule on its top edge.
+      const lastRow = await rowLinks(page).last().boundingBox();
+      const fieldRow = label(page).locator('..');
+      expect((await fieldRow.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(
+        (lastRow?.y ?? 0) + (lastRow?.height ?? 0),
+      );
+      await expect(fieldRow).toHaveCSS('border-top-width', '1px');
+      await expect(fieldRow).toHaveCSS('border-bottom-width', '0px');
+
       await expect(closeButton(page)).toBeFocused();
+      // `close` shows and is the whole name; `esc` is gone.
+      await expect(closeButton(page).locator('span').first()).toBeHidden();
+      await expect(closeButton(page).locator('span').last()).toHaveText(
+        'close',
+      );
+      await expect(closeButton(page).locator('span').last()).toHaveCSS(
+        'position',
+        'static',
+      );
+      await expect(closeButton(page)).toHaveAccessibleName('close');
+      await expect(closeButton(page)).toHaveCSS('border-top-width', '0px');
+      expect(await heightOf(closeButton(page))).toBeGreaterThanOrEqual(40);
       await expect(field(page)).not.toBeFocused();
-      await expect(keyLine(page)).toBeHidden();
-      await expectRows(page, COMMAND_ROWS('/cv').map(rowName));
+      await expectSelected(page, undefined);
+      expect((await focusLine(page)).opacity).toBe('0');
+
+      await field(page).tap();
+
+      await expect(field(page)).toBeFocused();
+      await expectSelected(page, ALL_NAMES[0]);
+      // On the sheet the line lies over the field row's top rule.
+      expect(await focusLine(page)).toMatchObject({
+        opacity: '1',
+        top: '-1px',
+      });
     });
 
-    // covers: spec 0014 AC-6
-    test('the shortcut still puts focus in the field, as on an iPad with a keyboard', async ({
+    // covers: spec 0015 AC-11
+    test('a tap on the dimmed strip above the sheet closes it', async ({
+      page,
+    }) => {
+      await page.goto('/about');
+      await pageHint(page);
+      await cornerButton(page).tap();
+      await settled(page);
+
+      await page.touchscreen.tap(195, 8);
+
+      await expect(dialog(page)).toBeHidden();
+    });
+
+    // covers: spec 0014 AC-6, spec 0015 AC-8, AC-13
+    test('the shortcut still puts focus in the field and selects the first row, as on an iPad with a keyboard', async ({
       page,
     }) => {
       await page.goto('/about');
@@ -5356,10 +5895,11 @@ test.describe('command menu', () => {
       await openMenu(page);
 
       await expect(field(page)).toBeFocused();
+      await expectSelected(page, ALL_NAMES[0]);
     });
 
-    // covers: spec 0014 AC-4, AC-6
-    test('without invoker commands the corner button still opens the menu, with focus left on close', async ({
+    // covers: spec 0014 AC-4, AC-6, spec 0015 AC-13
+    test('without invoker commands the corner button still opens the sheet, with focus left on close', async ({
       page,
     }) => {
       await dropInvokerCommands(page);
@@ -5372,6 +5912,77 @@ test.describe('command menu', () => {
       await expect(dialog(page)).toBeVisible();
       await expect(closeButton(page)).toBeFocused();
       await expect(field(page)).not.toBeFocused();
+      await expectSelected(page, undefined);
+    });
+
+    for (const { path } of MENU_PAGES) {
+      for (const scheme of SCHEMES) {
+        // covers: spec 0015 AC-14
+        test(`on ${path} the open sheet passes axe WCAG 2.2 AA in ${scheme}`, async ({
+          page,
+        }) => {
+          await page.emulateMedia({ colorScheme: scheme });
+          await page.goto(path);
+          await pageHint(page);
+          await cornerButton(page).tap();
+          await settled(page);
+
+          expect(await axeViolations(page)).toEqual([]);
+        });
+      }
+    }
+  });
+
+  test.describe('on a 320px touch screen', () => {
+    test.use({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 320, height: 640 },
+    });
+
+    // covers: spec 0015 AC-4, AC-14
+    test('the sheet fits with no sideways scroll, every row above the field, and the email address stays whole', async ({
+      page,
+    }) => {
+      await page.goto('/contact');
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      await pageHint(page);
+
+      await cornerButton(page).tap();
+
+      await settled(page);
+      expect(await scrollsSideways(page)).toBe(false);
+      expect(
+        await list(page).evaluate((el) => el.scrollHeight <= el.clientHeight),
+      ).toBe(true);
+      await expectWholeEmail(page);
+    });
+  });
+
+  test.describe('on a touch tablet', () => {
+    test.use({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 820, height: 1180 },
+    });
+
+    // covers: spec 0015 AC-4
+    test('the sheet is 512px wide and centred on the bottom edge', async ({
+      page,
+    }) => {
+      await page.goto('/cv');
+      await pageHint(page);
+      const clientWidth = await page.evaluate(
+        () => document.documentElement.clientWidth,
+      );
+
+      await cornerButton(page).tap();
+
+      await settled(page);
+      const box = await dialog(page).boundingBox();
+      expect(box?.width).toBe(512);
+      expect(box?.x).toBeCloseTo((clientWidth - 512) / 2, 0);
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(1180, 0);
     });
   });
 });

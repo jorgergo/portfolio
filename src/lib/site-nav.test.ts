@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatContactRows } from '@/lib/cv-format';
-import { commandMenuRows, formatRowNumber, SITE_NAV } from '@/lib/site-nav';
+import { commandMenuGroups, formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 
 describe('formatRowNumber', () => {
   // covers: AC-8
@@ -38,7 +37,7 @@ describe('SITE_NAV', () => {
   });
 });
 
-describe('commandMenuRows', () => {
+describe('commandMenuGroups', () => {
   const basics = {
     name: 'Jorge González Ozorno',
     email: 'jorgergo@icloud.com',
@@ -56,99 +55,121 @@ describe('commandMenuRows', () => {
     ],
   } as const;
 
-  const currentLabels = (routePattern: string): readonly string[] =>
-    commandMenuRows(basics, routePattern)
-      .filter(({ current }) => current)
-      .map(({ label }) => label);
+  const allRows = (
+    groups: ReturnType<typeof commandMenuGroups>,
+  ): ReturnType<typeof commandMenuGroups>[number]['rows'] =>
+    groups.flatMap(({ rows }) => rows);
 
-  // covers: spec 0014 AC-1
-  it("gives today's nine rows: home, the pages, the contacts, the PDF", () => {
-    expect(commandMenuRows(basics, '/about')).toEqual([
-      { key: 'page', label: 'home', href: '/', current: false },
-      { key: 'page', label: 'about', href: '/about', current: true },
-      { key: 'page', label: 'cv', href: '/cv', current: false },
-      { key: 'page', label: 'projects', href: '/projects', current: false },
-      { key: 'page', label: 'contact', href: '/contact', current: false },
+  const currentNames = (routePattern: string): readonly string[] =>
+    allRows(commandMenuGroups(basics, routePattern))
+      .filter(({ current }) => current)
+      .map(({ name }) => name);
+
+  // covers: spec 0015 AC-1
+  it("gives today's three groups: the pages, the contacts, the PDF", () => {
+    const page = (name: string, href: string, current = false) => ({
+      name,
+      detail: '',
+      href,
+      current,
+      external: false,
+    });
+
+    expect(commandMenuGroups(basics, '/about')).toEqual([
       {
-        key: 'email',
-        label: 'jorgergo@icloud.com',
-        href: 'mailto:jorgergo@icloud.com',
-        current: false,
+        heading: 'pages',
+        rows: [
+          page('home', '/'),
+          page('about', '/about', true),
+          page('cv', '/cv'),
+          page('projects', '/projects'),
+          page('contact', '/contact'),
+        ],
       },
       {
-        key: 'github',
-        label: '@jorgergo',
-        href: 'https://github.com/jorgergo',
-        current: false,
+        heading: 'contact',
+        rows: [
+          {
+            name: 'email',
+            detail: 'jorgergo@icloud.com',
+            href: 'mailto:jorgergo@icloud.com',
+            current: false,
+            external: false,
+          },
+          {
+            name: 'github',
+            detail: '@jorgergo',
+            href: 'https://github.com/jorgergo',
+            current: false,
+            external: true,
+          },
+          {
+            name: 'linkedin',
+            detail: 'in/jorgergo',
+            href: 'https://www.linkedin.com/in/jorgergo/',
+            current: false,
+            external: true,
+          },
+        ],
       },
       {
-        key: 'linkedin',
-        label: 'in/jorgergo',
-        href: 'https://www.linkedin.com/in/jorgergo/',
-        current: false,
-      },
-      {
-        key: 'download',
-        label: 'cv.pdf',
-        href: '/cv.pdf',
-        current: false,
-        download: 'Jorge-Gonzalez-Ozorno-CV.pdf',
+        heading: 'file',
+        rows: [
+          {
+            name: 'cv.pdf',
+            detail: 'download',
+            href: '/cv.pdf',
+            current: false,
+            external: false,
+            download: 'Jorge-Gonzalez-Ozorno-CV.pdf',
+          },
+        ],
       },
     ]);
   });
 
-  // covers: spec 0014 AC-1
+  // covers: spec 0015 AC-1
   it.each([
     ['/', ['home']],
     ['/cv', ['cv']],
     ['/404', []],
     ['/styleguide', []],
   ])('marks %s as current: %j', (routePattern, expected) => {
-    expect(currentLabels(routePattern)).toEqual(expected);
+    expect(currentNames(routePattern)).toEqual(expected);
   });
 
-  // covers: spec 0014 AC-1
-  it('gives seven rows with no profiles, the email still before the PDF', () => {
-    const rows = commandMenuRows(
+  // covers: spec 0015 AC-1
+  it('keeps the email row alone in contact with no profiles: seven rows', () => {
+    const groups = commandMenuGroups(
       { name: basics.name, email: basics.email },
       '/cv',
     );
 
-    expect(rows.map(({ key }) => key)).toEqual([
-      'page',
-      'page',
-      'page',
-      'page',
-      'page',
-      'email',
-      'download',
+    expect(groups.map(({ heading }) => heading)).toEqual([
+      'pages',
+      'contact',
+      'file',
     ]);
+    expect(groups[1]?.rows.map(({ name }) => name)).toEqual(['email']);
+    expect(allRows(groups)).toHaveLength(7);
   });
 
-  // covers: spec 0014 AC-1
+  // covers: spec 0015 AC-1
   it('names the saved PDF from an accented name, on the PDF row alone', () => {
-    const rows = commandMenuRows({ ...basics, name: 'Zoë Núñez' }, '/');
+    const rows = allRows(
+      commandMenuGroups({ ...basics, name: 'Zoë Núñez' }, '/'),
+    );
 
     expect(rows.at(-1)?.download).toBe('Zoe-Nunez-CV.pdf');
     expect(rows.filter((row) => row.download !== undefined)).toHaveLength(1);
   });
 
-  // covers: spec 0014 AC-1
-  it('keeps its own keys within the w-20 column, with no whitespace', () => {
-    // The contact keys are spec 0011's, checked by its NETWORKS case.
-    const contactKeys = new Set(
-      formatContactRows(basics).map(({ key }) => key),
-    );
-    const keys = new Set(
-      commandMenuRows(basics, '/')
-        .map(({ key }) => key)
-        .filter((key) => !contactKeys.has(key)),
-    );
+  // covers: spec 0015 AC-1
+  it('marks the two profile rows external, and no other row', () => {
+    const external = allRows(commandMenuGroups(basics, '/'))
+      .filter((row) => row.external)
+      .map(({ name }) => name);
 
-    expect([...keys]).toEqual(['page', 'download']);
-    for (const key of keys) {
-      expect(key.length).toBeLessThanOrEqual(8);
-      expect(key).not.toMatch(/\s/);
-    }
+    expect(external).toEqual(['github', 'linkedin']);
   });
 });

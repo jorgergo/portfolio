@@ -467,10 +467,9 @@ const printValues = COLOR_ROLES.map(
   <section class="flex flex-col gap-6">
     <SectionHeading>Command menu</SectionHeading>
     <p class="text-sm text-muted">
-      The command menu at rest (spec 0014): the sheet's content in place, with
-      the filter field and the key line the script reveals, then a NavRow marked
-      current and one that downloads. Press Cmd+K or Ctrl+K, or use the footer
-      button, for the real one.
+      The command menu at rest (spec 0015): the panel's content in place, with
+      the field the script reveals and the first row selected. Press Cmd+K or
+      Ctrl+K, or use the footer button, for the real one over the dimmed page.
     </p>
     <div class="grid gap-6 sm:grid-cols-2">
       {PANELS.map(({ label, panel }) => (
@@ -482,16 +481,6 @@ const printValues = COLOR_ROLES.map(
         >
           <SectionHeading as="h3">{label}</SectionHeading>
           <CommandMenu preview />
-          <ul class="flex flex-col gap-1">
-            <NavRow kind="key" href="/cv" prefix="page" label="cv" current />
-            <NavRow
-              kind="key"
-              href={CV_PDF_PATH}
-              prefix="download"
-              label="cv.pdf"
-              download="Example-CV.pdf"
-            />
-          </ul>
         </section>
       ))}
     </div>

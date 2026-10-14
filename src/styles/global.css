@@ -15,6 +15,10 @@
   --color-line: light-dark(#dcd4c4, #2d2a25);
   --color-accent: light-dark(#646f3f, #baaa7c);
   --color-accent-warm: light-dark(#a5532a, #e29a70);
+  /* Spec 0015: the dimmed page behind the open command menu, its ::backdrop
+     alone. Decorative (no text sits on it), the one colour outside the six
+     roles, so the contrast parser skips it. */
+  --color-scrim: light-dark(#2b27222e, #00000080);
 
   --text-title: 1.375rem;
   --text-title--line-height: 1.3;
@@ -56,8 +60,13 @@
     overflow-wrap: anywhere;
   }
 
-  /* Spec 0014: the page behind the open command menu stays still; the sheet
-     scrolls inside itself. */
+  /* Spec 0014: the page behind the open command menu stays still; the menu
+     scrolls inside itself. Spec 0015: the gutter stays when the scrollbar
+     goes, so the page visible behind the menu never shifts. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   html:has(dialog[open]) {
     overflow: hidden;
   }
@@ -87,7 +96,8 @@
   @media (prefers-reduced-motion: reduce) {
     *,
     ::before,
-    ::after {
+    ::after,
+    ::backdrop {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;

@@ -54,6 +54,9 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'selection: bg on accent', fg: 'bg', bg: 'accent', minRatio: 4.5 },
   { name: 'focus ring: accent on bg', fg: 'accent', bg: 'bg', minRatio: 3 },
   { name: 'button border: muted on bg', fg: 'muted', bg: 'bg', minRatio: 3 },
+  // Spec 0015: a selected command menu row draws all its text in fg on the
+  // line ground, where muted falls short.
+  { name: 'selected row: fg on line', fg: 'fg', bg: 'line', minRatio: 4.5 },
 ];
 
 // Six digit hex (`#rrggbb`) to channels in 0 to 1.
