@@ -23,9 +23,23 @@ import astroConfig from '../astro.config.mjs';
 
 // Shared by the page and style guide specs. The expected colours come from the
 // same global.css the site ships, so a token change never needs a test edit.
-export const tokens = parseColorTokens(
-  readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8'),
+const globalCss = readFileSync(
+  new URL('../src/styles/global.css', import.meta.url),
+  'utf8',
 );
+export const tokens = parseColorTokens(globalCss);
+
+// Spec 0015 AC-3: the scrim, the one colour outside the six roles, as its
+// light and dark `#rrggbbaa` values from the same file; parseColorTokens
+// reads the six roles only.
+const SCRIM =
+  /--color-scrim:\s*light-dark\(\s*(#[0-9a-f]{8})\s*,\s*(#[0-9a-f]{8})\s*\)/i.exec(
+    globalCss,
+  );
+export const scrim: Readonly<Record<'light' | 'dark', string>> = {
+  light: SCRIM?.[1] ?? '',
+  dark: SCRIM?.[2] ?? '',
+};
 
 // The fixture parsed through the site's own schema, with the `image` stub the
 // Vitest schema tests use, so its type is what the pages read (`profiles` is

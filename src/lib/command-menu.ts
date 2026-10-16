@@ -1,7 +1,7 @@
-// Spec 0014: the command menu's client rules. Pure, and this module imports
-// nothing, so the script `CommandMenu.astro` bundles carries no content code
-// (no schema, no Zod). The rows themselves come from `commandMenuRows` in
-// `site-nav.ts` at build time.
+// Specs 0014 and 0015: the command menu's client rules. Pure, and this module
+// imports nothing, so the script `CommandMenu.astro` bundles carries no content
+// code (no schema, no Zod). The rows themselves come from `commandMenuGroups`
+// in `site-nav.ts` at build time.
 
 // The dialog's id, shared by the dialog, both buttons that open it, and the
 // script that finds it.
@@ -12,12 +12,18 @@ export const COMMAND_MENU_ID = 'command-menu';
 export const rowMatches = (text: string, query: string): boolean =>
   text.toLowerCase().includes(query.trim().toLowerCase());
 
-// What the live region reads after a keystroke: nothing for an empty query,
-// so opening the menu announces no count.
-export const formatMatchCount = (count: number, query: string): string => {
+// What the live region reads after a keystroke: the count and the name of the
+// row Enter opens (`target`), or nothing for an empty query, so opening the
+// menu announces no count.
+export const formatMatchCount = (
+  count: number,
+  query: string,
+  target: string,
+): string => {
   if (query.trim() === '') return '';
   if (count === 0) return 'no match';
-  return count === 1 ? '1 row' : `${String(count)} rows`;
+  const rows = count === 1 ? '1 row' : `${String(count)} rows`;
+  return `${rows}, enter opens ${target}`;
 };
 
 // The footer hint: Apple platforms name the Command key, every other one Ctrl.
@@ -57,14 +63,18 @@ export const isMenuShortcut = (
     : event.code === 'KeyK';
 };
 
-// Where an arrow key moves focus among `count` visible rows. `-1` is the
-// filter field: ↓ from it goes to the first row, ↑ from the first row comes
-// back to it, ↑ from it stays, and ↓ stops at the last row.
+// Where an arrow key moves focus among `count` visible rows, from `index`,
+// where `-1` is the filter field; `selected` is the selected row, `-1` for
+// none. From the field, ↓ goes to the row after the selected one (so the
+// first row when none is) and ↑ stays. From a row, ↓ goes to the next and
+// stops at the last, and ↑ goes to the one before, the first row's ↑ coming
+// back to the field.
 export const nextFocus = (
   index: number,
+  selected: number,
   count: number,
   key: 'ArrowDown' | 'ArrowUp',
 ): number =>
   key === 'ArrowDown'
-    ? Math.min(index + 1, count - 1)
+    ? Math.min((index === -1 ? selected : index) + 1, count - 1)
     : Math.max(index - 1, -1);

@@ -17,7 +17,18 @@ export default defineConfig({
   // A stray test.only fails CI instead of quietly skipping the rest (spec 0007).
   forbidOnly: !!process.env.CI,
   reporter: 'list',
-  use: { ...devices['Desktop Chrome'] },
+  // Headless Linux Chromium (CI) hides its scrollbars, yet still reserves a
+  // classic 15px gutter for `scrollbar-gutter: stable` (spec 0015 AC-2), so
+  // every page would lay out 15px narrower than its viewport. Overlay
+  // scrollbars take no space, as on macOS and phones, so a 320px viewport stays
+  // a 320px layout. Playwright passes its own `--enable-features`, so this one
+  // names its feature too and both stay on.
+  use: {
+    ...devices['Desktop Chrome'],
+    launchOptions: {
+      args: ['--enable-features=CDPScreenshotNewSurface,OverlayScrollbar'],
+    },
+  },
   projects: [
     { name: 'site', testMatch: 'site.spec.ts', use: { baseURL: SITE } },
     {

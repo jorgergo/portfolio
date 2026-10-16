@@ -9,8 +9,9 @@ import {
   shortcutHint,
 } from '@/lib/command-menu';
 
-// Spec 0014: the command menu's client rules, on plain values, so no browser
-// is needed. The page tests drive the same rules through the real dialog.
+// Specs 0014 and 0015: the command menu's client rules, on plain values, so
+// no browser is needed. The page tests drive the same rules through the real
+// dialog.
 
 describe('COMMAND_MENU_ID', () => {
   // covers: spec 0014 AC-15
@@ -52,16 +53,19 @@ describe('rowMatches', () => {
 });
 
 describe('formatMatchCount', () => {
-  // covers: spec 0014 AC-7, AC-15
+  // covers: spec 0015 AC-10
   it.each([
-    [9, '', ''],
-    [9, '  ', ''],
-    [0, 'zzz', 'no match'],
-    [1, 'git', '1 row'],
-    [5, 'page', '5 rows'],
-  ])('%i rows for %j reads %j', (count, query, expected) => {
-    expect(formatMatchCount(count, query)).toBe(expected);
-  });
+    [9, '', 'home', ''],
+    [9, '  ', 'home', ''],
+    [0, 'zzz', '', 'no match'],
+    [1, 'git', 'github', '1 row, enter opens github'],
+    [5, 'o', 'home', '5 rows, enter opens home'],
+  ])(
+    '%i rows for %j, %j selected, reads %j',
+    (count, query, target, expected) => {
+      expect(formatMatchCount(count, query, target)).toBe(expected);
+    },
+  );
 });
 
 describe('shortcutHint', () => {
@@ -138,23 +142,70 @@ describe('isMenuShortcut', () => {
 });
 
 describe('nextFocus', () => {
-  // covers: spec 0014 AC-8, AC-15
+  // covers: spec 0015 AC-9
   it.each([
-    ['↓ from the field goes to the first row', -1, 9, 'ArrowDown', 0],
-    ['↓ moves to the next row', 3, 9, 'ArrowDown', 4],
-    ['↓ on the last row stays there', 8, 9, 'ArrowDown', 8],
-    ['↑ moves to the row before', 4, 9, 'ArrowUp', 3],
-    ['↑ from the first row goes to the field', 0, 9, 'ArrowUp', -1],
-    ['↑ from the field stays in the field', -1, 9, 'ArrowUp', -1],
-    ['↓ on the only row left stays there', 0, 1, 'ArrowDown', 0],
+    [
+      '↓ from the field goes past the selected first row',
+      -1,
+      0,
+      9,
+      'ArrowDown',
+      1,
+    ],
+    [
+      '↓ from the field goes past a selected middle row',
+      -1,
+      4,
+      9,
+      'ArrowDown',
+      5,
+    ],
+    [
+      '↓ from the field with none selected goes to the first row',
+      -1,
+      -1,
+      9,
+      'ArrowDown',
+      0,
+    ],
+    [
+      '↓ from the field with the last row selected goes to it',
+      -1,
+      8,
+      9,
+      'ArrowDown',
+      8,
+    ],
+    [
+      '↓ from the field with the only row selected goes to it',
+      -1,
+      0,
+      1,
+      'ArrowDown',
+      0,
+    ],
     [
       '↓ from the field with no rows stays in the field',
+      -1,
       -1,
       0,
       'ArrowDown',
       -1,
     ],
-  ] as const)('%s', (_name, index, count, key, expected) => {
-    expect(nextFocus(index, count, key)).toBe(expected);
+    ['↑ from the field stays in the field', -1, 0, 9, 'ArrowUp', -1],
+    [
+      '↑ from the field with none selected stays in the field',
+      -1,
+      -1,
+      9,
+      'ArrowUp',
+      -1,
+    ],
+    ['↓ moves to the next row', 3, 3, 9, 'ArrowDown', 4],
+    ['↓ on the last row stays there', 8, 8, 9, 'ArrowDown', 8],
+    ['↑ moves to the row before', 4, 4, 9, 'ArrowUp', 3],
+    ['↑ from the first row goes to the field', 0, 0, 9, 'ArrowUp', -1],
+  ] as const)('%s', (_name, index, selected, count, key, expected) => {
+    expect(nextFocus(index, selected, count, key)).toBe(expected);
   });
 });

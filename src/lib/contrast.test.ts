@@ -189,6 +189,7 @@ describe('CONTRAST_PAIRS', () => {
       { fg: 'bg', bg: 'accent', minRatio: 4.5, minLc: undefined },
       { fg: 'accent', bg: 'bg', minRatio: 3, minLc: undefined },
       { fg: 'muted', bg: 'bg', minRatio: 3, minLc: undefined },
+      { fg: 'fg', bg: 'line', minRatio: 4.5, minLc: undefined },
     ]);
   });
 
