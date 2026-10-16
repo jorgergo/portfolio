@@ -254,7 +254,7 @@ spec [0015](../specs/0015-command-menu-panel/index.md) · code in `src/component
 - [x] Verify it: `/check verify command menu redesign`
 - [x] Test it: `/test command menu redesign`
 - [x] Review it (fresh model): `/check review command menu redesign`
-- [ ] Document it: `/document command menu redesign`
+- [x] Document it: `/document command menu redesign`
 
 ### 17. History page · needs a decision · from spec 0013
 Your full path from student to now on its own page: every role, certificate, and project, including what the two page CV leaves out.
