@@ -28,7 +28,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 15 | CV typographic hierarchy | Release 2 | done |
 | 16 | Project links live | Release 3 | dropped |
 | 17 | History page | Release 2 | planned |
-| 18 | Command menu redesign | Release 2 | in-progress |
+| 18 | Command menu redesign | Release 2 | done |
 
 ## Foundations
 
@@ -240,7 +240,7 @@ spec [0014](../specs/0014-command-menu/index.md) · code in `src/components/Comm
 - [x] Review it (fresh model): `/check review command menu`
 - [x] Document it: `/document command menu`
 
-### 18. Command menu redesign · in-progress
+### 18. Command menu redesign · done
 The command menu opens as a sheet that hides the whole page, with a large title, a labelled field that draws a double frame when focused, and nine roomy rows, so it reads bloated. Make it a small panel over the dimmed page, like cv.jarocki.me: a compact field, grouped rows, and the first row already selected when a keyboard opens it.
 **Done when:** Cmd+K or Ctrl+K and the footer and corner buttons open a compact panel over the page on every page; Enter follows the selected row, and the arrows and the mouse move the selection; all rows fit a 640px phone with no scrolling; light and dark keep AA contrast; keyboard only use, one script per page, and nothing in print still hold from spec 0014.
 **Note:** the design bench at https://claude.ai/artifact/TRQWNGcKHCNyzmWPNPFJH5 (private, built 13 Oct 2026) holds the candidates, cv.jarocki.me's menu as measured, and the contrast numbers. Its recommended panel bends rules from specs 0003 and 0014 (a scrim colour, the focus ring inside the menu, motion, group headings), so `/architect` settles each one in a new spec.
