@@ -1,5 +1,6 @@
 import { formatContactRows } from '@/lib/cv-format';
 import { CV_PDF_PATH, cvPdfFileName } from '@/lib/cv-pdf';
+import { isExternal } from '@/lib/links';
 
 // The home page menu (spec 0004). Site structure, not CV content, so it lives
 // in code: each page spec adds its own row, and a row whose page does not
@@ -38,8 +39,6 @@ export type MenuGroup = {
   readonly heading: 'pages' | 'contact' | 'file';
   readonly rows: readonly MenuRow[];
 };
-
-const isExternal = (href: string): boolean => /^https?:\/\//.test(href);
 
 // Home first, as `SITE_NAV` must not list the page that draws it, then every
 // page; the contact rows, each key as its name and its label as its detail;

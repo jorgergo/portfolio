@@ -4,6 +4,7 @@ import Download from '@/components/icons/Download.astro';
 import GitHub from '@/components/icons/GitHub.astro';
 import LinkedIn from '@/components/icons/LinkedIn.astro';
 import Mail from '@/components/icons/Mail.astro';
+import { isExternal } from '@/lib/links';
 
 type IconName = 'github' | 'linkedin' | 'mail' | 'arrow-up-right' | 'download';
 
@@ -26,7 +27,7 @@ interface Props {
 // arrow so the visitor knows it leaves the site (spec 0003).
 const { href, icon, label, class: className } = Astro.props;
 const Icon = ICONS[icon];
-const external = /^https?:\/\//.test(href);
+const external = isExternal(href);
 ---
 
 <a

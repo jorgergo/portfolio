@@ -1,5 +1,6 @@
 ---
 import ArrowUpRight from '@/components/icons/ArrowUpRight.astro';
+import { isExternal } from '@/lib/links';
 
 interface Props {
   href: string;
@@ -17,7 +18,7 @@ interface Props {
 // only, so a value that wraps sits right under its key, as its second line,
 // not nearer the next row (spec 0011).
 const { href, prefix, label, kind, class: className } = Astro.props;
-const external = /^https?:\/\//.test(href);
+const external = isExternal(href);
 const numbered = kind === 'number';
 ---
 
