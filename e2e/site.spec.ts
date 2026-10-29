@@ -43,6 +43,7 @@ import {
   rowMatches,
   shortcutHint,
 } from '@/lib/command-menu';
+import { isExternal } from '@/lib/links';
 import {
   commandMenuGroups,
   formatRowNumber,
@@ -2613,8 +2614,6 @@ test.describe('contact page', () => {
     });
   // A row's two spans: the key, then the label (with the arrow inside).
   const spans = (link: Locator): Locator => link.locator(':scope > span');
-  const isExternal = ({ href }: ContactRow): boolean =>
-    /^https?:\/\//.test(href);
   // formatContactRows puts the email row first (cv-format.test.ts).
   const [emailRow, ...profileRows] = CONTACT_ROWS;
 
@@ -2663,7 +2662,9 @@ test.describe('contact page', () => {
       await expect(link).toHaveAttribute('href', row.href);
       await expect(spans(link).nth(0)).toHaveText(row.key);
       await expect(spans(link).nth(1)).toHaveText(row.label);
-      await expect(link.locator('svg')).toHaveCount(isExternal(row) ? 1 : 0);
+      await expect(link.locator('svg')).toHaveCount(
+        isExternal(row.href) ? 1 : 0,
+      );
     }
   });
 
@@ -2675,7 +2676,9 @@ test.describe('contact page', () => {
     const hidden = list(page).locator('[aria-hidden]');
 
     await expect(list(page).locator('span[aria-hidden]')).toHaveCount(0);
-    await expect(hidden).toHaveCount(CONTACT_ROWS.filter(isExternal).length);
+    await expect(hidden).toHaveCount(
+      CONTACT_ROWS.filter(({ href }) => isExternal(href)).length,
+    );
     for (const element of await hidden.all()) {
       await expect(element).toHaveJSProperty('tagName', 'svg');
       await expect(element).toHaveAttribute('aria-hidden', 'true');
@@ -5496,6 +5499,28 @@ test.describe('command menu', () => {
     await expectRows(page, ALL_NAMES);
   });
 
+  // covers: spec 0014 AC-8, AC-9, spec 0015 AC-9, AC-13
+  test('Enter on a row focused by ↓ closes the menu and follows it, and Back shows the page with the menu closed', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await openMenu(page);
+    // ↓ from the field goes to the row after the selected first row.
+    const target = ROWS('/cv')[1];
+
+    await page.keyboard.press('ArrowDown');
+    await expect(
+      rowLink(page, target === undefined ? 'missing' : rowName(target)),
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(target?.href ?? 'missing');
+    await expect(dialog(page)).toBeHidden();
+    await page.goBack();
+    await expect(page).toHaveURL('/cv');
+    await expect(dialog(page)).toBeHidden();
+  });
+
   // covers: spec 0014 AC-9, spec 0015 AC-13
   test('the PDF row closes the menu, saves the CV under its file name, and leaves the page in place', async ({
     page,
@@ -5571,6 +5596,10 @@ test.describe('command menu', () => {
     await expect(dialog(page)).toBeHidden();
   });
 
+  // A regression guard for commit 274c9d5: a backdrop tap closes the sheet
+  // in iOS Safari only while the press is heard on the document, and
+  // Chromium cannot show that tap, so this pins the wiring rather than the
+  // behaviour. Another wiring that still closes the sheet on iOS may fail it.
   // covers: spec 0015 AC-11
   test('the press before a backdrop click is heard on the document, since iOS Safari sends a touch only inside the box of an element that listens for it', async ({
     page,
