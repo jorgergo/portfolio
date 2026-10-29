@@ -1,7 +1,7 @@
 # 0015. Command menu as a panel over the page
 
 **Date**: 2026-10-13
-**Status**: In Progress
+**Status**: Accepted
 **Supersedes**: [0014](../0014-command-menu/index.md)
 
 ## Summary
