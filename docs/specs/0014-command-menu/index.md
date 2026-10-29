@@ -225,5 +225,5 @@ Skateboard: the menu ships whole in one merge, the smallest complete menu a visi
 
 ## Follow-up
 
-- [ ] `/sync`: the `AGENTS.md` rules gain the menu (one script per page, `CommandMenu` among the `getCv()` callers, `commandMenuRows` for the rows, the one fixed element), and the "no script" lines in specs 0004, 0005, and 0008 to 0011 point here.
+- [x] `/sync`: the `AGENTS.md` rules gain the menu (one script per page, `CommandMenu` among the `getCv()` callers, `commandMenuRows` for the rows, the one fixed element), and the "no script" lines in specs 0004, 0005, and 0008 to 0011 point here. Done: the `/sync` after the build added the menu rules to `AGENTS.md` (spec 0015 has since replaced them), and `/architect` added "Amended by 0014" to the "no script" and Tab order lines in specs 0005, 0008 to 0011, and 0013. Spec 0004 stays as written, since spec 0008 supersedes it and carries the rule.
 - [ ] If a CV section jump is ever wanted, add `#experience` and the other section ids as rows through `commandMenuRows`; the list would outgrow a 640px phone screen, so revisit the sheet's spacing then.

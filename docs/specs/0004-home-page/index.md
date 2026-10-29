@@ -200,6 +200,6 @@ Skateboard: the whole page first, complete and usable with the one row that exis
 
 - [ ] `/scope`: enroll **About page** (`/about`, your `basics.summary` and a photo if you add one, adds the `about` row) and **Contact page** (`/contact`, a keyed `NavRow` list, adds the `contact` row, and the home of the deferred contact form later) as release 1 features. Neither reopens this spec; each may go straight to `/develop` if you already know the build.
 - [ ] Portfolio page spec: add the `portfolio` row after `cv`.
-- [ ] Command menu spec: build its pages group from `SITE_NAV` and its socials from `basics.profiles`.
+- [x] Command menu spec: build its pages group from `SITE_NAV` and its socials from `basics.profiles`. Done in [0014](../0014-command-menu/index.md), and grouped since [0015](../0015-command-menu-panel/index.md): `commandMenuGroups` builds the `pages` group from `SITE_NAV` and the `contact` group from `formatContactRows`, which reads `basics.profiles`.
 - [ ] Metadata spec: canonical link, Open Graph tags, and the inner page title pattern (`cv · Jorge González Ozorno`).
 - [ ] `/sync` after the build: add `NavRow` and `src/lib/site-nav.ts` to `AGENTS.md`'s layout and component notes, and confirm `design.md`'s new rows.
