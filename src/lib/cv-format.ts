@@ -79,7 +79,7 @@ export const formatProfileHandle = (profile: {
 
 // Spec 0005: the CV page helpers. Pure, no clock or locale.
 
-const META_SEPARATOR = ' · ';
+export const META_SEPARATOR = ' · ';
 
 // The parser percent encodes a non ASCII path; decodeURI shows it as typed
 // (`%C3%A1` → `á`) and keeps reserved escapes such as `%2F`. It throws on a
