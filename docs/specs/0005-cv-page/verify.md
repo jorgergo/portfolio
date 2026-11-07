@@ -96,13 +96,13 @@ _Steps for the paper rule of AC-4 (amended 2026-11-06), from commit `07046b2`._
 ### UI / manual
 
 - [x] `pnpm build`, then read page one of `dist/cv.pdf` with PyMuPDF → `Full Stack Developer, PDPO` shares its line with `Remote · Aug 2025 – Present`, and `Software Engineer, IT Academy` with `Mexico City, Mexico · Jan 2025 – Jul 2025`, both right aligned at 576pt; no line holds a location alone; page one has 44 text lines (46 on 2026-10-05) → AC-4, AC-5
-- [ ] `pnpm preview`, open `/cv` at 1280px → on screen each Ford role still shows its date at the right of line 1 and its location alone at the right of line 2, and nothing reads `Remote ·` → AC-4
-- [ ] Print preview `/cv` in Chrome → the same lines as the PDF; `Process Automation Intern` keeps `Mexico City, Mexico` at the right of its own line 2, since that entry has a subtitle → AC-4, AC-5
-- [ ] Select and copy the Ford group in the PDF, paste it into a text editor → each location appears once, before its date → AC-4
+- [x] `pnpm preview`, open `/cv` at 1280px → on screen each Ford role still shows its date at the right of line 1 and its location alone at the right of line 2, and nothing reads `Remote ·` → AC-4
+- [x] Print preview `/cv` in Chrome → the same lines as the PDF; `Process Automation Intern` keeps `Mexico City, Mexico` at the right of its own line 2, since that entry has a subtitle → AC-4, AC-5
+- [x] Select and copy the Ford group in the PDF, paste it into a text editor → each location appears once, before its date → AC-4
 
 ### Commands
 
-- [ ] `pnpm exec playwright test --project site -g "consecutive roles at one company|location beside its date"` → the screen case `consecutive roles at one company group under one company line` and the print case `prints a grouped role's location beside its date, so no line holds a location alone` pass → AC-4, AC-5, AC-16
+- [x] `pnpm exec playwright test --project site -g "consecutive roles at one company|location beside its date"` → the screen case `consecutive roles at one company group under one company line` and the print case `prints a grouped role's location beside its date, so no line holds a location alone` pass → AC-4, AC-5, AC-16
 
 ### Acceptance-criteria coverage
 

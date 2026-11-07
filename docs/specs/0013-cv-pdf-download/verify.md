@@ -91,16 +91,16 @@ _Steps for AC-10 and AC-11 as amended on 2026-11-06, from commit `07046b2`. The 
 ### UI / manual
 
 - [x] `pnpm build`, then read the line boxes of `dist/cv.pdf` → 2 pages; the white between a company and its first role is 3.9pt, between two roles 4.3pt, between two companies 11.8pt, and between the summary and `EXPERIENCE` 16.3pt; page one has 44 text lines and ends 52.4pt above the bottom margin; page two starts with Medipal at 36.3pt (no space above it) and ends 11.9pt above the margin → AC-10, AC-14
-- [ ] Open the downloaded PDF in Preview → a new role sits close under the role before it, a new company clearly further down, a new section further still; no section heading has extra space before its first entry, and no page starts with a gap → AC-10
-- [ ] Print preview `/cv` in Chrome → the same two pages as the PDF → AC-10, AC-11
+- [x] Open the downloaded PDF in Preview → a new role sits close under the role before it, a new company clearly further down, a new section further still; no section heading has extra space before its first entry, and no page starts with a gap → AC-10
+- [x] Print preview `/cv` in Chrome → the same two pages as the PDF → AC-10, AC-11
 
 ### Commands
 
-- [ ] `pnpm exec playwright test --project site -g "print"` → the print gaps case reads the wrapper `20px`, each section `10px`, each section body `13.3333px`, and each group's roles `3.33333px`; the hidden elements under `main` are the download link and one `DIV` for each grouped role with a location → AC-10, AC-11
+- [x] `pnpm exec playwright test --project site -g "print"` → the print gaps case reads the wrapper `20px`, each section `10px`, each section body `13.3333px`, and each group's roles `3.33333px`; the hidden elements under `main` are the download link and one `DIV` for each grouped role with a location → AC-10, AC-11
 
 ### Break step
 
-- [ ] In `src/content/cv.json` give Ford Operation Good Cheer, which prints on page two, a third bullet (`A test bullet that stays on one line of the page.`), run `pnpm build` → it stops with `cv.pdf has 3 pages, over the cap of 2; shorten src/content/cv.json; see spec 0013`, since page two has 11.9pt spare and a line is 14.5pt; restore → AC-10, AC-15
+- [x] In `src/content/cv.json` give Ford Operation Good Cheer, which prints on page two, a third bullet (`A test bullet that stays on one line of the page.`), run `pnpm build` → it stops with `cv.pdf has 3 pages, over the cap of 2; shorten src/content/cv.json; see spec 0013`, since page two has 11.9pt spare and a line is 14.5pt; restore → AC-10, AC-15
 
 ### Acceptance-criteria coverage
 
