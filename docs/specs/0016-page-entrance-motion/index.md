@@ -1,12 +1,12 @@
 # 0016. Page entrance as a staggered fade up in CSS
 
 **Date**: 2026-10-29
-**Status**: Proposed
+**Status**: In Progress
 **Amends**: [0003](../0003-design-system/index.md) AC-10 and its motion library rule · [0015](../0015-command-menu-panel/index.md) AC-17 and its motion invariant
 
 ## Summary
 
-When a page loads, its opening blocks now arrive one after another from the top: each fades in while rising 20px, 50ms after the one before, the numbers measured on t3.gg. It runs on every page in plain CSS with no script, and everything has settled within 950ms. A block is hidden only while its own animation runs, so with reduced motion, on paper, and in the PDF the page is simply there, complete. This ends the rule that colour is the only motion on the base pages, so spec 0003 and `design.md` change with it.
+When a page loads, its opening blocks now arrive one after another from the top: each fades in while rising 20px, 50ms after the one before, the numbers measured on t3.gg. It runs on every page in plain CSS with no script, and everything has settled within 950ms. A block is hidden only while its own animation runs, so with reduced motion, on paper, and in the PDF the page is simply there, complete. A link to a section, such as `/cv#experience`, lands exactly where it would with motion off, because the block that holds the target fades in place without rising. This ends the rule that colour is the only motion on the base pages, so spec 0003 and `design.md` change with it.
 
 ## Requirements
 
@@ -16,6 +16,7 @@ When a page loads, its opening blocks now arrive one after another from the top:
 - As a recruiter printing the CV or saving the PDF, I want every block at full ink, so that no text comes out faint.
 - As a visitor with a slow eye or a fast hand, I want links to work from the first frame, so that the motion never gets in my way.
 - As the site owner, I want a new row in `cv.json` or `SITE_NAV` to take its place in the order with no code edit, so that content changes stay content changes.
+- As a visitor who follows a link to a CV section, I want its heading at the top of the window, so that the link takes me where it says.
 
 **Acceptance criteria** (the contract, each criterion is IDed and independently checkable):
 
@@ -26,14 +27,15 @@ When a page loads, its opening blocks now arrive one after another from the top:
 - **AC-5** (the blocks): each page marks the blocks in the *Composition* table, in that order, starting at step 0. Everything inside a block moves with it, with no nested stagger. Blocks past the eighth take step 7 through `enterClass` and enter together. A row added to `cv.json` or `SITE_NAV` takes its step with no code edit.
 - **AC-6** (the footer): `BaseLayout` gains `footerStep?: number | undefined`. Given a step, it passes `enterClass(footerStep)` to `SiteFooter` through its existing `class` prop, beside `print:hidden` when `printFooter` is false. Omitted, the footer stays still, which only the dev `/styleguide` page does. Every built page passes the step after its last content block, so the footer always enters last.
 - **AC-7** (what stays still): the corner `menu` button, the skip link, `<main>`, the page wrappers, and the command menu carry no entrance, and the menu keeps its own fade from spec 0015. The entrance plays once per page load and never loops. Nothing animates on scroll, and hover stays colour only.
-- **AC-8** (timing): with motion on, every block computes `animation-name: enter`, a 0.6s duration, the AC-1 curve, a `backwards` fill, and a delay of its step times 50ms. Each page settles at its last step times 50ms plus 600ms: 850ms on `/` and `/projects`, 800ms on `/contact`, 750ms on the 404 page, and 950ms on `/about` and `/cv`. No page takes longer than 950ms, whatever its content.
+- **AC-8** (timing): with motion on, every block (the one that holds a fragment target included, AC-16) computes `animation-name: enter`, a 0.6s duration, the AC-1 curve, a `backwards` fill, and a delay of its step times 50ms. Each page settles at its last step times 50ms plus 600ms: 850ms on `/` and `/projects`, 800ms on `/contact`, 750ms on the 404 page, and 950ms on `/about` and `/cv`. No page takes longer than 950ms, whatever its content.
 - **AC-9** (reduced motion): under `prefers-reduced-motion: reduce`, no block computes an animation, `document.getAnimations()` is empty after load, and every block sits at full opacity in its resting place on the first frame. The global reduced motion rule in `global.css` also gains `animation-delay: 0s !important`, so no later animation can keep a delay there.
 - **AC-10** (print and PDF): under print media no block computes an animation, and every block prints at full ink on every page, even when printing starts mid entrance. `src/lib/render-pdf.ts` also calls `page.emulateMedia({ reducedMotion: 'reduce' })` before `page.goto`, as a second guard, since nothing checks the PDF's ink. `dist/cv.pdf` still passes `checkCvPdf`.
 - **AC-11** (no script, no CSP change): the entrance is CSS alone. Each built page still ships only the command menu's script, no element gains a `style` attribute, `pnpm preview` logs no CSP violation, no dependency is added, and with JavaScript off the entrance still plays.
-- **AC-12** (the page works during the entrance): links work from the first frame by click, tap, and Tab. Layout does not shift, because `translate` moves paint only. No vertical scrollbar appears at any moment on a page that fits its viewport, because the 80px of padding under the footer holds its 20px start offset. Nothing scrolls sideways at 320px.
+- **AC-12** (the page works during the entrance): links work from the first frame by click, tap, and Tab. Layout does not shift, because `translate` moves paint only. No vertical scrollbar appears at any moment on a page that fits its viewport, because the 80px of padding under the footer holds its 20px start offset. Nothing scrolls sideways at 320px. A fragment link lands as AC-16 says.
 - **AC-13** (accessibility): with motion on, once the entrance has settled, every page passes an axe WCAG 2.2 AA check in light and dark. The entrance ends within a second, well inside the five seconds of WCAG 2.2.2 (Pause, Stop, Hide). No `role` and no `target` are added.
 - **AC-14** (page tests): `playwright.config.ts` sets `reducedMotion: 'reduce'` in the shared `use` block, so existing tests see a still page. A single test that asserts a real duration or a running transition calls `page.emulateMedia({ reducedMotion: 'no-preference' })` before it loads its page; today that is the menu's fade test in `e2e/site.spec.ts` (`the panel and its backdrop fade in over 150ms`) and `links change colour with the 150ms theme transition` in `e2e/styleguide.spec.ts`, and the suite names any other by failing. The menu block's `settled` helper needs no edit: it waits for the dialog's own animations, which end at once under reduced motion. `e2e/helpers.ts` gains `freezeEntrance(page)`, which a test calls before `page.goto`: it opens a CDP session (the browser's debugging protocol) and sends `Animation.enable` and `Animation.setPlaybackRate` with rate 0, so every animation holds at its first frame, and the test seeks by setting `currentTime` on `document.getAnimations()`. It also gains `pageSettled(page)`, which polls `document.getAnimations().length` until it reaches 0, the one page wide wait behind every "once settled" check. A new `page entrance` block in `e2e/site.spec.ts`, tagged `spec 0016`, sets `test.use({ reducedMotion: 'no-preference' })` for the whole block and derives every expectation from `cv.json`, `SITE_NAV`, and the site's own helpers, so a valid content edit needs no test edit; it reads the `/cv` section count from `main section` in the page, never from a third copy of that list. The `nothing animates` test emulates motion on, waits for `pageSettled`, and allows the `enter` keyframes on elements with an `enter-` class alone. `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`, and `pnpm exec playwright test` pass.
 - **AC-15** (docs): `design.md` records the entrance in its character line and its Motion section, and drops "Motion is limited to colour changes and the command menu's short fade in". Spec 0003 AC-10 gains an "Amended by 0016" note, its token table gains the four variables, and its motion library rule reads: predetermined motion is written in CSS, and the `motion` package is kept for motion CSS cannot express. Spec 0015 gains an "Amended by 0016" note beside AC-17 and its invariant that the menu's fade is the only motion beyond colour. The `review-animations` skill reviews the result before merge.
+- **AC-16** (deep links, added 2026-11-07): a fragment link lands where it would with motion off. A browser scrolls to a fragment by the target's painted box, so a block still on its start frame would carry the target 20px out of place for good. The block that is the target or holds it sets `--motion-enter-rise: 0px` through the `&:is(:target, :has(:target))` rule inside `enter-*`, exactly as written under *Composition*, so it fades in place at its own step while every other block still rises. It keeps every AC-8 value (name, duration, curve, fill, and delay); only its start frame loses the offset. With motion on, opening `/cv#<id>` directly for each `/cv` section heading leaves that heading, once settled, at the same `scrollY` and the same place in the window (within 1px) as with reduced motion, in Chromium, Firefox, and WebKit, so `#experience`, `#projects`, and `#education` put their heading at the top of the window. Changing the hash after load, or going Back between two fragments, starts no animation, so no entrance replays. The rule matches only an `enter-` block, so the skip link's `#main`, which never enters, changes nothing.
 
 ## Decision
 
@@ -58,6 +60,7 @@ Settled while writing (each with the runner up):
 - **`page.emulateMedia` for a single test, `test.use` for a block.** Playwright allows `test.use` only around a whole group of tests, and the menu's fade test sits inside a 1,500 line block. Runner up: a nested group around each test.
 - **A frozen timeline for tests that need one moment.** Rate 0 holds the entrance before the first frame, whereas pausing after load races the page. Runner up: pausing through the Web Animations API, which works in every engine but can miss an animation that has already ended.
 - **No migration.** Nothing is stored, and reverting the merge restores the still pages.
+- **No rise on the block that holds a fragment target (added 2026-11-07, after `/check verify` found deep links landing 20px low).** One variable, set by `:is(:target, :has(:target))`, keeps the one animation and every AC-8 value, and changing it never restarts anything. Runner up: a 0s duration and delay on that block, which shows the target at once but bends AC-8 for it. `animation: none` there replays an entrance whenever the target moves, and leaving the offset cuts the heading off; see [rationale.md](rationale.md).
 
 ## Rationale
 
@@ -85,9 +88,17 @@ The CSS, in `src/styles/global.css`:
   @media screen and (prefers-reduced-motion: no-preference) {
     animation: enter var(--motion-enter) var(--motion-enter-ease) backwards;
     animation-delay: calc(--value(integer) * var(--motion-enter-step));
+
+    /* AC-16: a fragment link lands by the painted box, so the block that
+       is or holds the target fades in place, with no rise. */
+    &:is(:target, :has(:target)) {
+      --motion-enter-rise: 0px;
+    }
   }
 }
 ```
+
+Tailwind 4.3.3 builds the nested rule as one more rule per step, `.enter-3:is(:target, :has(:target)) { --motion-enter-rise: 0px; }`, inside the same media query, and still builds nothing for `enter-[1]` or `enter-foo`. The keyframes read the variable on the element they animate, so the override reaches that one block's start frame alone. Never write `animation: none` there: when the target later moves to another block, the first block's animation returns and its entrance plays again.
 
 The blocks, in order, each starting at step 0:
 
@@ -108,7 +119,7 @@ None. Nothing is stored, and `cv.json` and its schema do not change.
 
 ### State transitions
 
-A block has three moments, all held by the browser: on its start frame during its delay, running for 600ms, then at rest with no trace of the animation. A page restored by Back or Forward from the browser's page cache does not replay; a reload does.
+A block has three moments, all held by the browser: on its start frame during its delay, running for 600ms, then at rest with no trace of the animation. A page restored by Back or Forward from the browser's page cache does not replay; a reload does. A block that is or holds the document's target (`:target`, set by the fragment in the URL) goes through the same three moments with no offset on its start frame. When the target moves after load, only that variable changes and the animation's name stays, so nothing restarts.
 
 ### API surface
 
@@ -117,7 +128,7 @@ A block has three moments, all held by the browser: on its start frame during it
 | `ENTER_CLASSES` (`src/lib/entrance.ts`) | `readonly ['enter-0', …, 'enter-7']` | the eight class names | none |
 | `EnterClass` | `(typeof ENTER_CLASSES)[number]` | the type of one name | none |
 | `enterClass` | `(step: number) => EnterClass` | `enter-<step>`, with any fraction dropped and the step clamped to 0 through 7 | none |
-| `enter-*` (`src/styles/global.css`) | a Tailwind utility taking an integer | the animation and its delay | none |
+| `enter-*` (`src/styles/global.css`) | a Tailwind utility taking an integer | the animation and its delay, with no rise on the block that is or holds the fragment target | none |
 | `BaseLayout` | gains `footerStep?: number \| undefined` | the footer's step | none |
 | `NavRow`, `SiteFooter` | unchanged | the step arrives through `class` | none |
 | `freezeEntrance` (`e2e/helpers.ts`) | `(page: Page) => Promise<void>` | every animation held at its first frame, called before `page.goto` | Chromium only |
@@ -133,6 +144,7 @@ A block has three moments, all held by the browser: on its start frame during it
 | Play a block | duration, rise, gap between steps, curve | the four variables of AC-1 |
 | Play a block | its delay | the step in its class name times `--motion-enter-step` |
 | Decide whether to play | motion on or off, screen or paper | the `@media` query inside `enter-*` |
+| Land a fragment link | the rise of the block that is or holds the target, `0px` | the `&:is(:target, :has(:target))` rule inside `enter-*`, from the URL's fragment |
 | Print the PDF | reduced motion | `page.emulateMedia` in `render-pdf.ts` |
 
 ### Key invariants
@@ -143,6 +155,7 @@ A block has three moments, all held by the browser: on its start frame during it
 - No page settles later than 950ms.
 - The entrance is CSS alone: no script, no `style` attribute, no new dependency, and one script per page holds.
 - Only `opacity` and `translate` animate.
+- A fragment link lands where it would with motion off: the block that is or holds the target never rises, and still runs `enter`.
 - With reduced motion on, or on paper, nothing animates.
 - `--motion-ease` stays the curve of colour transitions and the menu's fade; `--motion-enter-ease` is the entrance's alone.
 
@@ -166,10 +179,13 @@ None. No environment variable, no secret, no new dependency.
 - Reduced motion (`site.spec`, with `reducedMotion: 'reduce'` emulated): every block computes `animation-name: none`, and `getAnimations()` is empty right after load, verifies **AC-9**.
 - Failure case, printing mid entrance (`site.spec`): on every page, call `freezeEntrance`, load, seek to 100ms, then switch to print media; each block computes no animation and opacity 1, verifies **AC-10**.
 - No script (`site.spec`): with JavaScript off a block still computes `enter`, and each page still ships only the menu's script, verifies **AC-11**.
-- Built CSS (`site.spec`): the stylesheet holds `@keyframes enter`, and the utility sits inside the `screen` and `no-preference` query, verifies **AC-2**.
+- Built CSS (`site.spec`): the stylesheet holds `@keyframes enter`, and the utility sits inside the `screen` and `no-preference` query, beside each step's minified AC-16 rule, `.enter-N:is(:target,:has(:target)){--motion-enter-rise:0px}` (Lightning CSS keeps a custom property's value and the `:is()` list as written), verifies **AC-2**, **AC-16**.
 - Early click (`site.spec`): call `freezeEntrance`, load `/`, assert the last row computes opacity 0, then click it; the page opens, verifies **AC-12**.
 - Scrollbar (`site.spec`): call `freezeEntrance`, load `/` at 1280×800, and seek to each step's start time; `scrollHeight` equals `clientHeight` each time, and at 320px nothing scrolls sideways, verifies **AC-12**.
 - Accessibility (`site.spec`): axe in light and dark on each page after `pageSettled`, verifies **AC-13**.
+- Failure case, deep link landing (`site.spec`): the ids are each `main section`'s `aria-labelledby` (its `SectionHeading` id), read from the page. For each id, load `about:blank` and then `/cv#<id>`, so every load is a fresh document with its own entrance (a second load of the same path would only move the hash). Wait for `pageSettled` and `document.fonts.ready`, then read `scrollY` and the heading's top. Do the same after `page.emulateMedia({ reducedMotion: 'reduce' })`; each pair of readings agrees within 1px. Then, with motion on again and the page landed on the first id and settled, for each other id: set `location.hash`, wait two animation frames, and read `document.querySelector(':target').id` (the new id) and `document.getAnimations().length` (0), verifies **AC-16**, **AC-12**.
+- Failure case, deep link first frame (`site.spec`): call `freezeEntrance`, then for each section but the last, load `about:blank` and then `/cv#<id>`. The section that holds the target computes `animation-name: enter`, the 0.6s duration, the AC-1 curve, a `backwards` fill, its step's delay, opacity 0, and a `translate` with no vertical offset (`none`, `0px`, or `0px 0px`, read as the second value, 0 when absent); the next section, the control, computes `enter`, opacity 0, and `0px 20px`, verifies **AC-16**, **AC-8**.
+- Deep link in three engines (`verify`): `/cv#experience`, `#projects`, and `#education` at 1280×800 in Chromium, Firefox, and WebKit, then a hash change and Back, verifies **AC-16**.
 - PDF ink (`verify`): print `dist/cv.pdf` and check its text is solid, verifies **AC-10**.
 - Other engines (`verify`): Firefox and WebKit in the Playwright Docker image, and the iPhone and Android checks, verifies **AC-2**, **AC-9**, **AC-10**, **AC-12**.
 - Docs (`verify`): `design.md` and spec 0003 read as AC-15 says, and the `review-animations` findings are closed, verifies **AC-15**.
@@ -184,6 +200,7 @@ Skateboard: the mechanism lands with nothing moving yet, then home becomes the f
 3. Home, end to end: the blocks and `footerStep` on `src/pages/index.astro`, and the `page entrance` block in `e2e/site.spec.ts` for `/`, covering timing, hidden at rest, what stays still, reduced motion, printing mid entrance, no script, the early click, the scrollbar, and axe, satisfies **AC-5**, **AC-6**, **AC-7**, **AC-8**, **AC-11**, **AC-12**, **AC-13**, **AC-14**.
 4. The other pages: the blocks and `footerStep` on `about`, `cv`, `projects`, `contact`, and `404`, with the `page entrance` tests widened to every page and the `nothing animates` test rewritten, satisfies **AC-5**, **AC-6**, **AC-8**, **AC-13**, **AC-14**.
 5. Docs and the gate: the `design.md` lines, the spec 0003 notes, the `review-animations` skill on the result, then `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm exec playwright test`, and the steps in [verify.md](verify.md), satisfies **AC-10**, **AC-14**, **AC-15**.
+6. Deep links (added 2026-11-07, after `/check verify`): the nested `&:is(:target, :has(:target))` rule and its comment inside `enter-*` in `src/styles/global.css`, and in the `page entrance` block of `e2e/site.spec.ts` the two deep link tests (landing, and first frame) and the AC-16 literal in the built stylesheet test; then the gate again, and in [verify.md](verify.md) the deep link step in Chromium, Firefox, and WebKit and its two break steps, satisfies **AC-12**, **AC-16**.
 
 ## Consequences
 
@@ -202,7 +219,7 @@ Skateboard: the mechanism lands with nothing moving yet, then home becomes the f
 - Each page now carries `enterClass` calls and a `footerStep` number that must agree. A page test guards them, but they are one more thing to get right on a new page.
 - The page tests now run on a state most visitors do not see. The `page entrance` block covers the motion, but a layout bug that shows only with motion on would pass the older tests.
 - The browser may report a later Largest Contentful Paint (when the biggest text first shows), by at most 350ms when the biggest block sits at the last step.
-- A deep link such as `/cv#experience` lands on blocks at a later step, so that view can stay empty for up to 350ms before it fades in.
+- A deep link such as `/cv#experience` lands on a block at a later step, so that view can stay empty for up to 350ms before the block fades in. That block fades in place without its rise (AC-16), so a deep link's first view moves a little less than a load from the top.
 - A link focused early shows a faint focus ring until its block settles, for under a second.
 - Past the cap, the last blocks arrive together, so on `/about` the final two items, the closing line, and the footer enter as one.
 
@@ -211,9 +228,12 @@ Skateboard: the mechanism lands with nothing moving yet, then home becomes the f
 - The share cards, `smoke.sh`, and `public/_headers` are untouched.
 - `freezeEntrance` uses Chromium's debugging protocol, so it works only in the Chromium page tests. Firefox and WebKit are checked in [verify.md](verify.md).
 - During its run a block forms its own stacking context (a separate paint layer), which nothing on these pages depends on, and it leaves no trace afterward.
+- A text fragment link (`#:~:text=`, which search results add) sets no `:target`, so its block still rises. The browser centres that text, possibly while its block is still rising, so it settles up to 20px above the centre, still in view. This is reasoned, not measured: Playwright's navigations do not trigger the text scroll.
+- If the hash changes while the entrance still runs (its first 950ms), the block that gains or loses the target moves by what is left of its 20px. No link on the site moves the target from one block to another today, but the skip link's `#main` moves it off one: pressed during the entrance on `/cv#experience`, it lets Experience move by what is left of its rise.
+- Firefox before 121 has no `:has()`. `:is()` forgives a selector it cannot read, so the rule shrinks to `:target` alone, which matches no CV section (the id sits on the heading), and those visitors keep the 20px offset. Older Safari may not read the variable again during a running animation (not measured), which matters only when the hash changes during the entrance.
 
 ## Follow-up
 
-- [ ] `/sync`: add a page entrance rule to the `AGENTS.md` `## Rules` (`enterClass` for every block, `footerStep` on every page, CSS only), update the command menu rule's "the site's one motion beyond colour", and note the page tests' reduced motion default under `## Tooling`.
-- [ ] A new page's spec lists its blocks and its `footerStep`, as the *Composition* table does. The History page (scope row 17) is the first.
+- [ ] `/sync`: add a page entrance rule to the `AGENTS.md` `## Rules` (`enterClass` for every block, `footerStep` on every page, CSS only, and the AC-16 rule that the block holding a fragment target never rises), update the command menu rule's "the site's one motion beyond colour", and note the page tests' reduced motion default under `## Tooling`.
+- [ ] A new page's spec lists its blocks and its `footerStep`, as the *Composition* table does. The History page (scope row 17) is the first; its anchors land right through AC-16 as long as each target is, or sits inside, an `enter-` block.
 - [ ] Measure Largest Contentful Paint on the live site after the merge. If it moves past 2.5s on a slow connection, revisit the delays.

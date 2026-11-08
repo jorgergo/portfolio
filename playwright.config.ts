@@ -23,8 +23,13 @@ export default defineConfig({
   // scrollbars take no space, as on macOS and phones, so a 320px viewport stays
   // a 320px layout. Playwright passes its own `--enable-features`, so this one
   // names its feature too and both stay on.
+  // Spec 0016: every test sees a still page, with no entrance and instant
+  // colour transitions, so no read lands mid fade. A test that asserts a real
+  // duration emulates `reducedMotion: 'no-preference'` before it loads its
+  // page, and the `page entrance` block does so for all its tests.
   use: {
     ...devices['Desktop Chrome'],
+    reducedMotion: 'reduce',
     launchOptions: {
       args: ['--enable-features=CDPScreenshotNewSurface,OverlayScrollbar'],
     },

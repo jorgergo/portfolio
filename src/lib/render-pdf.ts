@@ -75,6 +75,10 @@ export const cvPdf = (): AstroIntegration => ({
             ? route.fulfill({ status: 404 })
             : route.fulfill({ path });
         });
+        // Spec 0016: a second guard on the entrance. Print media already turns
+        // it off, but nothing checks the PDF's ink, so the page also loads
+        // with reduced motion, where no block ever starts faded.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
         const response = await page.goto(`${ORIGIN}${PAGE}`);
         if (response?.status() !== 200) {
           throw new Error('cv.pdf: dist/cv.html did not load; see spec 0013');

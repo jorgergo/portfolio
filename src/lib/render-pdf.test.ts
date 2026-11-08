@@ -228,6 +228,19 @@ describe('cvPdf', () => {
     });
   });
 
+  // A second page that exists only while the page may move, so the page count
+  // tells whether /cv loaded with reduced motion.
+  // covers: spec 0016 AC-10
+  it('loads /cv with reduced motion, so no entrance can start on paper', async () => {
+    await writeCv(
+      '<style>.moving { display: none } @media (prefers-reduced-motion: no-preference) { .moving { display: block } }</style><p class="sheet moving">Moving.</p>',
+    );
+
+    await run();
+
+    expect(readPdfFacts(await readFile(output())).pages).toBe(1);
+  });
+
   // covers: spec 0013 AC-13
   it('logs the page count and the size in whole kB, once', async () => {
     await writeCv('<p class="sheet">Page two.</p>');
