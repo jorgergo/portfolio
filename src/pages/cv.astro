@@ -31,6 +31,7 @@ import {
   type KeyedRow,
 } from '@/lib/cv-format';
 import { CV_PDF_PATH, cvPdfFileName } from '@/lib/cv-pdf';
+import { enterClass } from '@/lib/entrance';
 import { pageMeta } from '@/lib/site-meta';
 
 // Spec 0005: the whole CV as a Harvard style document from cv.json, read once.
@@ -40,7 +41,9 @@ import { pageMeta } from '@/lib/site-meta';
 // page to cv.pdf, and the button in the header saves that file. The header's
 // first row wraps by fit, with no breakpoint: the button sits beside the name
 // block when the row has room for both and under it when it does not, and it
-// follows the name block in the markup, so Tab order is reading order.
+// follows the name block in the markup, so Tab order is reading order. Spec
+// 0016: the header's first row, the contact line, then each section enter in
+// order, with the footer last; on paper nothing moves.
 const cv = await getCv();
 const { basics } = cv;
 
@@ -167,10 +170,19 @@ const sections: readonly Section[] = [
 const rendered = sections.filter(hasContent);
 ---
 
-<BaseLayout {...pageMeta('cv', cv, Astro.site)} printFooter={false}>
+<BaseLayout
+  {...pageMeta('cv', cv, Astro.site)}
+  printFooter={false}
+  footerStep={rendered.length + 2}
+>
   <div class="flex flex-col gap-14 print:gap-5">
     <header class="flex flex-col gap-2 print:gap-1">
-      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div
+        class:list={[
+          'flex flex-wrap items-center justify-between gap-x-4 gap-y-2',
+          enterClass(0),
+        ]}
+      >
         <div class="flex flex-col gap-2 print:gap-1">
           <h1 class="text-lg font-medium">{basics.name}</h1>
           <p class="text-sm text-muted">
@@ -186,7 +198,7 @@ const rendered = sections.filter(hasContent);
           Download PDF
         </Button>
       </div>
-      <address class="not-italic">
+      <address class:list={['not-italic', enterClass(1)]}>
         <ul class="flex flex-wrap text-sm text-muted">
           {contacts.map(({ href, text, paperOnly, separator }) => (
             <li
@@ -217,9 +229,9 @@ const rendered = sections.filter(hasContent);
         </ul>
       </address>
     </header>
-    {rendered.map((section) => (
+    {rendered.map((section, index) => (
       <section
-        class="flex flex-col gap-6 print:gap-3"
+        class:list={['flex flex-col gap-6 print:gap-3', enterClass(index + 2)]}
         aria-labelledby={section.id}
       >
         <SectionHeading

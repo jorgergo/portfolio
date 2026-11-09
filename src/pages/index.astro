@@ -2,19 +2,25 @@
 import NavRow from '@/components/NavRow.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
+import { enterClass } from '@/lib/entrance';
 import { pageMeta } from '@/lib/site-meta';
 import { formatRowNumber, SITE_NAV } from '@/lib/site-nav';
 
 // Spec 0008: the name, the muted tagline, and the pages that exist as numbered
 // rows, centred in the page by the layout. The bio stays in the head as the
-// description, and the links live on /contact. No avatar, no motion, no
-// script. The head comes from the `home` row (spec 0006).
+// description, and the links live on /contact. No avatar, no script. The head
+// comes from the `home` row (spec 0006). Spec 0016: the header enters first,
+// then each row, then the footer.
 const cv = await getCv();
 const { basics } = cv;
 ---
 
-<BaseLayout {...pageMeta('home', cv, Astro.site)} centered>
-  <header class="flex flex-col gap-2">
+<BaseLayout
+  {...pageMeta('home', cv, Astro.site)}
+  centered
+  footerStep={SITE_NAV.length + 1}
+>
+  <header class:list={['flex flex-col gap-2', enterClass(0)]}>
     <h1 class="text-title font-medium">{basics.name}</h1>
     <p class="text-pretty text-muted">{basics.tagline}</p>
   </header>
@@ -26,6 +32,7 @@ const { basics } = cv;
           href={href}
           prefix={formatRowNumber(index)}
           label={label}
+          class={enterClass(index + 1)}
         />
       ))}
     </ol>
