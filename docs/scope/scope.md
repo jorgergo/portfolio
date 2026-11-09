@@ -273,7 +273,7 @@ spec [0016](../specs/0016-page-entrance-motion/index.md) · code in `src/styles/
 - [x] Verify it: `/check verify page entrance motion`
 - [x] Test it: `/test page entrance motion`
 - [x] Review it (fresh model): `/check review page entrance motion`
-- [ ] Document it: `/document page entrance motion`
+- [x] Document it: `/document page entrance motion`
 
 ### 17. History page · needs a decision · from spec 0013
 Your full path from student to now on its own page: every role, certificate, and project, including what the two page CV leaves out.
