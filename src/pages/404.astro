@@ -7,14 +7,16 @@ import { formatPageTitle } from '@/lib/site-meta';
 
 // Spec 0006: the title pattern and nothing else. Workers answers with HTTP 404,
 // so no noindex is needed, and a canonical to a missing page would be wrong.
-// Spec 0016: the heading and the two lines enter in order, then the footer.
+// Spec 0016: the heading and the two lines enter in order, steps 0 to 2, then
+// the footer at the step after them. A fourth block raises the count.
+const BLOCKS = 3;
 const { basics } = await getCv();
 ---
 
 <BaseLayout
   title={formatPageTitle(basics, 'Not found')}
   description="This page does not exist."
-  footerStep={3}
+  footerStep={BLOCKS}
 >
   <section class="flex flex-col gap-6">
     <h1 class:list={['text-lg font-medium', enterClass(0)]}>Not found</h1>

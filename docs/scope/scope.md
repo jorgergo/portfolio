@@ -272,7 +272,7 @@ spec [0016](../specs/0016-page-entrance-motion/index.md) · code in `src/styles/
   - [x] Deep links, after the first `/check verify`: the `:is(:target, :has(:target))` rule in `enter-*` and the deep link page tests, proved in Chromium, Firefox, and WebKit (AC-12, AC-16)
 - [x] Verify it: `/check verify page entrance motion`
 - [x] Test it: `/test page entrance motion`
-- [ ] Review it (fresh model): `/check review page entrance motion`
+- [x] Review it (fresh model): `/check review page entrance motion`
 - [ ] Document it: `/document page entrance motion`
 
 ### 17. History page · needs a decision · from spec 0013

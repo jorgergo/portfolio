@@ -6264,7 +6264,10 @@ test.describe('page entrance', () => {
   });
 
   // The entrance itself never applies under reduced motion; this guards any
-  // later animation, which must not keep a delay there either.
+  // later animation, which must not keep a delay there either. Nothing
+  // animates under reduced motion today, so no computed style can show the
+  // rule (a block's delay reads 0s with or without it); the built stylesheet
+  // is the one place it is visible.
   // covers: spec 0016 AC-9
   test('the built reduced motion rule zeroes every animation delay', () => {
     const css = distFiles()
