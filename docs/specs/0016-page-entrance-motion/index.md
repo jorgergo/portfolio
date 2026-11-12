@@ -1,7 +1,7 @@
 # 0016. Page entrance as a staggered fade up in CSS
 
 **Date**: 2026-10-29
-**Status**: In Progress
+**Status**: Accepted
 **Amends**: [0003](../0003-design-system/index.md) AC-10 and its motion library rule · [0008](../0008-home-page-centered-menu/index.md) AC-7 · [0015](../0015-command-menu-panel/index.md) AC-17 and its motion invariant
 
 ## Summary
