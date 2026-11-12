@@ -29,7 +29,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 16 | Project links live | Release 3 | dropped |
 | 17 | History page | Release 2 | planned |
 | 18 | Command menu redesign | Release 2 | done |
-| 19 | Page entrance motion | Release 2 | in-progress |
+| 19 | Page entrance motion | Release 2 | done |
 
 ## Foundations
 
@@ -257,7 +257,7 @@ spec [0015](../specs/0015-command-menu-panel/index.md) · code in `src/component
 - [x] Review it (fresh model): `/check review command menu redesign`
 - [x] Document it: `/document command menu redesign`
 
-### 19. Page entrance motion · in-progress
+### 19. Page entrance motion · done
 When a page loads, its opening blocks appear one after another, top to bottom, in a short and quiet stagger of fade up entrances, like t3.gg. Nothing else on the page moves.
 **Done when:** on each page it covers, the opening blocks enter in order, top to bottom, quick and quiet; reduced motion shows everything at once with no delay; print and the built `cv.pdf` show every block at full ink; one script per page, the CSP, AA contrast, and the page tests still hold.
 **Note:** measured on t3.gg on 29 Oct 2026: one CSS keyframe (opacity 0 to 1, `translateY(20px)` to 0) at 600ms on `cubic-bezier(0.16, 1, 0.3, 1)`, fill forwards; eight blocks (header, six rows, footer) 50ms apart through inline `animation-delay`, all settled by 950ms; an `opacity-0` class hides the content until it runs, and there is no reduced motion rule. Copying it bends spec 0003 AC-10 (motion limited to colour, nothing hidden at rest), and the hashed CSP blocks its inline delays, so `/architect` settles the pattern in a new spec. Also open there: today's reduced motion rule shortens durations but keeps `animation-delay`, and neither `render-pdf.ts` nor `playwright.config.ts` turns motion off, so the PDF and the page tests could catch a block mid fade.
