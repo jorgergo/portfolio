@@ -199,6 +199,40 @@ Run again on the final content: the prototype build (`astro check` with 0 errors
 
 The ticket count is the organizer's sales figure, so a follow up in [index.md](index.md) asks you to check with them before the merge.
 
+### The paper spacing fix (2026-11-06)
+
+You found the downloaded PDF's spacing uneven: what looked like a blank line under `Full Stack Developer, PDPO` and none under `Process Automation Intern`, and roles and companies spaced almost the same. A `/debug` run measured the paper gaps as 5pt between roles, 7.5pt between companies, and 2.5pt between an entry's lines. The blank line was a grouped role's location alone on its line 2 (fixed in spec 0005 AC-4; the options are in [its rationale](../0005-cv-page/rationale.md)). The near equal gaps came from one section gap serving both the heading to its first entry and one entry to the next.
+
+The classes, at the 10pt root:
+
+| Gap | Before | After |
+|---|---|---|
+| Between an entry's lines, and inside its body | `print:gap-1`, 0.25rem (2.5pt) | unchanged |
+| Between the roles of a group | `print:gap-2`, 0.5rem (5pt) | `print:gap-1`, 0.25rem (2.5pt) |
+| From a section heading to its content | `print:gap-3`, 0.75rem (7.5pt) | unchanged, now to a body `div` |
+| Between the entries of a section | `print:gap-3`, 0.75rem (7.5pt), the same gap | `print:gap-4`, 1rem (10pt), on the body `div` |
+| Between sections, and from the header to the first | `print:gap-5`, 1.25rem (12.5pt) | `print:gap-6`, 1.5rem (15pt) |
+
+Visible white between text lines, read from the line boxes of `dist/cv.pdf` with PyMuPDF (the white includes each line's half leading, so it is larger than the gap class alone):
+
+| Between | Before | After |
+|---|---|---|
+| A company and its first role | 4.6pt | 3.9pt |
+| One role and the next | 6.5pt | 4.3pt |
+| One company and the next | 8.8pt | 11.8pt |
+| One section and the next | about 13.3pt | 16.3pt |
+
+So a role now sits about as close under the role before it as the first role sits under its company, and a new company is almost three times that.
+
+The page fill, as the text bottom of each page against the 756pt bottom margin (36pt margins on a 792pt page):
+
+| | Page one | Page two |
+|---|---|---|
+| 2026-10-05, at the merge | 46 lines, 32.9pt spare | 51 lines, 34.0pt spare |
+| 2026-11-06, after the fix | 44 lines, 52.4pt spare (93% full) | 51 lines, 11.9pt spare (98% full) |
+
+The content did not change between the two builds. Page one lost its two lone location lines (about 30pt, each a 12.7pt `text-sm` line plus its 2.5pt gap) and gave about 10pt of that back to its bigger gaps; Medipal still does not fit at its foot, so it stays at the top of page two and every bigger gap after it lands on page two. A body line is 14.5pt (10pt at line height 1.45), so page two now has room for no more lines: the next line added there makes a third page, and the build stops. By the same arithmetic page one has room for about three; that was not measured with real content.
+
 ### Research on resume standards
 
 One capped pass by a research helper on 2026-10-05 (5 searches, 7 pages loaded); its notes are cached at `docs/.agent-cache/research/cv-market-standards.md`, which is local and not committed. Read it as common practice: most pages that loaded are guides from resume tool vendors, with the Stack Overflow survey and one Hacker News thread as the stronger sources.

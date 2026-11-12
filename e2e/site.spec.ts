@@ -3467,11 +3467,15 @@ test.describe('cv page', () => {
       await expect(heading).toHaveText(role.position);
       await expect(heading).toHaveCSS('font-weight', '400');
       await expect(roles.nth(index)).toHaveCSS('break-inside', 'avoid');
-      // Line 2 holds the location alone, and exists only when there is one.
-      await expect(rightValues(roles.nth(index))).toHaveText([
-        formatDateRange(role.startDate, role.endDate),
-        ...optional(role.location),
-      ]);
+      // On screen line 2 holds the location alone, and exists only when there
+      // is one; the copy beside the date shows on paper alone (see print).
+      await expect(rightValues(roles.nth(index))).toHaveText(
+        [
+          formatDateRange(role.startDate, role.endDate),
+          ...optional(role.location),
+        ],
+        { useInnerText: true },
+      );
       await expect(subtitles(roles.nth(index))).toHaveCount(0);
       await expect(roles.nth(index).locator('li')).toHaveCount(
         role.highlights.length,
@@ -4098,14 +4102,24 @@ test.describe('cv page', () => {
         'display',
         'none',
       );
-      // Under main the one hidden element is the download link; every
-      // contact item prints, the paper only one among them.
+      // Under main the hidden elements are the download link and the line 2
+      // of each grouped role with a location, which prints beside the date
+      // instead; every contact item prints, the paper only one among them.
       const hidden = await page.evaluate(() =>
         [...document.querySelectorAll('main *')]
           .filter((el) => getComputedStyle(el).display === 'none')
           .map((el) => `${el.tagName} ${el.getAttribute('href') ?? ''}`),
       );
-      expect(hidden).toEqual([`A ${CV_PDF_PATH}`]);
+      const movedLocations = ROLE_SECTIONS.flatMap(({ groups }) =>
+        groups
+          .filter(({ items }) => items.length > 1)
+          .flatMap(({ items }) => items)
+          .filter(({ location }) => location !== undefined),
+      );
+      expect(hidden).toEqual([
+        `A ${CV_PDF_PATH}`,
+        ...movedLocations.map(() => 'DIV '),
+      ]);
       await expect(downloadButton(page)).toHaveCSS('display', 'none');
     });
 
@@ -4150,12 +4164,17 @@ test.describe('cv page', () => {
         'none',
       );
 
-      // 1.25rem between the header and each section, 0.75rem inside a section.
-      await expect(wrapper(page)).toHaveCSS('row-gap', '16.6667px');
+      // 1.5rem between the header and each section, 0.75rem from a heading
+      // to its body, and 1rem between the entries of a body.
+      await expect(wrapper(page)).toHaveCSS('row-gap', '20px');
       await expect(header(page)).toHaveCSS('row-gap', '3.33333px');
       await expect(nameBlock(page)).toHaveCSS('row-gap', '3.33333px');
       for (const { id } of SECTIONS) {
         await expect(section(page, id)).toHaveCSS('row-gap', '10px');
+        await expect(section(page, id).locator(':scope > div')).toHaveCSS(
+          'row-gap',
+          '13.3333px',
+        );
       }
       // Every entry and every role is a CvEntry: 0.25rem between its lines and
       // inside its own body (the flex one; a coursework line in the slot has
@@ -4174,18 +4193,53 @@ test.describe('cv page', () => {
       for (const bullets of await page.locator('main section ul').all()) {
         await expect(bullets).toHaveCSS('row-gap', '1.66667px');
       }
-      // 0.5rem between the roles of a group, in both role sections.
+      // 0.25rem between the roles of a group, in both role sections: the
+      // same step as between an entry's lines, so a role sits as close under
+      // the role before it as the first role sits under its company.
       for (const { id, groups } of ROLE_SECTIONS) {
         const titles = section(page, id).getByRole('heading', { level: 3 });
         for (const [index, { items }] of groups.entries()) {
           if (items.length === 1) continue;
           await expect(
             entryOf(titles.nth(index)).locator(':scope > div').last(),
-          ).toHaveCSS('row-gap', '6.66667px');
+          ).toHaveCSS('row-gap', '3.33333px');
         }
       }
       for (const list of await page.locator('main section dl').all()) {
         await expect(list).toHaveCSS('row-gap', '3.33333px');
+      }
+    });
+
+    // covers: spec 0005 AC-5, spec 0013 AC-10
+    test("prints a grouped role's location beside its date, so no line holds a location alone", async ({
+      page,
+    }) => {
+      for (const { id, groups } of ROLE_SECTIONS) {
+        const titles = section(page, id).getByRole('heading', { level: 3 });
+        for (const [index, { items }] of groups.entries()) {
+          if (items.length === 1) continue;
+          const roles = entryOf(titles.nth(index))
+            .locator(':scope > div')
+            .last()
+            .locator(':scope > div');
+          for (const [at, role] of items.entries()) {
+            await expect(
+              lines(roles.nth(at)).first().locator(':scope > span'),
+            ).toHaveText(
+              joinMeta(
+                role.location,
+                formatDateRange(role.startDate, role.endDate),
+              ),
+              { useInnerText: true },
+            );
+            if (role.location !== undefined) {
+              await expect(lines(roles.nth(at)).nth(1)).toHaveCSS(
+                'display',
+                'none',
+              );
+            }
+          }
+        }
       }
     });
 

@@ -1,6 +1,7 @@
 ---
 import Prose from '@/components/Prose.astro';
 import TextLink from '@/components/TextLink.astro';
+import { META_SEPARATOR } from '@/lib/cv-format';
 import { PAIR } from '@/lib/pair';
 
 interface Props {
@@ -38,6 +39,12 @@ const {
 
 const hasSecondLine = subtitle !== undefined || aside !== undefined;
 const hasBody = summary !== undefined || highlights.length > 0;
+// A location with nothing on its left (a grouped role's) would hold line 2
+// alone, which reads as a blank line. On paper it joins the date on line 1
+// instead, `Remote · Aug 2025 – Present`, and line 2 hides; the screen keeps
+// line 2, since its column is too narrow for both (spec 0005).
+const asideJoinsMeta =
+  subtitle === undefined && aside !== undefined && meta !== undefined;
 
 // Both lines are a `PAIR` (`src/lib/pair.ts`), which the `/projects` rows
 // share. On line 2 the subtitle grows from zero width (`xs:flex-1`), so it
@@ -59,12 +66,15 @@ const hasBody = summary !== undefined || highlights.length > 0;
     </Tag>
     {meta !== undefined && (
       <span class="shrink-0 text-sm text-muted xs:ml-auto xs:text-right">
+        {asideJoinsMeta && (
+          <span class="hidden print:inline">{aside + META_SEPARATOR}</span>
+        )}
         {meta}
       </span>
     )}
   </div>
   {hasSecondLine && (
-    <div class={PAIR}>
+    <div class:list={[PAIR, asideJoinsMeta && 'print:hidden']}>
       {subtitle !== undefined && <p class="xs:flex-1">{subtitle}</p>}
       {aside !== undefined && (
         <span class="min-w-0 text-sm text-muted xs:ml-auto xs:text-right">

@@ -88,3 +88,22 @@ _Steps for the review fixes, build plan tasks 5 to 7._
 ### Acceptance-criteria coverage
 
 - AC-4: the style guide width step, the `/cv` width step, the `xs:flex-1` grep · AC-8: the separator greps · AC-9: `pnpm test` · AC-13: the style guide step, the `design.md` read · AC-15: the export and page greps, `pnpm test` · AC-16: the page grep, the scratch copy Playwright runs
+
+## Added after the paper spacing fix (/architect, 2026-11-06)
+
+_Steps for the paper rule of AC-4 (amended 2026-11-06), from commit `07046b2`._
+
+### UI / manual
+
+- [x] `pnpm build`, then read page one of `dist/cv.pdf` with PyMuPDF → `Full Stack Developer, PDPO` shares its line with `Remote · Aug 2025 – Present`, and `Software Engineer, IT Academy` with `Mexico City, Mexico · Jan 2025 – Jul 2025`, both right aligned at 576pt; no line holds a location alone; page one has 44 text lines (46 on 2026-10-05) → AC-4, AC-5
+- [x] `pnpm preview`, open `/cv` at 1280px → on screen each Ford role still shows its date at the right of line 1 and its location alone at the right of line 2, and nothing reads `Remote ·` → AC-4
+- [x] Print preview `/cv` in Chrome → the same lines as the PDF; `Process Automation Intern` keeps `Mexico City, Mexico` at the right of its own line 2, since that entry has a subtitle → AC-4, AC-5
+- [x] Select and copy the Ford group in the PDF, paste it into a text editor → each location appears once, before its date → AC-4
+
+### Commands
+
+- [x] `pnpm exec playwright test --project site -g "consecutive roles at one company|location beside its date"` → the screen case `consecutive roles at one company group under one company line` and the print case `prints a grouped role's location beside its date, so no line holds a location alone` pass → AC-4, AC-5, AC-16
+
+### Acceptance-criteria coverage
+
+- AC-4: the PDF read, the screen step, the print preview, the copy step, the Playwright run · AC-5: the PDF read, the print preview · AC-16: the Playwright run (the moved locations are counted from the fixture)

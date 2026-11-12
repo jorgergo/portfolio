@@ -43,7 +43,12 @@ import { pageMeta } from '@/lib/site-meta';
 // block when the row has room for both and under it when it does not, and it
 // follows the name block in the markup, so Tab order is reading order. Spec
 // 0016: the header's first row, the contact line, then each section enter in
-// order, with the footer last; on paper nothing moves.
+// order, with the footer last; on paper nothing moves. On paper the gaps step
+// from tight to wide: 0.25rem between the lines of an entry and between the
+// roles of a group, 0.75rem from a heading's rule to its content, 1rem
+// between entries, and 1.5rem between sections, so a new role, a new entry,
+// and a new section each read as one step up. All are flex gaps, so none
+// lands above a first item or at the top of a page.
 const cv = await getCv();
 const { basics } = cv;
 
@@ -175,7 +180,7 @@ const rendered = sections.filter(hasContent);
   printFooter={false}
   footerStep={rendered.length + 2}
 >
-  <div class="flex flex-col gap-14 print:gap-5">
+  <div class="flex flex-col gap-14 print:gap-6">
     <header class="flex flex-col gap-2 print:gap-1">
       <div
         class:list={[
@@ -240,96 +245,100 @@ const rendered = sections.filter(hasContent);
         >
           {section.heading}
         </SectionHeading>
-        {section.kind === 'summary' && (
-          <Prose>
-            <p>{section.text}</p>
-          </Prose>
-        )}
-        {section.kind === 'roles' &&
-          section.groups.map((group) => {
-            const role = single(group);
-            return role !== undefined ? (
+        <div class="flex flex-col gap-6 print:gap-4">
+          {section.kind === 'summary' && (
+            <Prose>
+              <p>{section.text}</p>
+            </Prose>
+          )}
+          {section.kind === 'roles' &&
+            section.groups.map((group) => {
+              const role = single(group);
+              return role !== undefined ? (
+                <CvEntry
+                  title={group.key}
+                  href={role.url}
+                  meta={formatDateRange(role.startDate, role.endDate)}
+                  subtitle={role.position}
+                  aside={role.location}
+                  summary={role.summary}
+                  highlights={role.highlights}
+                />
+              ) : (
+                <CvEntry
+                  splittable
+                  title={group.key}
+                  href={firstUrl(group.items)}
+                  meta={groupMeta(group)}
+                >
+                  <div class="flex flex-col gap-4 print:gap-1">
+                    {group.items.map((item) => (
+                      <CvEntry
+                        as="h4"
+                        title={item.position}
+                        meta={formatDateRange(item.startDate, item.endDate)}
+                        aside={item.location}
+                        summary={item.summary}
+                        highlights={item.highlights}
+                      />
+                    ))}
+                  </div>
+                </CvEntry>
+              );
+            })}
+          {section.kind === 'projects' &&
+            section.entries.map((project) => (
               <CvEntry
-                title={group.key}
-                href={role.url}
-                meta={formatDateRange(role.startDate, role.endDate)}
-                subtitle={role.position}
-                aside={role.location}
-                summary={role.summary}
-                highlights={role.highlights}
-              />
-            ) : (
-              <CvEntry
-                splittable
-                title={group.key}
-                href={firstUrl(group.items)}
-                meta={groupMeta(group)}
+                title={project.name}
+                href={projectHref(project)}
+                meta={formatDateRange(project.startDate, project.endDate)}
+                summary={project.description}
+                highlights={project.highlights}
               >
-                <div class="flex flex-col gap-4 print:gap-2">
-                  {group.items.map((item) => (
-                    <CvEntry
-                      as="h4"
-                      title={item.position}
-                      meta={formatDateRange(item.startDate, item.endDate)}
-                      aside={item.location}
-                      summary={item.summary}
-                      highlights={item.highlights}
-                    />
-                  ))}
-                </div>
+                <p class="text-sm text-muted">
+                  {joinMeta(...project.keywords)}
+                </p>
               </CvEntry>
-            );
-          })}
-        {section.kind === 'projects' &&
-          section.entries.map((project) => (
-            <CvEntry
-              title={project.name}
-              href={projectHref(project)}
-              meta={formatDateRange(project.startDate, project.endDate)}
-              summary={project.description}
-              highlights={project.highlights}
-            >
-              <p class="text-sm text-muted">{joinMeta(...project.keywords)}</p>
-            </CvEntry>
-          ))}
-        {section.kind === 'education' &&
-          section.entries.map((entry) => (
-            <CvEntry
-              title={entry.institution}
-              href={entry.url}
-              meta={formatDateRange(entry.startDate, entry.endDate)}
-              subtitle={joinMeta(
-                `${entry.studyType}, ${entry.area}`,
-                entry.score,
-              )}
-              aside={entry.location}
-            >
-              {entry.courses !== undefined && entry.courses.length > 0 && (
-                <Prose>
-                  <p>Coursework: {entry.courses.join(', ')}.</p>
-                </Prose>
-              )}
-            </CvEntry>
-          ))}
-        {section.kind === 'awards' &&
-          section.entries.map((award) => (
-            <CvEntry
-              title={award.title}
-              meta={formatMonth(award.date)}
-              subtitle={award.awarder}
-              summary={award.summary}
-            />
-          ))}
-        {section.kind === 'certificates' &&
-          section.entries.map((certificate) => (
-            <CvEntry
-              title={certificate.name}
-              href={certificate.url}
-              meta={formatMonth(certificate.date)}
-              subtitle={certificate.issuer}
-            />
-          ))}
-        {section.kind === 'skills' && <KeyedList items={section.items} />}
+            ))}
+          {section.kind === 'education' &&
+            section.entries.map((entry) => (
+              <CvEntry
+                title={entry.institution}
+                href={entry.url}
+                meta={formatDateRange(entry.startDate, entry.endDate)}
+                subtitle={joinMeta(
+                  `${entry.studyType}, ${entry.area}`,
+                  entry.score,
+                )}
+                aside={entry.location}
+              >
+                {entry.courses !== undefined && entry.courses.length > 0 && (
+                  <Prose>
+                    <p>Coursework: {entry.courses.join(', ')}.</p>
+                  </Prose>
+                )}
+              </CvEntry>
+            ))}
+          {section.kind === 'awards' &&
+            section.entries.map((award) => (
+              <CvEntry
+                title={award.title}
+                meta={formatMonth(award.date)}
+                subtitle={award.awarder}
+                summary={award.summary}
+              />
+            ))}
+          {section.kind === 'certificates' &&
+            section.entries.map((certificate) => (
+              <CvEntry
+                title={certificate.name}
+                href={certificate.url}
+                meta={formatMonth(certificate.date)}
+                subtitle={certificate.issuer}
+              />
+            ))}
+          {section.kind === 'skills' && <KeyedList items={section.items} />}
+        </div>
       </section>
     ))}
   </div>

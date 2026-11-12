@@ -142,6 +142,22 @@ Print, `page.pdf` with print media at the 11pt root and 18mm margins, content on
 
 No page ends on a heading or a company line; the Ford group splits between its two roles as designed.
 
+### Paper spacing fix (2026-11-06, `dist/cv.pdf` read with PyMuPDF)
+
+You downloaded the PDF and saw what looked like a blank line under `Full Stack Developer, PDPO` and none under `Process Automation Intern`. A `/debug` run found the cause: a grouped role has no subtitle, so its line 2 held only the location, pushed to the right edge. In the PDF a short muted word at the far right of an otherwise empty line reads as space, not as text.
+
+Three fixes were put to you:
+
+| Option | On paper | On screen | Cost |
+|---|---|---|---|
+| Location beside the date, on paper only (chosen) | `Remote · Aug 2025 – Present` on line 1, no line 2 | unchanged | one paper only branch in `CvEntry` |
+| Location after the role title | `Full Stack Developer, PDPO · Remote` | the same | a location on the left, where no other entry has one; on screen it competes with the title for the narrow column |
+| Line 2 kept, location left aligned | `Remote` alone at the left of line 2 | the same | still one whole line per role |
+
+Why paper has the room: the text area on Letter is 540pt (36pt to 576pt). The widest role line today is `Software Engineer, IT Academy` (174.0pt) beside `Mexico City, Mexico · Jan 2025 – Jul 2025` (215.1pt), 389pt in all, which leaves 151pt between them. On screen the same right value is 344px against a 432px text area at 480px, the arithmetic in [index.md](index.md) that kept locations on line 2.
+
+After the fix page one of the PDF has 44 text lines, two fewer than the 46 measured on 2026-10-05, and no line holds a location alone. The gap values that shipped with this fix are measured in spec 0013's [rationale.md](../0013-cv-pdf-download/rationale.md).
+
 ## References
 
 **Project sources** (verifiable, in this repo):
