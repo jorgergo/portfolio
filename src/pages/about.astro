@@ -3,11 +3,14 @@ import TextLink from '@/components/TextLink.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 import { splitAtEmail } from '@/lib/cv-schema';
+import { enterClass } from '@/lib/entrance';
 import { pageMeta } from '@/lib/site-meta';
 
 // Spec 0009: the heading, the intro, what you care about as lines behind a
 // muted `›`, and one closing sentence with the email as its only link. No
-// photo, no script. The head comes from the `about` row (spec 0006).
+// photo, no script. The head comes from the `about` row (spec 0006). Spec
+// 0016: the heading, the intro, each line, then the closing enter in reading
+// order, with the footer last.
 const cv = await getCv();
 const { basics, about } = cv;
 const mailto = `mailto:${basics.email}`;
@@ -18,13 +21,16 @@ const mailto = `mailto:${basics.email}`;
 const closing = splitAtEmail(about.closing);
 ---
 
-<BaseLayout {...pageMeta('about', cv, Astro.site)}>
+<BaseLayout
+  {...pageMeta('about', cv, Astro.site)}
+  footerStep={about.items.length + 3}
+>
   <div class="flex flex-col gap-6 text-pretty">
-    <h1 class="text-lg font-medium">about</h1>
-    <p>{about.intro}</p>
+    <h1 class:list={['text-lg font-medium', enterClass(0)]}>about</h1>
+    <p class={enterClass(1)}>{about.intro}</p>
     <ul class="flex flex-col gap-2">
-      {about.items.map((item) => (
-        <li class="flex">
+      {about.items.map((item, index) => (
+        <li class:list={['flex', enterClass(index + 2)]}>
           <span aria-hidden="true" class="w-5 shrink-0 text-muted">
             ›
           </span>
@@ -33,6 +39,6 @@ const closing = splitAtEmail(about.closing);
       ))}
     </ul>
     {/* prettier-ignore */}
-    <p>{closing === undefined ? about.closing : <>{closing.before}<TextLink href={mailto}>{basics.email}</TextLink>{closing.after}</>}</p>
+    <p class={enterClass(about.items.length + 2)}>{closing === undefined ? about.closing : <>{closing.before}<TextLink href={mailto}>{basics.email}</TextLink>{closing.after}</>}</p>
   </div>
 </BaseLayout>

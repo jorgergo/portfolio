@@ -190,6 +190,24 @@ export const focusables = (page: Page): Promise<readonly Stop[]> =>
       }));
   });
 
+// Spec 0016: holds every animation of the next page load at its first frame,
+// so a test can read one moment of the entrance without racing it. Call it
+// before `page.goto`, then seek by setting `currentTime` on each of
+// `document.getAnimations()`. It speaks Chromium's debugging protocol (CDP),
+// so it works in the Chromium page tests alone.
+export const freezeEntrance = async (page: Page): Promise<void> => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Animation.enable');
+  await cdp.send('Animation.setPlaybackRate', { playbackRate: 0 });
+};
+
+// Spec 0016: resolves once nothing on the page animates, the entrance and any
+// colour transition alike; the one page wide wait behind every "once
+// settled" check. The poll's timeout fails the test.
+export const pageSettled = async (page: Page): Promise<void> => {
+  await page.waitForFunction(() => document.getAnimations().length === 0);
+};
+
 // True when the page is wider than the viewport, the 320px failure (AC-5).
 export const scrollsSideways = (page: Page): Promise<boolean> =>
   page.evaluate(

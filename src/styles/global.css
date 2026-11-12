@@ -32,6 +32,36 @@
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/*
+  Spec 0016: the page entrance. A block takes one `enter-<step>` class, always
+  from enterClass in src/lib/entrance.ts, and fades in while rising, its step
+  times 50ms after the page loads. The keyframes have no `to` frame, so a block
+  ends on its own resting style, and the `backwards` fill holds the start frame
+  only while the animation exists: on paper, under reduced motion, or with the
+  animation gone, the block is simply there at full ink.
+*/
+@keyframes enter {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-enter-rise);
+  }
+}
+
+@utility enter-* {
+  @media screen and (prefers-reduced-motion: no-preference) {
+    animation: enter var(--motion-enter) var(--motion-enter-ease) backwards;
+    animation-delay: calc(--value(integer) * var(--motion-enter-step));
+
+    /* AC-16: a fragment link lands by the painted box, so the block that
+       is or holds the target fades in place, with no rise. Never write
+       `animation: none` here: when the target moves, the first block's
+       animation would return and its entrance play again. */
+    &:is(:target, :has(:target)) {
+      --motion-enter-rise: 0px;
+    }
+  }
+}
+
 /* Astro's Fonts API defines --font-plex-mono and --font-plex-sans on :root. */
 @theme inline {
   --font-mono: var(--font-plex-mono);
@@ -45,6 +75,13 @@
     --motion-base: 250ms;
     --motion-slow: 400ms;
     --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+    /* Spec 0016: the page entrance, as measured on t3.gg. Its curve is its
+       own; --motion-ease stays the curve of every colour transition and of
+       the command menu's fade. */
+    --motion-enter: 600ms;
+    --motion-enter-rise: 20px;
+    --motion-enter-step: 50ms;
+    --motion-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   html {
@@ -99,6 +136,7 @@
     ::after,
     ::backdrop {
       animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;

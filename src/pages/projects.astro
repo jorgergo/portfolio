@@ -6,6 +6,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getCv } from '@/lib/cv';
 import { formatYearSpan, joinMeta, sortByStart } from '@/lib/cv-format';
 import { PRIVATE_SOURCE } from '@/lib/cv-schema';
+import { enterClass } from '@/lib/entrance';
 import { PAIR } from '@/lib/pair';
 import { pageMeta } from '@/lib/site-meta';
 
@@ -13,17 +14,26 @@ import { pageMeta } from '@/lib/site-meta';
 // first. A row holds the name (linked to the live site when there is one) with
 // its status and years as `CvEntry`'s `PAIR`, the description, the stack as
 // chips, then a `code` link or the muted `private` word. No intro, no image, no
-// script. The head comes from the `projects` row (spec 0006).
+// script. The head comes from the `projects` row (spec 0006). Spec 0016: the
+// heading, then each row, then the footer enter in order.
 const cv = await getCv();
 const projects = sortByStart(cv.projects);
 ---
 
-<BaseLayout {...pageMeta('projects', cv, Astro.site)}>
+<BaseLayout
+  {...pageMeta('projects', cv, Astro.site)}
+  footerStep={projects.length + 1}
+>
   <div class="flex flex-col gap-6 text-pretty">
-    <h1 class="text-lg font-medium">projects</h1>
+    <h1 class:list={['text-lg font-medium', enterClass(0)]}>projects</h1>
     <ul class="flex flex-col">
-      {projects.map((project) => (
-        <li class="flex flex-col gap-2 border-t border-line py-4 last:border-b">
+      {projects.map((project, index) => (
+        <li
+          class:list={[
+            'flex flex-col gap-2 border-t border-line py-4 last:border-b',
+            enterClass(index + 1),
+          ]}
+        >
           <div class={PAIR}>
             <h2 class="font-medium">
               {project.url !== undefined ? (

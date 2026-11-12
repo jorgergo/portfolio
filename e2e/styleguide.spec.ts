@@ -630,63 +630,68 @@ test.describe('keyboard focus', () => {
 
     for (const { label } of stops) {
       await page.keyboard.press('Tab');
-      const ring = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (el === null) return undefined;
-        const style = getComputedStyle(el);
-        const filter = el.closest('[data-menu-filter]');
-        // A command menu row: its ground and its mark (spec 0015 AC-7).
-        const row =
-          el.closest('[data-menu-list]') === null
-            ? undefined
-            : {
-                ground: style.backgroundColor,
-                mark:
-                  el.firstElementChild === null
-                    ? ''
-                    : getComputedStyle(el.firstElementChild).visibility,
-              };
-        // The command menu field: its 2px line (spec 0015 AC-5).
-        const line =
-          filter === null
-            ? undefined
-            : (({ opacity, borderTopWidth, borderTopColor }) => ({
-                opacity,
-                width: borderTopWidth,
-                color: borderTopColor,
-              }))(getComputedStyle(filter, '::after'));
-        return {
-          style: style.outlineStyle,
-          width: style.outlineWidth,
-          offset: style.outlineOffset,
-          color: style.outlineColor,
-          row,
-          line,
-          // The dark panel resolves the accent token to its dark value.
-          dark: el.closest('.scheme-dark') !== null,
-        };
-      });
-      expect(ring, `${label}: focus left the page`).toBeDefined();
-      if (ring === undefined) return;
-      const scheme = ring.dark ? 'dark' : 'light';
-      if (ring.row !== undefined) {
-        expect(ring, label).toMatchObject({
-          style: 'none',
-          row: { ground: rgb(scheme, 'line'), mark: 'visible' },
+      // Retried: under the suite's reduced motion (spec 0016 AC-14) every
+      // property carries a 0.01ms transition, so a read in the frame of the
+      // focus can still see the ring at rest.
+      await expect(async () => {
+        const ring = await page.evaluate(() => {
+          const el = document.activeElement;
+          if (el === null) return undefined;
+          const style = getComputedStyle(el);
+          const filter = el.closest('[data-menu-filter]');
+          // A command menu row: its ground and its mark (spec 0015 AC-7).
+          const row =
+            el.closest('[data-menu-list]') === null
+              ? undefined
+              : {
+                  ground: style.backgroundColor,
+                  mark:
+                    el.firstElementChild === null
+                      ? ''
+                      : getComputedStyle(el.firstElementChild).visibility,
+                };
+          // The command menu field: its 2px line (spec 0015 AC-5).
+          const line =
+            filter === null
+              ? undefined
+              : (({ opacity, borderTopWidth, borderTopColor }) => ({
+                  opacity,
+                  width: borderTopWidth,
+                  color: borderTopColor,
+                }))(getComputedStyle(filter, '::after'));
+          return {
+            style: style.outlineStyle,
+            width: style.outlineWidth,
+            offset: style.outlineOffset,
+            color: style.outlineColor,
+            row,
+            line,
+            // The dark panel resolves the accent token to its dark value.
+            dark: el.closest('.scheme-dark') !== null,
+          };
         });
-      } else if (ring.line !== undefined) {
-        expect(ring, label).toMatchObject({
-          style: 'none',
-          line: { opacity: '1', width: '2px', color: rgb(scheme, 'accent') },
-        });
-      } else {
-        expect(ring, label).toMatchObject({
-          style: 'solid',
-          width: '2px',
-          offset: '3px',
-          color: rgb(scheme, 'accent'),
-        });
-      }
+        expect(ring, `${label}: focus left the page`).toBeDefined();
+        if (ring === undefined) return;
+        const scheme = ring.dark ? 'dark' : 'light';
+        if (ring.row !== undefined) {
+          expect(ring, label).toMatchObject({
+            style: 'none',
+            row: { ground: rgb(scheme, 'line'), mark: 'visible' },
+          });
+        } else if (ring.line !== undefined) {
+          expect(ring, label).toMatchObject({
+            style: 'none',
+            line: { opacity: '1', width: '2px', color: rgb(scheme, 'accent') },
+          });
+        } else {
+          expect(ring, label).toMatchObject({
+            style: 'solid',
+            width: '2px',
+            offset: '3px',
+            color: rgb(scheme, 'accent'),
+          });
+        }
+      }).toPass();
     }
   });
 
@@ -788,6 +793,9 @@ test.describe('motion', () => {
   test('links change colour with the 150ms theme transition', async ({
     page,
   }) => {
+    // The suite runs on reduced motion (spec 0016 AC-14); this test asserts
+    // the real transition.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await open(page);
     const link = panel(page, 'Light').getByRole('link', {
       name: 'TextLink to the home page',
@@ -801,15 +809,22 @@ test.describe('motion', () => {
     await expect(link).toHaveCSS('transition-property', /(^|, )color(,|$)/);
   });
 
-  // covers: AC-10
+  // covers: AC-10, spec 0016 AC-1
   test('defines the motion variables on :root', async ({ page }) => {
     await open(page);
 
     const motion = await page.evaluate(() => {
       const root = getComputedStyle(document.documentElement);
-      return ['quick', 'base', 'slow', 'ease'].map((name) =>
-        root.getPropertyValue(`--motion-${name}`).trim(),
-      );
+      return [
+        'quick',
+        'base',
+        'slow',
+        'ease',
+        'enter',
+        'enter-rise',
+        'enter-step',
+        'enter-ease',
+      ].map((name) => root.getPropertyValue(`--motion-${name}`).trim());
     });
 
     expect(motion).toEqual([
@@ -817,7 +832,35 @@ test.describe('motion', () => {
       '250ms',
       '400ms',
       'cubic-bezier(0.2, 0, 0, 1)',
+      '600ms',
+      '20px',
+      '50ms',
+      'cubic-bezier(0.16, 1, 0.3, 1)',
     ]);
+  });
+
+  // The style guide passes no footerStep, so with motion on its footer, and
+  // every component it renders, stay still.
+  // covers: spec 0016 AC-6, AC-7
+  test('nothing on the page enters, the footer included', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await open(page);
+
+    const entering = await page.evaluate(() =>
+      [...document.querySelectorAll('*')]
+        .filter(
+          (el) =>
+            [...el.classList].some((name) => name.startsWith('enter-')) ||
+            getComputedStyle(el).animationName === 'enter',
+        )
+        .map((el) => el.tagName),
+    );
+
+    expect(entering).toEqual([]);
+    await expect(page.getByRole('contentinfo')).toHaveCSS(
+      'animation-name',
+      'none',
+    );
   });
 
   // covers: AC-10

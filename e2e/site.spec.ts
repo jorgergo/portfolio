@@ -43,6 +43,7 @@ import {
   rowMatches,
   shortcutHint,
 } from '@/lib/command-menu';
+import { ENTER_CLASSES, enterClass } from '@/lib/entrance';
 import { isExternal } from '@/lib/links';
 import {
   commandMenuGroups,
@@ -60,8 +61,10 @@ import {
   distFile,
   distFiles,
   failedEveryAttempt,
+  freezeEntrance,
   headerBlocks,
   missingHeaders,
+  pageSettled,
   pngSize,
   rgb,
   runSmoke,
@@ -1782,48 +1785,6 @@ test.describe('home page', () => {
       );
     }
   });
-
-  // covers: AC-7, spec 0015 AC-12
-  test("nothing animates, and every transition moves only colours, but the command menu's fade", async ({
-    page,
-  }) => {
-    await page.goto('/');
-    // The command menu's open fade is the site's one motion beyond colour
-    // (spec 0015); its own tests prove it.
-    const found = await page.evaluate((menuId) => {
-      const elements = [...document.querySelectorAll('*')].filter(
-        (el) => el.id !== menuId,
-      );
-      return {
-        running: document.getAnimations().length,
-        keyframes: elements
-          .filter((el) => getComputedStyle(el).animationName !== 'none')
-          .map((el) => el.tagName),
-        // Each property an element transitions for longer than 0s, as `TAG
-        // property`; an element with no transition lasts 0s and adds none.
-        transitions: elements.flatMap((el) => {
-          const style = getComputedStyle(el);
-          const lasts = style.transitionDuration
-            .split(', ')
-            .some((duration) => Number.parseFloat(duration) > 0);
-          return lasts
-            ? style.transitionProperty
-                .split(', ')
-                .map((property) => `${el.tagName} ${property}`)
-            : [];
-        }),
-      };
-    }, COMMAND_MENU_ID);
-    // What `transition-colors` lists: the colour properties, fill, stroke,
-    // and the gradient stops.
-    const colour = /\s(\S*color|fill|stroke|--tw-gradient-\S+)$/;
-
-    expect(found.running).toBe(0);
-    expect(found.keyframes).toEqual([]);
-    expect(found.transitions.filter((entry) => !colour.test(entry))).toEqual(
-      [],
-    );
-  });
 });
 
 // Spec 0009: /about as a heading, an intro, the marker list, and one closing
@@ -2454,23 +2415,31 @@ test.describe('projects page', () => {
 
     for (const label of PROJECT_STOPS) {
       await page.keyboard.press('Tab');
-      const ring = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (el === null || el === document.body) return undefined;
-        const style = getComputedStyle(el);
-        return {
-          style: style.outlineStyle,
-          width: style.outlineWidth,
-          offset: style.outlineOffset,
-          color: style.outlineColor,
-        };
-      });
-      expect(ring, label).toEqual({
-        style: 'solid',
-        width: '2px',
-        offset: '3px',
-        color: rgb('light', 'accent'),
-      });
+      // Polled: under the suite's reduced motion (spec 0016 AC-14) every
+      // property carries a 0.01ms transition, so a read in the frame of the
+      // focus can still see the ring at rest.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const el = document.activeElement;
+              if (el === null || el === document.body) return undefined;
+              const style = getComputedStyle(el);
+              return {
+                style: style.outlineStyle,
+                width: style.outlineWidth,
+                offset: style.outlineOffset,
+                color: style.outlineColor,
+              };
+            }),
+          { message: label },
+        )
+        .toEqual({
+          style: 'solid',
+          width: '2px',
+          offset: '3px',
+          color: rgb('light', 'accent'),
+        });
     }
   });
 
@@ -3130,6 +3099,7 @@ test.describe('cv page', () => {
       'DIV',
       'ADDRESS',
     ]);
+    // The row is the page's first entrance block (spec 0016).
     expect(await classes(headerRow(page))).toEqual(
       new Set([
         'flex',
@@ -3138,6 +3108,7 @@ test.describe('cv page', () => {
         'justify-between',
         'gap-x-4',
         'gap-y-2',
+        enterClass(0),
       ]),
     );
     expect(await tags(headerRow(page).locator(':scope > *'))).toEqual([
@@ -3163,8 +3134,9 @@ test.describe('cv page', () => {
       new Set(['text-sm', 'text-muted']),
     );
     await expect(labelLine(page)).toHaveCSS('color', rgb('light', 'muted'));
+    // The address is the page's second entrance block (spec 0016).
     expect(await classes(header(page).locator('address'))).toEqual(
-      new Set(['not-italic']),
+      new Set(['not-italic', enterClass(1)]),
     );
     await expect(header(page).locator('address')).toHaveCSS(
       'font-style',
@@ -3909,23 +3881,31 @@ test.describe('cv page', () => {
 
     for (const label of CV_STOPS) {
       await page.keyboard.press('Tab');
-      const ring = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (el === null || el === document.body) return undefined;
-        const style = getComputedStyle(el);
-        return {
-          style: style.outlineStyle,
-          width: style.outlineWidth,
-          offset: style.outlineOffset,
-          color: style.outlineColor,
-        };
-      });
-      expect(ring, label).toEqual({
-        style: 'solid',
-        width: '2px',
-        offset: '3px',
-        color: rgb('light', 'accent'),
-      });
+      // Polled: under the suite's reduced motion (spec 0016 AC-14) every
+      // property carries a 0.01ms transition, so a read in the frame of the
+      // focus can still see the ring at rest.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const el = document.activeElement;
+              if (el === null || el === document.body) return undefined;
+              const style = getComputedStyle(el);
+              return {
+                style: style.outlineStyle,
+                width: style.outlineWidth,
+                offset: style.outlineOffset,
+                color: style.outlineColor,
+              };
+            }),
+          { message: label },
+        )
+        .toEqual({
+          style: 'solid',
+          width: '2px',
+          offset: '3px',
+          color: rgb('light', 'accent'),
+        });
     }
   });
 
@@ -5677,6 +5657,9 @@ test.describe('command menu', () => {
   test('the panel and its backdrop fade in over 150ms from the built @starting-style rules, and closing is instant', async ({
     page,
   }) => {
+    // The suite runs on reduced motion (spec 0016 AC-14); this test asserts
+    // the real fade.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     const css = distFiles()
       .filter((file) => file.endsWith('.css'))
       .map((file) => distFile(file))
@@ -5972,11 +5955,15 @@ test.describe('command menu', () => {
 
       await expect(field(page)).toBeFocused();
       await expectSelected(page, ALL_NAMES[0]);
-      // On the sheet the line lies over the field row's top rule.
-      expect(await focusLine(page)).toMatchObject({
-        opacity: '1',
-        top: '-1px',
-      });
+      // On the sheet the line lies over the field row's top rule. Polled, as
+      // the line's 0.01ms reduced motion fade can still read 0 in the frame
+      // of the tap (spec 0016 AC-14).
+      await expect
+        .poll(() => focusLine(page))
+        .toMatchObject({
+          opacity: '1',
+          top: '-1px',
+        });
     });
 
     // covers: spec 0015 AC-11
@@ -6110,6 +6097,779 @@ test.describe('command menu', () => {
       expect(box?.width).toBe(512);
       expect(box?.x).toBeCloseTo((clientWidth - 512) / 2, 0);
       expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(1180, 0);
+    });
+  });
+});
+
+// Spec 0016: the page entrance, with motion on for the whole block (the rest
+// of the suite runs on reduced motion). Every expectation is read from
+// cv.json, SITE_NAV, and the site's own helpers, and the /cv section count
+// from the page itself, so a valid content edit needs no test edit. A test
+// that reads one moment of the entrance holds the timeline with
+// `freezeEntrance` and seeks it.
+test.describe('page entrance', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  // The AC-1 values as the browser computes them.
+  const STEP_MS = 50;
+  const DURATION = '0.6s';
+  const DURATION_MS = 600;
+  const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
+  const LAST_STEP = ENTER_CLASSES.length - 1;
+  const SLOWEST_MS = 950;
+
+  // A block's delay from its place in the page's order, held at the last step.
+  const delayAt = (place: number): number =>
+    Math.min(place, LAST_STEP) * STEP_MS;
+
+  type Entrance = {
+    readonly path: string;
+    readonly file: string;
+    // The page's blocks before the footer, in entrance order.
+    readonly blocks: readonly ((page: Page) => Locator)[];
+    // How many blocks its content gives it, the footer left out.
+    readonly count: (page: Page) => Promise<number>;
+  };
+
+  const ENTRANCES: readonly Entrance[] = [
+    {
+      path: '/',
+      file: 'index.html',
+      blocks: [
+        (page) => page.locator('main > header'),
+        (page) =>
+          page.getByRole('navigation', { name: 'Pages' }).getByRole('link'),
+      ],
+      count: () => Promise.resolve(1 + SITE_NAV.length),
+    },
+    {
+      path: '/about',
+      file: 'about.html',
+      blocks: [
+        (page) => page.locator('main h1'),
+        (page) => page.locator('main h1 + p'),
+        (page) => page.locator('main ul > li'),
+        (page) => page.locator('main ul + p'),
+      ],
+      count: () => Promise.resolve(cv.about.items.length + 3),
+    },
+    {
+      path: '/cv',
+      file: 'cv.html',
+      blocks: [
+        (page) => page.locator('main header > div'),
+        (page) => page.locator('main header > address'),
+        (page) => page.locator('main section'),
+      ],
+      count: async (page) => (await page.locator('main section').count()) + 2,
+    },
+    {
+      path: '/projects',
+      file: 'projects.html',
+      blocks: [
+        (page) => page.locator('main h1'),
+        (page) => page.locator('main > div > ul > li'),
+      ],
+      count: () => Promise.resolve(cv.projects.length + 1),
+    },
+    {
+      path: '/contact',
+      file: 'contact.html',
+      blocks: [
+        (page) => page.locator('main h1'),
+        (page) => page.locator('main address a'),
+      ],
+      count: () => Promise.resolve(CONTACT_ROWS.length + 1),
+    },
+    {
+      path: '/missing',
+      file: '404.html',
+      blocks: [
+        (page) => page.locator('main h1'),
+        (page) => page.locator('main section > p'),
+      ],
+      count: () => Promise.resolve(3),
+    },
+  ];
+
+  const footer = (page: Page): Locator => page.getByRole('contentinfo');
+  const homeRows = (page: Page): Locator =>
+    page.getByRole('navigation', { name: 'Pages' }).getByRole('link');
+
+  // Each element's place among all the page's elements, so blocks found by
+  // different locators compare by identity, in document order.
+  const placesOf = (locator: Locator): Promise<readonly number[]> =>
+    locator.evaluateAll((elements) => {
+      const all = [...document.querySelectorAll('*')];
+      return elements.map((el) => all.indexOf(el));
+    });
+
+  // The page's blocks, then its footer, by place.
+  const expectedPlaces = async (
+    page: Page,
+    { blocks }: Entrance,
+  ): Promise<readonly number[]> =>
+    (
+      await Promise.all(
+        [...blocks.map((block) => block(page)), footer(page)].map(placesOf),
+      )
+    ).flat();
+
+  type Block = {
+    readonly place: number;
+    readonly classes: readonly string[];
+    readonly name: string;
+    readonly duration: string;
+    readonly ease: string;
+    readonly fill: string;
+    readonly delayMs: number;
+    readonly opacity: string;
+    readonly translate: string;
+    readonly visible: boolean;
+  };
+
+  // Every element with an `enter-` class, in document order, with its
+  // entrance as computed right now.
+  const entering = (page: Page): Promise<readonly Block[]> =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('*')].flatMap((el, place) => {
+        const classes = [...el.classList];
+        if (!classes.some((name) => /^enter-\d+$/.test(name))) return [];
+        const style = getComputedStyle(el);
+        return [
+          {
+            place,
+            classes,
+            name: style.animationName,
+            duration: style.animationDuration,
+            ease: style.animationTimingFunction,
+            fill: style.animationFillMode,
+            delayMs: Math.round(Number.parseFloat(style.animationDelay) * 1000),
+            opacity: style.opacity,
+            translate: style.translate,
+            visible: el.checkVisibility({ visibilityProperty: true }),
+          },
+        ];
+      }),
+    );
+
+  // Moves every animation on a frozen page to `ms` after it began.
+  const seek = (page: Page, ms: number): Promise<void> =>
+    page.evaluate((time) => {
+      for (const animation of document.getAnimations()) {
+        animation.currentTime = time;
+      }
+    }, ms);
+
+  // covers: spec 0016 AC-1, AC-2, AC-5, AC-6, AC-8
+  test('on /, the header, each row, then the footer rise and fade in over 600ms on the entrance curve, 50ms apart, and come to rest', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const blocks = await entering(page);
+
+    expect(blocks).toHaveLength(SITE_NAV.length + 2);
+    blocks.forEach((block, place) => {
+      expect(block, `block ${String(place)}`).toMatchObject({
+        name: 'enter',
+        duration: DURATION,
+        ease: EASE,
+        fill: 'backwards',
+        delayMs: delayAt(place),
+      });
+    });
+
+    await pageSettled(page);
+    for (const block of await entering(page)) {
+      expect(block).toMatchObject({ opacity: '1', translate: 'none' });
+    }
+  });
+
+  // covers: spec 0016 AC-2, AC-16
+  test('the built stylesheet holds the enter keyframes, with one from frame, and each enter class only inside the screen and motion query, filled backwards, with no rise on a fragment target', () => {
+    const css = distFiles()
+      .filter((file) => file.endsWith('.css'))
+      .map((file) => distFile(file))
+      .join('');
+    const queries = [
+      ...css.matchAll(
+        /@media screen and \(prefers-reduced-motion:no-preference\)\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+      ),
+    ];
+    const inside = queries.map(([, body]) => body ?? '').join('');
+    const outside = queries.reduce(
+      (rest, [whole]) => rest.replace(whole, ''),
+      css,
+    );
+
+    expect(css).toMatch(
+      /@keyframes enter\{(?:0%|from)\{opacity:0;translate:0 var\(--motion-enter-rise\)\}\}/,
+    );
+    ENTER_CLASSES.forEach((name, step) => {
+      expect(inside).toContain(
+        `.${name}{animation:enter var(--motion-enter) var(--motion-enter-ease) backwards;animation-delay:calc(${String(step)} * var(--motion-enter-step))}`,
+      );
+      expect(inside).toContain(
+        `.${name}:is(:target,:has(:target)){--motion-enter-rise:0px}`,
+      );
+    });
+    expect(outside).not.toMatch(/\.enter-\d/);
+    expect(css).not.toMatch(/\benter\b[^;}]*\b(?:forwards|both)\b/);
+  });
+
+  // The entrance itself never applies under reduced motion; this guards any
+  // later animation, which must not keep a delay there either. Nothing
+  // animates under reduced motion today, so no computed style can show the
+  // rule (a block's delay reads 0s with or without it); the built stylesheet
+  // is the one place it is visible.
+  // covers: spec 0016 AC-9
+  test('the built reduced motion rule zeroes every animation delay', () => {
+    const css = distFiles()
+      .filter((file) => file.endsWith('.css'))
+      .map((file) => distFile(file))
+      .join('');
+    // The universal rule inside each reduced motion query, as declarations.
+    const universal = [
+      ...css.matchAll(
+        /@media \(prefers-reduced-motion:reduce\)\{\*[^{}]*\{([^{}]*)\}/g,
+      ),
+    ].map(([, body]) => (body ?? '').split(';'));
+
+    expect(universal).toHaveLength(1);
+    expect(universal[0]).toContain('animation-delay:0s!important');
+  });
+
+  // covers: spec 0016 AC-12
+  test('on /, a row still at its start frame takes Tab focus and opens its page on click', async ({
+    page,
+  }) => {
+    await freezeEntrance(page);
+    await page.goto('/');
+    const last = homeRows(page).last();
+    const href = (await last.getAttribute('href')) ?? '';
+
+    await expect(last).toHaveCSS('opacity', '0');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(homeRows(page).first()).toBeFocused();
+    await last.click();
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe(href);
+  });
+
+  // covers: spec 0016 AC-12
+  test('on / at 1280×800 no scrollbar appears at the start of any step', async ({
+    page,
+  }) => {
+    await freezeEntrance(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    const steps = (await entering(page)).length;
+
+    for (const step of Array.from({ length: steps }, (_, index) => index)) {
+      await seek(page, delayAt(step));
+      const { scrollHeight, clientHeight } = await page.evaluate(() => ({
+        scrollHeight: document.documentElement.scrollHeight,
+        clientHeight: document.documentElement.clientHeight,
+      }));
+      expect(scrollHeight, `step ${String(step)}`).toBe(clientHeight);
+    }
+  });
+
+  // Each /cv section's heading id, in page order, read from the page.
+  const cvSectionIds = (page: Page): Promise<readonly string[]> =>
+    page
+      .locator('main section')
+      .evaluateAll((sections) =>
+        sections.map(
+          (section) => section.getAttribute('aria-labelledby') ?? '',
+        ),
+      );
+
+  // Where a fresh load of /cv#<id> leaves the page once it has settled: how
+  // far the page scrolled, and the heading's top in the window.
+  type Landing = { readonly scrollY: number; readonly top: number };
+  const landing = async (page: Page, id: string): Promise<Landing> => {
+    await page.goto('about:blank');
+    await page.goto(`/cv#${id}`);
+    await pageSettled(page);
+    return page.evaluate(async (target) => {
+      await document.fonts.ready;
+      return {
+        scrollY: window.scrollY,
+        top:
+          document.getElementById(target)?.getBoundingClientRect().top ??
+          Number.NaN,
+      };
+    }, id);
+  };
+
+  // The vertical offset a computed `translate` holds, in px: `none` and a
+  // lone x value hold none.
+  const riseOf = (translate: string): number =>
+    translate === 'none'
+      ? 0
+      : Number.parseFloat(translate.split(' ')[1] ?? '0px');
+
+  // covers: spec 0016 AC-12, AC-16
+  test('on /cv, a link to each section lands where it does under reduced motion, and moving the hash replays no entrance', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const ids = await cvSectionIds(page);
+    expect(ids.length).toBeGreaterThan(1);
+
+    const moving: Landing[] = [];
+    for (const id of ids) moving.push(await landing(page, id));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const still: Landing[] = [];
+    for (const id of ids) still.push(await landing(page, id));
+
+    ids.forEach((id, index) => {
+      const motion = moving[index];
+      const reduced = still[index];
+      expect(
+        Math.abs((motion?.scrollY ?? 0) - (reduced?.scrollY ?? 0)),
+        `#${id} scrollY`,
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs((motion?.top ?? 0) - (reduced?.top ?? 0)),
+        `#${id} top`,
+      ).toBeLessThanOrEqual(1);
+    });
+
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await landing(page, ids[0] ?? '');
+    for (const id of ids.slice(1)) {
+      const after = await page.evaluate(
+        (target) =>
+          new Promise<{ readonly target: string; readonly running: number }>(
+            (resolve) => {
+              location.hash = target;
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  resolve({
+                    target: document.querySelector(':target')?.id ?? '',
+                    running: document.getAnimations().length,
+                  });
+                });
+              });
+            },
+          ),
+        id,
+      );
+
+      expect(after, `#${id}`).toEqual({ target: id, running: 0 });
+    }
+  });
+
+  // covers: spec 0016 AC-8, AC-16
+  test('on /cv#<id> at the first frame, the block holding the heading keeps its entrance and starts faded with no rise, while the next block starts 20px low', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const ids = await cvSectionIds(page);
+    await freezeEntrance(page);
+
+    for (const [index, id] of ids.slice(0, -1).entries()) {
+      await page.goto('about:blank');
+      await page.goto(`/cv#${id}`);
+      const blocks = await page
+        .locator('main section')
+        .evaluateAll((sections) =>
+          sections.map((section) => {
+            const style = getComputedStyle(section);
+            const step = [...section.classList]
+              .find((name) => /^enter-\d+$/.test(name))
+              ?.slice('enter-'.length);
+            return {
+              step: Number(step),
+              name: style.animationName,
+              duration: style.animationDuration,
+              ease: style.animationTimingFunction,
+              fill: style.animationFillMode,
+              delayMs: Math.round(
+                Number.parseFloat(style.animationDelay) * 1000,
+              ),
+              opacity: style.opacity,
+              translate: style.translate,
+            };
+          }),
+        );
+      const target = blocks[index];
+      const next = blocks[index + 1];
+
+      // AC-8: only the start frame loses its rise; the block keeps its
+      // name, duration, curve, fill, and its own step's delay.
+      expect(target, `#${id}`).toMatchObject({
+        name: 'enter',
+        duration: DURATION,
+        ease: EASE,
+        fill: 'backwards',
+        delayMs: delayAt(target?.step ?? Number.NaN),
+        opacity: '0',
+      });
+      expect(riseOf(target?.translate ?? ''), `#${id}`).toBe(0);
+      expect(next, `after #${id}`).toMatchObject({
+        name: 'enter',
+        opacity: '0',
+        translate: '0px 20px',
+      });
+    }
+  });
+
+  // covers: spec 0016 AC-16
+  test("on /cv#main, the skip link's target, main never enters and every block keeps its rise", async ({
+    page,
+  }) => {
+    await freezeEntrance(page);
+    await page.goto('/cv#main');
+    const main = await page.locator('main').evaluate((el) => ({
+      target: el.matches(':target'),
+      name: getComputedStyle(el).animationName,
+    }));
+    const blocks = await entering(page);
+
+    expect(main).toEqual({ target: true, name: 'none' });
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block).toMatchObject({
+        name: 'enter',
+        opacity: '0',
+        translate: '0px 20px',
+      });
+    }
+  });
+
+  // covers: spec 0016 AC-16
+  test('on /cv, going Back from one section link to the one before replays no entrance', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    const ids = await cvSectionIds(page);
+    const first = ids[0] ?? '';
+    const second = ids[1] ?? '';
+    expect(ids.length).toBeGreaterThan(1);
+    await page.goto('about:blank');
+    await page.goto(`/cv#${first}`);
+    await pageSettled(page);
+    await page.evaluate((target) => {
+      location.hash = target;
+    }, second);
+    await expect
+      .poll(() => page.evaluate(() => document.querySelector(':target')?.id))
+      .toBe(second);
+    await pageSettled(page);
+
+    await page.goBack();
+    const after = await page.evaluate(
+      () =>
+        new Promise<{ readonly target: string; readonly running: number }>(
+          (resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve({
+                  target: document.querySelector(':target')?.id ?? '',
+                  running: document.getAnimations().length,
+                });
+              });
+            });
+          },
+        ),
+    );
+
+    expect(after).toEqual({ target: first, running: 0 });
+  });
+
+  // covers: spec 0016 AC-7
+  test('on /cv, scrolling to the end once settled starts no animation', async ({
+    page,
+  }) => {
+    await page.goto('/cv');
+    await pageSettled(page);
+
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 20_000);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            Math.ceil(window.scrollY + window.innerHeight) >=
+            document.documentElement.scrollHeight,
+        ),
+      )
+      .toBe(true);
+    const running = await page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve(document.getAnimations().length);
+            });
+          });
+        }),
+    );
+
+    expect(running).toBe(0);
+    for (const block of await entering(page)) {
+      expect(block).toMatchObject({ opacity: '1', translate: 'none' });
+    }
+  });
+
+  for (const entrance of ENTRANCES) {
+    const { path, file } = entrance;
+
+    test.describe(`on ${path}`, () => {
+      // covers: spec 0016 AC-5, AC-6, AC-8
+      test('each block enters at its place times 50ms, held at 350ms, the footer last, and the page settles by 950ms', async ({
+        page,
+      }) => {
+        await page.goto(path);
+        const count = await entrance.count(page);
+        const expected = await expectedPlaces(page, entrance);
+        const blocks = await entering(page);
+
+        // The locators find the blocks the content gives the page, and the
+        // footer after them; the entering elements are exactly those, in
+        // that order.
+        expect(expected).toHaveLength(count + 1);
+        expect(blocks.map(({ place }) => place)).toEqual(expected);
+        expect(blocks.map(({ delayMs }) => delayMs)).toEqual(
+          blocks.map((_, place) => delayAt(place)),
+        );
+        for (const { classes } of blocks) {
+          expect(classes.filter((name) => name.startsWith('enter-'))).toEqual([
+            expect.stringMatching(/^enter-[0-7]$/),
+          ]);
+        }
+        const settles =
+          Math.max(...blocks.map(({ delayMs }) => delayMs)) + DURATION_MS;
+        expect(settles).toBe(delayAt(count) + DURATION_MS);
+        expect(settles).toBeLessThanOrEqual(SLOWEST_MS);
+      });
+
+      // covers: spec 0016 AC-3
+      test('with every animation cancelled, every block is visible at full opacity in its place, and none carries opacity-0', async ({
+        page,
+      }) => {
+        await page.goto(path);
+        await page.evaluate(() => {
+          for (const animation of document.getAnimations()) animation.cancel();
+        });
+        const blocks = await entering(page);
+
+        expect(blocks.length).toBeGreaterThan(0);
+        for (const block of blocks) {
+          expect(block).toMatchObject({
+            opacity: '1',
+            translate: 'none',
+            visible: true,
+          });
+          expect(block.classes).not.toContain('opacity-0');
+        }
+      });
+
+      // covers: spec 0016 AC-9
+      test('under reduced motion nothing animates, and every block is there from the first frame', async ({
+        page,
+      }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.goto(path);
+        const running = await page.evaluate(
+          () => document.getAnimations().length,
+        );
+        const blocks = await entering(page);
+
+        expect(running).toBe(0);
+        expect(blocks.length).toBeGreaterThan(0);
+        for (const block of blocks) {
+          expect(block).toMatchObject({
+            name: 'none',
+            delayMs: 0,
+            opacity: '1',
+            translate: 'none',
+          });
+        }
+      });
+
+      // covers: spec 0016 AC-10
+      test('printing mid entrance puts every block at full ink in its place', async ({
+        page,
+      }) => {
+        await freezeEntrance(page);
+        await page.goto(path);
+        await seek(page, 100);
+        const before = await entering(page);
+        expect(before.at(-1)?.opacity).toBe('0');
+
+        await page.emulateMedia({ media: 'print' });
+
+        for (const block of await entering(page)) {
+          expect(block).toMatchObject({
+            name: 'none',
+            opacity: '1',
+            translate: 'none',
+          });
+        }
+      });
+
+      // covers: spec 0016 AC-12
+      test('at 320px nothing scrolls sideways at the start of any step', async ({
+        page,
+      }) => {
+        await freezeEntrance(page);
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.goto(path);
+        const steps = Math.min((await entering(page)).length, LAST_STEP + 1);
+
+        for (const step of Array.from({ length: steps }, (_, index) => index)) {
+          await seek(page, delayAt(step));
+          expect(await scrollsSideways(page), `step ${String(step)}`).toBe(
+            false,
+          );
+        }
+      });
+
+      // covers: spec 0008 AC-7, spec 0015 AC-12, spec 0016 AC-7, AC-14
+      test("once settled, only the entrance blocks carry keyframes, and every transition moves only colours, but the command menu's fade", async ({
+        page,
+      }) => {
+        await page.goto(path);
+        await pageSettled(page);
+        // The command menu's open fade is its own (spec 0015); its own tests
+        // prove it.
+        const found = await page.evaluate((menuId) => {
+          const elements = [...document.querySelectorAll('*')].filter(
+            (el) => el.id !== menuId,
+          );
+          return {
+            running: document.getAnimations().length,
+            // Each element that names keyframes, but an entrance block
+            // naming `enter`.
+            keyframes: elements
+              .filter((el) => {
+                const name = getComputedStyle(el).animationName;
+                const block = [...el.classList].some((cls) =>
+                  /^enter-\d+$/.test(cls),
+                );
+                return name !== 'none' && !(block && name === 'enter');
+              })
+              .map((el) => el.tagName),
+            // Each property an element transitions for longer than 0s, as
+            // `TAG property`; an element with no transition adds none.
+            transitions: elements.flatMap((el) => {
+              const style = getComputedStyle(el);
+              const lasts = style.transitionDuration
+                .split(', ')
+                .some((duration) => Number.parseFloat(duration) > 0);
+              return lasts
+                ? style.transitionProperty
+                    .split(', ')
+                    .map((property) => `${el.tagName} ${property}`)
+                : [];
+            }),
+          };
+        }, COMMAND_MENU_ID);
+        // What `transition-colors` lists: the colour properties, fill,
+        // stroke, and the gradient stops.
+        const colour = /\s(\S*color|fill|stroke|--tw-gradient-\S+)$/;
+
+        expect(found.running).toBe(0);
+        expect(found.keyframes).toEqual([]);
+        expect(
+          found.transitions.filter((entry) => !colour.test(entry)),
+        ).toEqual([]);
+      });
+
+      for (const scheme of SCHEMES) {
+        // covers: spec 0016 AC-13
+        test(`once settled, passes axe WCAG 2.2 AA in ${scheme}`, async ({
+          page,
+        }) => {
+          await page.emulateMedia({ colorScheme: scheme });
+          await page.goto(path);
+          await pageSettled(page);
+
+          expect(await axeViolations(page)).toEqual([]);
+        });
+      }
+
+      test.describe('with JavaScript off', () => {
+        test.use({ javaScriptEnabled: false });
+
+        // covers: spec 0016 AC-11
+        test("every block still enters, and the page ships only the command menu's script", async ({
+          page,
+        }) => {
+          await page.goto(path);
+          const blocks = await entering(page);
+
+          expect(blocks.length).toBeGreaterThan(0);
+          for (const block of blocks) {
+            expect(block).toMatchObject({ name: 'enter', fill: 'backwards' });
+          }
+          expectOnlyMenuScript(file);
+        });
+      });
+    });
+  }
+
+  test.describe('on a touch screen', () => {
+    test.use({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    });
+
+    // covers: spec 0016 AC-7, AC-12
+    test('the corner button, the skip link, main, the page wrapper, and the command menu never enter, and the corner button opens the menu from the first frame', async ({
+      page,
+    }) => {
+      await freezeEntrance(page);
+
+      for (const { path } of ENTRANCES) {
+        await page.goto(path);
+        const still = await page.evaluate((menuId) => {
+          const corner = document.querySelector(
+            `body > div > button[commandfor="${menuId}"]`,
+          );
+          return [
+            corner,
+            corner?.parentElement ?? null,
+            document.querySelector('a[href="#main"]'),
+            document.querySelector('main'),
+            document.querySelector('body > div'),
+            document.getElementById(menuId),
+          ].map((el) =>
+            el === null ? 'missing' : getComputedStyle(el).animationName,
+          );
+        }, COMMAND_MENU_ID);
+
+        expect(still, path).toEqual(Array.from({ length: 6 }, () => 'none'));
+      }
+
+      await page.goto('/');
+      await expect(homeRows(page).last()).toHaveCSS('opacity', '0');
+      await page
+        .locator(`body > div > button[commandfor="${COMMAND_MENU_ID}"]`)
+        .tap();
+
+      await expect(page.locator(`#${COMMAND_MENU_ID}`)).toBeVisible();
+    });
+
+    // covers: spec 0016 AC-12
+    test('a home row still at its start frame opens its page on tap', async ({
+      page,
+    }) => {
+      await freezeEntrance(page);
+      await page.goto('/');
+      const last = homeRows(page).last();
+      const href = (await last.getAttribute('href')) ?? '';
+
+      await expect(last).toHaveCSS('opacity', '0');
+      await last.tap();
+
+      await expect.poll(() => new URL(page.url()).pathname).toBe(href);
     });
   });
 });

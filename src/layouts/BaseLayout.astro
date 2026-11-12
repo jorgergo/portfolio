@@ -8,6 +8,7 @@ import SiteFooter from '@/components/SiteFooter.astro';
 import SkipLink from '@/components/SkipLink.astro';
 import { COMMAND_MENU_ID } from '@/lib/command-menu';
 import { parseColorTokens } from '@/lib/contrast';
+import { enterClass } from '@/lib/entrance';
 import {
   OG_TYPE,
   SHARE_IMAGE,
@@ -28,6 +29,10 @@ interface Props {
   // there, as wide as its widest line, with the text still left aligned. Only
   // the home page passes it (spec 0008).
   centered?: boolean;
+  // The footer's step in the page entrance, the one after the page's last
+  // block, so it always enters last (spec 0016). Every built page passes it;
+  // omitted, the footer stays still, which only the style guide does.
+  footerStep?: number | undefined;
 }
 
 const {
@@ -36,7 +41,15 @@ const {
   share,
   printFooter = true,
   centered = false,
+  footerStep,
 } = Astro.props;
+
+const footerClass = [
+  printFooter ? undefined : 'print:hidden',
+  footerStep === undefined ? undefined : enterClass(footerStep),
+]
+  .filter((name) => name !== undefined)
+  .join(' ');
 
 // The palette has one source: the theme-color metas are read from global.css,
 // never written by hand (spec 0003).
@@ -99,7 +112,7 @@ const { light, dark } = parseColorTokens(css);
       >
         <slot />
       </main>
-      <SiteFooter class={printFooter ? undefined : 'print:hidden'} />
+      <SiteFooter class={footerClass === '' ? undefined : footerClass} />
     </div>
     {/* Spec 0014: the command menu's button where touch is the main input, the
     site's one fixed element. It takes the bottom 64px, inside the 80px of
